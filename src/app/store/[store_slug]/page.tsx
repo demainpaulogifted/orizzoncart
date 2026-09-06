@@ -5,8 +5,11 @@ import { MerchantHeader } from '@/components/storefront/MerchantHeader';
 import { ThemeWrapper } from '@/components/storefront/ThemeWrapper';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 
-export default async function StorePage({ params }: { params: { store_slug: string } }) {
-  const merchant = await getMerchantBySlug(params.store_slug);
+export default async function StorePage({ params }: { params: Promise<{ store_slug: string }> }) {
+  // Next.js 15 Rule: We must await the params
+  const { store_slug } = await params;
+  
+  const merchant = await getMerchantBySlug(store_slug);
   if (!merchant) notFound();
 
   const isShowcaseMode = merchant.cart_status === 'LOCKED';
