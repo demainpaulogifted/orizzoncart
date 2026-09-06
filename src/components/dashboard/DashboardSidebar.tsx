@@ -1,4 +1,5 @@
 'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -6,8 +7,10 @@ import { cn } from '@/lib/utils';
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
   { name: 'Products', href: '/dashboard/products', icon: '📦' },
-  { name: 'Orders', href: '/dashboard/orders', icon: '🛒' },
+  { name: 'Orders', href: '/dashboard/orders', icon: '' },
   { name: 'Analytics', href: '/dashboard/analytics', icon: '📈' },
+  { name: 'Themes', href: '/dashboard/settings/theme', icon: '🎨' },
+  { name: 'Payments', href: '/dashboard/settings/payment', icon: '💳' },
   { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
 ];
 
@@ -24,16 +27,26 @@ export function DashboardSidebar({ merchant }: { merchant: any }) {
             <p className="text-xs text-gray-500">{merchant.business_name}</p>
           </div>
         </div>
+        
         {isShowcaseMode && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-xs text-yellow-800">⚠️ Showcase Mode<br/><span className="font-medium">Activate payment to enable cart</span></p>
           </div>
         )}
+        
         <nav className="flex flex-1 flex-col">
           <ul className="flex flex-1 flex-col gap-y-2 pt-4">
             {navigation.map((item) => (
               <li key={item.name}>
-                <Link href={item.href} className={cn('group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6', pathname === item.href ? 'bg-gray-50 text-gray-900' : 'text-gray-700 hover:bg-gray-50')}>
+                <Link 
+                  href={item.href} 
+                  className={cn(
+                    'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6', 
+                    pathname === item.href 
+                      ? 'bg-gray-50 text-gray-900' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  )}
+                >
                   <span>{item.icon}</span> {item.name}
                 </Link>
               </li>
