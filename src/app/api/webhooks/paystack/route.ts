@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const signature = request.headers.get('x-paystack-signature');
 
-    // 1. Verify the webhook signature
+    // 1. Verify Webhook Signature (CRITICAL SECURITY STEP)
     const hash = crypto
       .createHmac('sha512', process.env.PLATFORM_PAYSTACK_SECRET_KEY!)
       .update(body)
@@ -19,12 +19,12 @@ export async function POST(request: NextRequest) {
 
     const event = JSON.parse(body);
 
-    // 2. Handle successful platform payments (Activation, Themes, Subscriptions)
+    // 2. Handle Successful Charge
     if (event.event === 'charge.success') {
       const { reference, amount, metadata } = event.data;
       const supabase = createAdminClient();
 
-      // Find the transaction in our database
+      // Find our transaction
       const { data: transaction, error: txError } = await supabase
         .from('platform_transactions')
         .select('*')
@@ -35,21 +35,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
       }
 
-      // Prevent double-processing
+      // Prevent double-processing (Idempotency)
       if (transaction.status === 'paid') {
         return NextResponse.json({ message: 'Already processed' }, { status: 200 });
       }
 
-      // 3. Verify amount matches (Prevent amount manipulation)
-      // Paystack returns amount in kobo, so divide by 100
-      const paidAmount = amount / 100;
-      if (paidAmount !== transaction.amount) {
-        // Flag as suspicious, do not activate
-        await supabase.from('platform_transactions').update({ status: 'failed', metadata: { ...transaction.metadata, fraud_alert: 'Amount mismatch' } }).eq('id', transaction.id);
+      // 3. Verify Amount (Prevent fraud)
+      const paidAmount = amount / 100; // Convert kobo to Naira
+      if (Math.abs(paidAmount - transaction.amount) > 1) { // Allow 1 Naira tolerance for rounding
+        await supabase.from('platform_transactions').update({ 
+          status: 'failed', 
+          metadata: { ...transaction.metadata, fraud_alert: 'Amount mismatch' } 
+        }).eq('id', transaction.id);
         return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
       }
 
-      // 4. MARK AS PAID & ACTIVATE MERCHANT
+      // 4. Mark Transaction as Paid & Activate Merchant
       await supabase.from('platform_transactions').update({ status: 'paid' }).eq('id', transaction.id);
 
       if (transaction.transaction_type === 'payment_activation') {
@@ -59,8 +60,7 @@ export async function POST(request: NextRequest) {
           checkout_status: 'ENABLED',
           payment_activated_at: new Date().toISOString(),
         }).eq('id', transaction.merchant_id);
-      } 
-      // Add logic here for 'theme_purchase' or 'subscription_renewal'
+      }
 
       return NextResponse.json({ message: 'Webhook processed successfully' }, { status: 200 });
     }
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Disable body parsing for this route so we can read the raw text for signature verification
+// CRITICAL: Disable body parsing so we can read raw text for signature verification
 export const config = {
   api: {
     bodyParser: false,
