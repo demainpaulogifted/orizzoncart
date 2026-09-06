@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
@@ -10,7 +12,12 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Playfair Display', serif;
 }
 
 /* Smooth scrolling */
@@ -18,8 +25,11 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Better focus styles */
-*:focus-visible {
-  outline: 2px solid #0f172a;
-  outline-offset: 2px;
+/* Beautiful button styles */
+.btn-primary {
+  @apply px-8 py-3 bg-brand-600 text-white rounded-full font-medium shadow-lg hover:bg-brand-700 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
+}
+
+.btn-secondary {
+  @apply px-8 py-3 bg-white text-brand-600 border-2 border-brand-600 rounded-full font-medium hover:bg-brand-50 transition-all duration-300;
 }
