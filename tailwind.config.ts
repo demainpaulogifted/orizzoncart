@@ -10,26 +10,32 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: "#f8fafc",
-          100: "#f1f5f9",
-          200: "#e2e8f0",
-          300: "#cbd5e1",
-          400: "#94a3b8",
-          500: "#64748b",
-          600: "#475569",
-          700: "#334155",
-          800: "#1e293b",
-          900: "#0f172a",
-          950: "#020617",
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          500: '#8b5cf6', // Vibrant Purple
+          600: '#7c3aed',
+          900: '#4c1d95',
         },
+        accent: {
+          blue: '#3b82f6',
+          green: '#10b981',
+          purple: '#8b5cf6',
+          orange: '#f97316',
+        }
+      },
+      backgroundImage: {
+        'hero-gradient': 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 50%, #fbc2eb 100%)',
+        'card-blue': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'card-green': 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+        'card-purple': 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+        'card-orange': 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)',
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['Playfair Display', 'serif'],
       },
     },
   },
   plugins: [],
 };
-
 export default config;
