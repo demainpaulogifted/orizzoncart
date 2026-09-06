@@ -1,27 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 
 export default function CheckoutPage() {
   const params = useParams();
-  const router = useRouter();
   const store_slug = params.store_slug as string;
 
-  const [cart, setCart] = useState<any[]>([]); // In production, fetch from localStorage or DB cart
   const [loading, setLoading] = useState(false);
   
   const [customer, setCustomer] = useState({
     name: '', email: '', phone: '', address_line1: '', city: '', state: ''
   });
 
-  // Mock cart data for demonstration (Replace with real cart state management)
-  useEffect(() => {
-    setCart([
-      { product_id: 'mock-id-1', name: 'Sample Product', price: 15000, quantity: 1, is_digital: false }
-    ]);
-  }, []);
+  // Mock cart data for testing the UI
+  const cart = [
+    { product_id: 'mock-id-1', name: 'Sample Product', price: 15000, quantity: 1, is_digital: false }
+  ];
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shippingCost = cart.every((item) => item.is_digital) ? 0 : 2500;
@@ -45,7 +41,7 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
-      // Redirect customer to Paystack/Flutterwave secure payment page
+      // Redirect customer to Paystack secure payment page
       window.location.href = data.authorization_url;
     } catch (error: any) {
       toast.error(error.message || 'Failed to initialize checkout');
