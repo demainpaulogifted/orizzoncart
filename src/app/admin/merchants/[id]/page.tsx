@@ -2,7 +2,10 @@ import { createClient } from '@/lib/supabase/server';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { redirect } from 'next/navigation';
 
-export default async function MerchantDetailPage({ params }: { params: { id: string } }) {
+export default async function MerchantDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  // Next.js 15 Rule: We must await the params
+  const { id } = await params;
+  
   const supabase = await createClient();
   
   // Verify admin
@@ -11,24 +14,24 @@ export default async function MerchantDetailPage({ params }: { params: { id: str
   if (profile?.role !== 'platform_admin') redirect('/dashboard');
 
   // Fetch Merchant Data
-  const { data: merchant } = await supabase.from('merchants').select('*').eq('id', params.id).single();
+  const { data: merchant } = await supabase.from('merchants').select('*').eq('id', id).single();
   
   // Fetch Activity History (Transactions)
   const { data: transactions } = await supabase
     .from('platform_transactions')
     .select('*')
-    .eq('merchant_id', params.id)
+    .eq('merchant_id', id)
     .order('created_at', { ascending: false });
 
   // Fetch Store Stats
-  const { data: orders } = await supabase.from('orders').select('id, total_amount, status').eq('merchant_id', params.id);
-  const totalSales = orders?.reduce((acc, curr) => acc + curr.total_amount, 0) || 0;
+  const { data: orders } = await supabase.from('orders').select('id, total_amount, status').eq('merchant_id', id);
+  const totalSales = orders?.reduce((acc: number, curr: any) => acc + curr.total_amount, 0) || 0;
 
   // Server Action to Hold/Release
   async function updateMerchantStatus(formData: FormData) {
     'use server';
     const status = formData.get('status') as string;
-    const supabaseAdmin = await createClient(); // In real app, use service role key here
+    const supabaseAdmin = await createClient(); 
     
     const updateData: any = {};
     if (status === 'RELEASE') {
@@ -41,8 +44,8 @@ export default async function MerchantDetailPage({ params }: { params: { id: str
       updateData.checkout_status = 'DISABLED';
     }
 
-    await supabaseAdmin.from('merchants').update(updateData).eq('id', params.id);
-    redirect(`/admin/merchants/${params.id}`);
+    await supabaseAdmin.from('merchants').update(updateData).eq('id', id);
+    redirect(`/admin/merchants/${id}`);
   }
 
   if (!merchant) return <div>Merchant not found</div>;
