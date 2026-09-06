@@ -1,33 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = request.headers.get('x-paystack-signature');
-    
-    // Note: In a multi-tenant app, you might need to fetch the specific merchant's 
-    // secret key to verify the hash, or use a platform-level webhook secret if Paystack supports subaccount webhooks.
-    // For simplicity, we assume the merchant's key is used for verification.
-    
     const event = JSON.parse(body);
     const supabase = createAdminClient();
 
     if (event.event === 'charge.success') {
-      const { metadata, reference } = event.data;
+      const { metadata } = event.data;
 
+      // Check if this is a customer order payment
       if (metadata?.type === 'customer_order') {
         // Update the order status to paid
         await supabase.from('orders').update({
           payment_status: 'paid',
           status: 'processing', // Move to processing so merchant can fulfill
           payment_method: 'paystack',
-          payment_intent_id: reference,
+          payment_intent_id: event.data.reference,
         }).eq('id', metadata.order_id);
-
-        // TODO: Trigger email/SMS to customer with tracking number
-        // TODO: Trigger notification to merchant dashboard
       }
     }
 
@@ -38,4 +29,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export const config = { api: { bodyParser: false } };
+// CRITICAL: This tells Next.js not to parse the body, so we can read the raw text for security
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
