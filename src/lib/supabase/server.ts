@@ -12,14 +12,29 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
+
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options?: {
+              path?: string;
+              domain?: string;
+              maxAge?: number;
+              expires?: Date;
+              httpOnly?: boolean;
+              secure?: boolean;
+              sameSite?: "strict" | "lax" | "none";
+            };
+          }[]
+        ) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
           } catch {
             // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing sessions.
+            // This can be ignored if middleware is refreshing sessions.
           }
         },
       },
