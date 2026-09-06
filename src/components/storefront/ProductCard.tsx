@@ -2,18 +2,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 export function ProductCard({ product, isShowcaseMode }: { product: any; isShowcaseMode: boolean }) {
-  const imageUrl = product.images?.[0]?.url || '/placeholder.jpg';
+  const imageUrl = product.images?.[0]?.url || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800'; // Beautiful fallback image
+  
   return (
     <Link href={`/store/${product.merchant_id}/products/${product.slug}`} className="group block">
-      <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
-        <Image src={imageUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gray-100 shadow-md group-hover:shadow-xl transition-shadow duration-300">
+        <Image 
+          src={imageUrl} 
+          alt={product.name} 
+          fill 
+          className="object-cover group-hover:scale-110 transition-transform duration-500" 
+        />
       </div>
-      <div className="mt-3">
-        <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</h3>
-        <div className="mt-1 flex items-center gap-2">
-          <span className="text-base font-bold text-gray-900">₦{product.price.toLocaleString()}</span>
-        </div>
-        {isShowcaseMode && <div className="mt-2 text-xs text-gray-500">View details</div>}
+      <div className="mt-4 text-center">
+        <h3 className="text-lg font-medium text-gray-900 font-display">{product.name}</h3>
+        <p className="mt-1 text-xl font-bold text-[#8b4513]">₦{product.price.toLocaleString()}</p>
+        {isShowcaseMode && (
+          <p className="mt-2 text-xs text-gray-500 italic">View details</p>
+        )}
       </div>
     </Link>
   );
