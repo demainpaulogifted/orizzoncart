@@ -41,7 +41,7 @@ export default async function StorePage({ params }: any) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h3 className="text-2xl font-bold text-[var(--color-text)] mb-8 font-[var(--font-heading)]">Featured Products</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {merchant.products?.filter((p: any) => p.is_active).map((product: any) => (
+          {(merchant as any).products?.filter((p: any) => p.is_active).map((product: any) => (
             <ProductCard key={product.id} product={product} isShowcaseMode={isShowcaseMode} />
           ))}
         </div>
