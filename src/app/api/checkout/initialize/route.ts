@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    const shippingCost = isDigitalOnly ? 0 : 2500; // Example: Flat rate shipping
+    const shippingCost = isDigitalOnly ? 0 : 2500; // Flat rate shipping for physical goods
     const totalAmount = subtotal + shippingCost;
 
     // 4. Create Pending Order in Database
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           email: customer.email,
-          amount: totalAmount * 100, // Kobo
+          amount: totalAmount * 100, // Paystack expects amount in kobo
           reference: reference,
           callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?order=${order.id}`,
           metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' }
@@ -124,7 +124,6 @@ export async function POST(request: NextRequest) {
       if (!paystackData.status) throw new Error(paystackData.message);
       authorization_url = paystackData.data.authorization_url;
     } 
-    // TODO: Add Flutterwave initialization logic here similarly
 
     return NextResponse.json({ authorization_url, order_id: order.id, tracking_number: trackingNumber });
 
