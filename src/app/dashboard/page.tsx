@@ -44,11 +44,9 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-          Welcome back to {merchant?.store_name}!
-        </h1>
-      </div>
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+        Welcome back to {merchant?.store_name}!
+      </h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {cards.map((c) => (
