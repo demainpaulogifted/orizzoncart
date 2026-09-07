@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
@@ -37,12 +38,32 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-8 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold">Store Settings</h1>
-        <p className="text-gray-600 text-sm">Update your store information.</p>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-gray-600 text-sm">Payments, themes and store information all live here.</p>
       </div>
-      <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border p-8 space-y-5">
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link href="/dashboard/settings/payment" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
+          <span className="text-2xl">💳</span>
+          <p className="font-bold mt-2">Payments</p>
+          <p className="text-xs text-gray-500 mt-1">Paystack / Flutterwave keys, activation fee & payouts.</p>
+        </Link>
+        <Link href="/dashboard/settings/theme" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
+          <span className="text-2xl">🎨</span>
+          <p className="font-bold mt-2">Themes</p>
+          <p className="text-xs text-gray-500 mt-1">Switch your storefront design instantly.</p>
+        </Link>
+        <Link href="/dashboard/settings/commerce" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
+          <span className="text-2xl">🌍</span>
+          <p className="font-bold mt-2">Orizzon Commerce</p>
+          <p className="text-xs text-gray-500 mt-1">Sourcing & automated profit payouts.</p>
+        </Link>
+      </div>
+
+      <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border p-6 sm:p-8 space-y-5">
+        <h2 className="text-lg font-bold">Store Information</h2>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Store Name</label>
           <input value={form.store_name} onChange={(e) => setForm({ ...form, store_name: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" />
