@@ -7,14 +7,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: merchant } = await supabase.from('merchants').select('*').eq('user_id', user.id).single();
+  const { data: merchant } = await supabase
+    .from('merchants')
+    .select('*')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   if (!merchant) redirect('/onboarding');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-100">
       <DashboardSidebar merchant={merchant} />
-      <main className="lg:ml-64 pt-16">
-        <div className="px-4 sm:px-6 lg:px-8 py-8">{children}</div>
+      <main className="pl-20 sm:pl-24">
+        <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">{children}</div>
       </main>
     </div>
   );
