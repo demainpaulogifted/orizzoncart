@@ -52,6 +52,12 @@ export default function OnboardingPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       const { data: merchant } = await supabase.from('merchants').select('id').eq('user_id', user?.id).single();
+      
+      // NULL CHECK: Fix for TypeScript error TS18047
+      if (!merchant) {
+        throw new Error('Store created but not found. Please refresh and try again.');
+      }
+      
       await supabase.from('merchants').update({
         whatsapp_number: form.whatsapp_number,
         store_description: form.store_description,
