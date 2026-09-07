@@ -15,9 +15,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!merchant) redirect('/onboarding');
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const isAdmin = profile?.role === 'platform_admin';
+
   return (
     <div className="min-h-screen bg-slate-100">
-      <DashboardSidebar merchant={merchant} />
+      <DashboardSidebar merchant={merchant} isAdmin={isAdmin} />
       <main className="pl-20 sm:pl-24">
         <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">{children}</div>
       </main>
