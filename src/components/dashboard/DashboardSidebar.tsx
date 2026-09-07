@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-const navigation = [
+const baseNavigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊', grad: 'from-blue-400 to-indigo-600' },
   { name: 'Products', href: '/dashboard/products', icon: '📦', grad: 'from-orange-400 to-red-500' },
   { name: 'Orders', href: '/dashboard/orders', icon: '🛒', grad: 'from-green-400 to-emerald-600' },
@@ -11,8 +11,11 @@ const navigation = [
   { name: 'Settings', href: '/dashboard/settings', icon: '⚙️', grad: 'from-slate-500 to-slate-700' },
 ];
 
-export function DashboardSidebar({ merchant }: { merchant: any }) {
+const adminItem = { name: 'Admin', href: '/admin', icon: '👑', grad: 'from-amber-400 to-yellow-600' };
+
+export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin?: boolean }) {
   const pathname = usePathname();
+  const navigation = isAdmin ? [...baseNavigation, adminItem] : baseNavigation;
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
