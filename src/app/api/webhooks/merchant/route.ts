@@ -28,10 +28,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }
-
-// CRITICAL: This tells Next.js not to parse the body, so we can read the raw text for security
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
