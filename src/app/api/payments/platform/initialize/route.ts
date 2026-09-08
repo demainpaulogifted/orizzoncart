@@ -9,17 +9,12 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json().catch(() => ({}));
-    const type = body.type === 'theme_purchase' ? 'theme_purchase' : 'payment_activation';
-    const themeName = body.theme_name;
+    const type = body.type === 'theme_purchase' ? 'theme_purchase' : body.type === 'maintenance_payment' ? 'maintenance_payment' : 'payment_activation';
 
     const admin = createAdminClient();
-
-    // Platform Paystack keys: DB first, env fallback
     const { data: keys } = await admin.from('platform_payment_keys').select('*').eq('gateway', 'paystack').maybeSingle();
     const platformSecret = keys?.secret_key || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
-    if (!platformSecret) {
-      return NextResponse.json({ error: 'Platform Paystack keys are not configured yet.' }, { status: 500 });
-    }
+    if (!platformSecret) return NextResponse.json({ error: 'Platform Paystack keys are not configured yet.' }, { status: 500 });
 
     const { data: merchant } = await admin.from('merchants').select('*').eq('user_id', user.id).single();
     if (!merchant) return NextResponse.json({ error: 'Merchant not found' }, { status: 404 });
@@ -28,34 +23,29 @@ export async function POST(request: NextRequest) {
     const metadata: any = { merchant_id: merchant.id, transaction_type: type };
 
     if (type === 'payment_activation') {
-      if (merchant.payment_receiving_status === 'ACTIVE') {
-        return NextResponse.json({ error: 'Store is already activated' }, { status: 400 });
-      }
-      const hasKeys = merchant.paystack_secret_key || merchant.flutterwave_secret_key;
-      if (!hasKeys) {
+      if (merchant.payment_receiving_status === 'ACTIVE') return NextResponse.json({ error: 'Store is already activated' }, { status: 400 });
+      if (!merchant.paystack_secret_key && !merchant.flutterwave_secret_key) {
         return NextResponse.json({ error: 'Connect your Paystack or Flutterwave secret key first.' }, { status: 400 });
       }
-      const { data: settings } = await admin.from('platform_settings').select('activation_fee, activation_discount_percent').limit(1).maybeSingle();
-      const base = settings?.activation_fee ?? 5000;
-      const disc = settings?.activation_discount_percent ?? 0;
+      const { data: s } = await admin.from('platform_settings').select('activation_fee, activation_discount_percent').limit(1).maybeSingle();
+      const base = s?.activation_fee ?? 5000;
+      const disc = s?.activation_discount_percent ?? 0;
       amount = base - (base * disc / 100);
-    } else {
-      if (!themeName) return NextResponse.json({ error: 'Theme name is required' }, { status: 400 });
-      const { data: tp } = await admin.from('platform_theme_prices').select('price').eq('theme_name', themeName).single();
+    } else if (type === 'theme_purchase') {
+      const { data: tp } = await admin.from('platform_theme_prices').select('price').eq('theme_name', body.theme_name).single();
       if (!tp) return NextResponse.json({ error: 'Theme price not found' }, { status: 404 });
       amount = tp.price;
-      metadata.theme_name = themeName;
+      metadata.theme_name = body.theme_name;
+    } else {
+      const { data: plan } = await admin.from('maintenance_plans').select('*').eq('frequency', body.plan).eq('is_active', true).single();
+      if (!plan) return NextResponse.json({ error: 'Plan not available' }, { status: 404 });
+      amount = plan.base_price - (plan.base_price * (plan.discount_percent / 100));
+      metadata.frequency = plan.frequency;
     }
 
     const reference = `ORZ-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     const { data: tx, error: txErr } = await admin.from('platform_transactions').insert({
-      merchant_id: merchant.id,
-      transaction_type: type,
-      amount,
-      currency: 'NGN',
-      status: 'pending',
-      payment_reference: reference,
-      metadata,
+      merchant_id: merchant.id, transaction_type: type, amount, currency: 'NGN', status: 'pending', payment_reference: reference, metadata,
     }).select().single();
     if (txErr) throw txErr;
 
@@ -66,7 +56,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         amount: Math.round(amount * 100),
         reference,
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/payment?ref=${reference}`,
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/plans?ref=${reference}`,
         metadata: { ...metadata, transaction_id: tx.id },
       }),
     });
