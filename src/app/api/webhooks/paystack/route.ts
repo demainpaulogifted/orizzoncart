@@ -34,10 +34,21 @@ export async function POST(request: NextRequest) {
     await admin.from('platform_transactions').update({ status: 'paid' }).eq('id', tx.id);
 
     if (tx.transaction_type === 'payment_activation') {
-      await admin.from('merchants').update({
-        payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED',
-        payment_activated_at: new Date().toISOString(),
-      }).eq('id', tx.merchant_id);
+      const { data: m } = await admin.from('merchants').select('paystack_secret_key, flutterwave_secret_key').eq('id', tx.merchant_id).single();
+      const hasKeys = !!(m?.paystack_secret_key || m?.flutterwave_secret_key);
+      const now = new Date().toISOString();
+
+      if (hasKeys) {
+        // Keys were already saved → go fully live immediately
+        await admin.from('merchants').update({
+          payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED', payment_activated_at: now,
+        }).eq('id', tx.merchant_id);
+      } else {
+        // Fee paid → now they must connect keys (Step 2)
+        await admin.from('merchants').update({
+          payment_receiving_status: 'PENDING_KEYS', cart_status: 'LOCKED', checkout_status: 'DISABLED', payment_activated_at: now,
+        }).eq('id', tx.merchant_id);
+      }
     }
 
     if (tx.transaction_type === 'theme_purchase' && tx.metadata?.theme_name) {
