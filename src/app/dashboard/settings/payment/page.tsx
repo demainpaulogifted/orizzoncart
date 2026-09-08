@@ -2,121 +2,133 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 export default function PaymentSettingsPage() {
   const [gateway, setGateway] = useState('paystack');
-  const [secretKey, setSecretKey] = useState(''); // Only used for input, never populated from DB
+  const [secretKey, setSecretKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [merchantStatus, setMerchantStatus] = useState('NOT_CONFIGURED');
   const [hasKeysConfigured, setHasKeysConfigured] = useState(false);
+  const [fee, setFee] = useState(5000);
+  const [discount, setDiscount] = useState(0);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
-    const fetchStatus = async () => {
+    const load = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // SECURE: We ONLY check if the key EXISTS (length > 0), we DO NOT fetch the actual key.
       const { data: merchant } = await supabase
         .from('merchants')
         .select('preferred_gateway, payment_receiving_status, paystack_secret_key, flutterwave_secret_key')
         .eq('user_id', user?.id)
         .single();
-      
       if (merchant) {
         setGateway(merchant.preferred_gateway || 'paystack');
         setMerchantStatus(merchant.payment_receiving_status);
-        
-        // Check if a key exists without exposing it
-        const currentKey = merchant.preferred_gateway === 'paystack' 
-          ? merchant.paystack_secret_key 
-          : merchant.flutterwave_secret_key;
-          
-        setHasKeysConfigured(!!currentKey && currentKey.length > 10);
+        const key = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
+        setHasKeysConfigured(!!key && key.length > 10);
+      }
+      const { data: settings } = await supabase.from('platform_settings').select('activation_fee, activation_discount_percent').single();
+      if (settings) {
+        setFee(settings.activation_fee);
+        setDiscount(settings.activation_discount_percent || 0);
       }
     };
-    fetchStatus();
+    load();
   }, []);
 
-  const handleSaveKeys = async () => {
-    if (!secretKey.startsWith('sk_live_') && !secretKey.startsWith('FLWSECK-')) {
-      toast.error('Invalid secret key format. Must start with sk_live_ or FLWSECK-');
-      return;
-    }
+  const finalFee = fee - (fee * discount / 100);
 
+  const handleSaveKeys = async () => {
     setIsSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-
     const updateData: any = { preferred_gateway: gateway };
     if (gateway === 'paystack') updateData.paystack_secret_key = secretKey;
     else updateData.flutterwave_secret_key = secretKey;
-
-    if (merchantStatus === 'NOT_CONFIGURED') {
-      updateData.payment_receiving_status = 'PENDING_PAYMENT';
-    }
+    if (merchantStatus === 'NOT_CONFIGURED') updateData.payment_receiving_status = 'PENDING_PAYMENT';
 
     const { error } = await supabase.from('merchants').update(updateData).eq('user_id', user?.id);
-
-    if (error) {
-      toast.error('Failed to save keys');
-    } else {
-      toast.success('Payment keys saved securely!');
+    if (error) toast.error('Failed to save keys');
+    else {
+      toast.success('Keys saved securely!');
       setHasKeysConfigured(true);
       setMerchantStatus('PENDING_PAYMENT');
-      setSecretKey(''); // Clear input after saving
+      setSecretKey('');
     }
     setIsSaving(false);
   };
 
+  const handlePayActivation = async () => {
+    setPaying(true);
+    try {
+      const res = await fetch('/api/payments/platform/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'payment_activation' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      window.location.href = data.authorization_url;
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to start payment');
+      setPaying(false);
+    }
+  };
+
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 font-display">Payment Configuration</h1>
-        <p className="text-gray-600 mt-2">Connect your payment gateway to start receiving money.</p>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold">Payment Configuration</h1>
+        <p className="text-gray-600 text-sm mt-1">Connect your payment gateway to start receiving money.</p>
       </div>
 
-      <div className={`p-6 rounded-2xl border-2 ${
-        merchantStatus === 'ACTIVE' ? 'bg-green-50 border-green-200' :
-        merchantStatus === 'PENDING_PAYMENT' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'
-      }`}>
-        <h2 className="text-xl font-bold mb-2">
-          {merchantStatus === 'ACTIVE' ? '🎉 Store Activated!' : 
-           merchantStatus === 'PENDING_PAYMENT' ? '⏳ Awaiting Activation Fee' : '🔒 Setup Required'}
-        </h2>
-        <p className="text-gray-700">
-          {merchantStatus === 'ACTIVE' ? 'Your store is live and receiving payments.' : 
-           merchantStatus === 'PENDING_PAYMENT' ? 'Please pay the one-time activation fee to unlock your cart.' : 
-           'Connect your payment keys below to begin.'}
-        </p>
-      </div>
+      {merchantStatus === 'ACTIVE' ? (
+        <div className="bg-green-100 border border-green-300 text-green-800 rounded-xl p-5 text-center font-bold">
+          🎉 Your store is activated and receiving payments!
+        </div>
+      ) : (
+        <div className="bg-yellow-400 text-yellow-950 rounded-t-xl px-5 py-3 text-sm font-bold text-center">
+          Awaiting Activation Fee - pay the one-time fee to unlock your cart.
+        </div>
+      )}
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-6">
-        <h2 className="text-xl font-bold text-gray-800">Connect Gateway</h2>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => setGateway('paystack')} className={`p-4 border rounded-xl font-medium transition-all ${gateway === 'paystack' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>Paystack</button>
-          <button onClick={() => setGateway('flutterwave')} className={`p-4 border rounded-xl font-medium transition-all ${gateway === 'flutterwave' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 hover:bg-gray-50'}`}>Flutterwave</button>
+      <div className="bg-white rounded-2xl shadow-sm border p-6 sm:p-8 space-y-6">
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => setGateway('paystack')} className={`py-3 rounded-full font-bold text-sm transition-all ${gateway === 'paystack' ? 'bg-blue-900 text-white' : 'bg-gray-100 text-gray-700'}`}>Paystack</button>
+          <button onClick={() => setGateway('flutterwave')} className={`py-3 rounded-full font-bold text-sm transition-all ${gateway === 'flutterwave' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Flutterwave</button>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {gateway === 'paystack' ? 'Paystack' : 'Flutterwave'} Secret Key
-          </label>
-          <input 
-            type="password" 
-            value={secretKey} 
-            onChange={(e) => setSecretKey(e.target.value)} 
-            placeholder={hasKeysConfigured ? "•••••••••••••••••••• (Key is saved securely)" : "sk_live_xxxxx or FLWSECK-xxxxx"}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono" 
+          <label className="block text-sm font-medium text-gray-700 mb-1">{gateway === 'paystack' ? 'Paystack' : 'Flutterwave'} Secret Key</label>
+          <input
+            type="password"
+            value={secretKey}
+            onChange={(e) => setSecretKey(e.target.value)}
+            placeholder={hasKeysConfigured ? '•••••••••••• (saved securely)' : 'sk_live_... or FLWSECK-...'}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none font-mono text-sm"
           />
-          <p className="text-xs text-gray-500 mt-2">
-            Your secret key is encrypted and stored securely. It is never sent back to your browser.
-          </p>
+          <p className="text-xs text-gray-500 mt-2 text-center">Your secret key is stored securely and never shown again.</p>
         </div>
 
-        <button onClick={handleSaveKeys} disabled={isSaving || (!secretKey && !hasKeysConfigured)} className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50">
-          {isSaving ? 'Saving Securely...' : hasKeysConfigured ? 'Update Payment Keys' : 'Save Keys & Proceed to Activation'}
+        <button onClick={handleSaveKeys} disabled={isSaving || !secretKey} className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50">
+          {isSaving ? 'Saving...' : 'Save Keys and Proceed to Activation'}
         </button>
+
+        {/* Activation card */}
+        <div className="bg-purple-100/70 rounded-2xl p-6 text-center space-y-3">
+          <p className="text-sm font-medium text-gray-700">Activation Fee</p>
+          <p className="text-2xl font-extrabold text-gray-900">{formatCurrency(finalFee)} one-time</p>
+          {discount > 0 && <p className="text-xs font-bold text-green-700">🎉 Admin discount applied: {discount}% off</p>}
+          {!hasKeysConfigured ? (
+            <p className="text-xs font-bold text-gray-500 bg-white/70 rounded-lg py-2 px-3">🔒 Save your gateway keys above to unlock activation</p>
+          ) : (
+            <button onClick={handlePayActivation} disabled={paying || merchantStatus === 'ACTIVE'} className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
+              {paying ? 'Redirecting to Paystack...' : `Pay ${formatCurrency(finalFee)} and Activate My Store`}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
