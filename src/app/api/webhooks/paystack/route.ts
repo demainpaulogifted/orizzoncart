@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
+const DAYS: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
@@ -33,15 +35,26 @@ export async function POST(request: NextRequest) {
 
     if (tx.transaction_type === 'payment_activation') {
       await admin.from('merchants').update({
-        payment_receiving_status: 'ACTIVE',
-        cart_status: 'ENABLED',
-        checkout_status: 'ENABLED',
+        payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED',
         payment_activated_at: new Date().toISOString(),
       }).eq('id', tx.merchant_id);
     }
 
     if (tx.transaction_type === 'theme_purchase' && tx.metadata?.theme_name) {
       await admin.from('merchants').update({ theme_id: tx.metadata.theme_name }).eq('id', tx.merchant_id);
+    }
+
+    if (tx.transaction_type === 'maintenance_payment' && tx.metadata?.frequency) {
+      const days = DAYS[tx.metadata.frequency] || 30;
+      const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      await admin.from('merchants').update({
+        maintenance_plan: tx.metadata.frequency,
+        maintenance_status: 'active',
+        maintenance_expires_at: expires,
+        payment_receiving_status: 'ACTIVE',
+        cart_status: 'ENABLED',
+        checkout_status: 'ENABLED',
+      }).eq('id', tx.merchant_id);
     }
 
     return NextResponse.json({ message: 'Processed' }, { status: 200 });
