@@ -5,19 +5,21 @@ import { ProductCard } from '@/components/storefront/ProductCard';
 import { MerchantHeader } from '@/components/storefront/MerchantHeader';
 import { ThemeWrapper } from '@/components/storefront/ThemeWrapper';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
+import { ShareButtons } from '@/components/storefront/ShareButtons';
 
 export default async function StorePage({ params }: any) {
   const { store_slug } = await params;
-  
+
   const merchant = await getMerchantBySlug(store_slug);
   if (!merchant) notFound();
 
-  const isShowcaseMode = merchant.cart_status === 'LOCKED';
+  const maintenanceExpired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
+  const isShowcaseMode = merchant.cart_status === 'LOCKED' || !!maintenanceExpired;
 
   return (
     <ThemeWrapper themeId={merchant.theme_id}>
       <MerchantHeader merchant={merchant} isShowcaseMode={isShowcaseMode} />
-      
+
       {isShowcaseMode && (
         <div className="bg-yellow-100 border-b border-yellow-200 px-4 py-3">
           <p className="text-sm text-yellow-800 text-center font-medium">
@@ -25,6 +27,8 @@ export default async function StorePage({ params }: any) {
           </p>
         </div>
       )}
+
+      <ShareButtons url={`${process.env.NEXT_PUBLIC_APP_URL}/store/${merchant.store_slug}`} title={merchant.store_name} />
 
       <section className="py-20 px-4 text-center bg-[var(--color-surface)]">
         <h2 className="text-5xl md:text-6xl font-[var(--font-heading)] text-[var(--color-text)] mb-4">
@@ -41,7 +45,7 @@ export default async function StorePage({ params }: any) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h3 className="text-2xl font-bold text-[var(--color-text)] mb-8 font-[var(--font-heading)]">Featured Products</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {merchant.products?.filter((p: any) => p.is_active).map((product: any) => (
+          {(merchant as any).products?.filter((p: any) => p.is_active).map((product: any) => (
             <ProductCard key={product.id} product={product} isShowcaseMode={isShowcaseMode} />
           ))}
         </div>
