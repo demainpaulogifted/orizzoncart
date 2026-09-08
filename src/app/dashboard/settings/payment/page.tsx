@@ -29,7 +29,7 @@ export default function PaymentSettingsPage() {
         const key = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
         setHasKeysConfigured(!!key && key.length > 10);
       }
-      const { data: settings } = await supabase.from('platform_settings').select('activation_fee, activation_discount_percent').single();
+      const { data: settings } = await supabase.from('platform_settings').select('activation_fee, activation_discount_percent').limit(1).maybeSingle();
       if (settings) {
         setFee(settings.activation_fee);
         setDiscount(settings.activation_discount_percent || 0);
@@ -38,7 +38,8 @@ export default function PaymentSettingsPage() {
     load();
   }, []);
 
-  const finalFee = fee - (fee * discount / 100);
+  const discountAmount = fee * (discount / 100);
+  const finalFee = fee - discountAmount;
 
   const handleSaveKeys = async () => {
     setIsSaving(true);
@@ -89,7 +90,7 @@ export default function PaymentSettingsPage() {
           🎉 Your store is activated and receiving payments!
         </div>
       ) : (
-        <div className="bg-yellow-400 text-yellow-950 rounded-t-xl px-5 py-3 text-sm font-bold text-center">
+        <div className="bg-yellow-400 text-yellow-950 rounded-xl px-5 py-3 text-sm font-bold text-center">
           Awaiting Activation Fee - pay the one-time fee to unlock your cart.
         </div>
       )}
@@ -116,15 +117,27 @@ export default function PaymentSettingsPage() {
           {isSaving ? 'Saving...' : 'Save Keys and Proceed to Activation'}
         </button>
 
-        {/* Activation card */}
-        <div className="bg-purple-100/70 rounded-2xl p-6 text-center space-y-3">
-          <p className="text-sm font-medium text-gray-700">Activation Fee</p>
-          <p className="text-2xl font-extrabold text-gray-900">{formatCurrency(finalFee)} one-time</p>
-          {discount > 0 && <p className="text-xs font-bold text-green-700">🎉 Admin discount applied: {discount}% off</p>}
+        {/* Activation card with FULL breakdown */}
+        <div className="bg-purple-100/70 rounded-2xl p-6 space-y-3">
+          <p className="text-center text-sm font-medium text-gray-700">Activation Fee Breakdown</p>
+          <div className="bg-white/80 rounded-xl p-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Base activation fee</span>
+              <span className="font-bold">{formatCurrency(fee)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Discount ({discount}%)</span>
+              <span className="font-bold text-green-600">− {formatCurrency(discountAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 text-base">
+              <span className="font-bold text-gray-800">You pay today</span>
+              <span className="font-extrabold text-purple-700">{formatCurrency(finalFee)}</span>
+            </div>
+          </div>
           {!hasKeysConfigured ? (
-            <p className="text-xs font-bold text-gray-500 bg-white/70 rounded-lg py-2 px-3">🔒 Save your gateway keys above to unlock activation</p>
+            <p className="text-xs font-bold text-gray-500 bg-white/70 rounded-lg py-2 px-3 text-center">🔒 Save your gateway keys above to unlock activation</p>
           ) : (
-            <button onClick={handlePayActivation} disabled={paying || merchantStatus === 'ACTIVE'} className="px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
+            <button onClick={handlePayActivation} disabled={paying || merchantStatus === 'ACTIVE'} className="w-full px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
               {paying ? 'Redirecting to Paystack...' : `Pay ${formatCurrency(finalFee)} and Activate My Store`}
             </button>
           )}
