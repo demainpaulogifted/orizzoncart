@@ -1,53 +1,24 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const host = request.headers.get('host') || '';
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+  const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng';
 
-        setAll(
-          cookiesToSet: {
-            name: string;
-            value: string;
-            options?: {
-              path?: string;
-              domain?: string;
-              maxAge?: number;
-              expires?: Date;
-              httpOnly?: boolean;
-              secure?: boolean;
-              sameSite?: "strict" | "lax" | "none";
-            };
-          }[]
-        ) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
+  // x.orizzoncart.name.ng  →  rewrite to /store/x
+  if (host.endsWith(ROOT) && host !== ROOT && host !== `www.${ROOT}`) {
+    const sub = host.replace(`.${ROOT}`, '');
+    if (sub && !pathname.startsWith('/store') && !pathname.startsWith('/dashboard') && !pathname.startsWith('/admin')) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/store/${sub}${pathname === '/' ? '' : pathname}`;
+      return NextResponse.rewrite(url);
     }
-  );
+  }
 
-  await supabase.auth.getUser();
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)'],
 };
