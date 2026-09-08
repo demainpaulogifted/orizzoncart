@@ -51,7 +51,12 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
       })}
 
       <div className="mt-auto pt-4">
-        <Link href={`/store/${merchant?.store_slug}`} className="flex flex-col items-center gap-1 py-2 group">
+        <Link
+          href={`/store/${merchant?.store_slug}`}
+          target="_blank"
+          rel="noopener"
+          className="flex flex-col items-center gap-1 py-2 group"
+        >
           <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105">
             👀
           </span>
