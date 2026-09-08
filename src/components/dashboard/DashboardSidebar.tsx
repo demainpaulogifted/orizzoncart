@@ -8,6 +8,7 @@ const baseNavigation = [
   { name: 'Products', href: '/dashboard/products', icon: '📦', grad: 'from-orange-400 to-red-500' },
   { name: 'Orders', href: '/dashboard/orders', icon: '🛒', grad: 'from-green-400 to-emerald-600' },
   { name: 'Analytics', href: '/dashboard/analytics', icon: '📈', grad: 'from-fuchsia-400 to-purple-600' },
+  { name: 'Support', href: '/dashboard/support', icon: '💬', grad: 'from-cyan-400 to-blue-600' },
   { name: 'Settings', href: '/dashboard/settings', icon: '⚙️', grad: 'from-slate-500 to-slate-700' },
 ];
 
