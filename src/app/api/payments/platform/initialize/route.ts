@@ -23,9 +23,8 @@ export async function POST(request: NextRequest) {
     const metadata: any = { merchant_id: merchant.id, transaction_type: type };
 
     if (type === 'payment_activation') {
-      if (merchant.payment_receiving_status === 'ACTIVE') return NextResponse.json({ error: 'Store is already activated' }, { status: 400 });
-      if (!merchant.paystack_secret_key && !merchant.flutterwave_secret_key) {
-        return NextResponse.json({ error: 'Connect your Paystack or Flutterwave secret key first.' }, { status: 400 });
+      if (merchant.payment_receiving_status === 'ACTIVE' || merchant.payment_receiving_status === 'PENDING_KEYS') {
+        return NextResponse.json({ error: 'Activation fee already paid' }, { status: 400 });
       }
       const { data: s } = await admin.from('platform_settings').select('activation_fee, activation_discount_percent').limit(1).maybeSingle();
       const base = s?.activation_fee ?? 5000;
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         amount: Math.round(amount * 100),
         reference,
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/plans?ref=${reference}`,
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/payment?ref=${reference}`,
         metadata: { ...metadata, transaction_id: tx.id },
       }),
     });
