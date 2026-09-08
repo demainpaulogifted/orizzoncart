@@ -13,6 +13,14 @@ export async function POST(request: NextRequest) {
     const themeName = body.theme_name;
 
     const admin = createAdminClient();
+
+    // Platform Paystack keys: DB first, env fallback
+    const { data: keys } = await admin.from('platform_payment_keys').select('*').eq('gateway', 'paystack').maybeSingle();
+    const platformSecret = keys?.secret_key || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+    if (!platformSecret) {
+      return NextResponse.json({ error: 'Platform Paystack keys are not configured yet.' }, { status: 500 });
+    }
+
     const { data: merchant } = await admin.from('merchants').select('*').eq('user_id', user.id).single();
     if (!merchant) return NextResponse.json({ error: 'Merchant not found' }, { status: 404 });
 
@@ -23,12 +31,11 @@ export async function POST(request: NextRequest) {
       if (merchant.payment_receiving_status === 'ACTIVE') {
         return NextResponse.json({ error: 'Store is already activated' }, { status: 400 });
       }
-      // ENFORCEMENT: merchant must connect their gateway keys before activation
       const hasKeys = merchant.paystack_secret_key || merchant.flutterwave_secret_key;
       if (!hasKeys) {
         return NextResponse.json({ error: 'Connect your Paystack or Flutterwave secret key first.' }, { status: 400 });
       }
-      const { data: settings } = await admin.from('platform_settings').select('activation_fee, activation_discount_percent').single();
+      const { data: settings } = await admin.from('platform_settings').select('activation_fee, activation_discount_percent').limit(1).maybeSingle();
       const base = settings?.activation_fee ?? 5000;
       const disc = settings?.activation_discount_percent ?? 0;
       amount = base - (base * disc / 100);
@@ -52,13 +59,9 @@ export async function POST(request: NextRequest) {
     }).select().single();
     if (txErr) throw txErr;
 
-    // PLATFORM Paystack keys — money goes to OrizzonCart
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.PLATFORM_PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${platformSecret}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: user.email,
         amount: Math.round(amount * 100),
