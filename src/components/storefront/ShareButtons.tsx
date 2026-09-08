@@ -4,13 +4,22 @@ import { toast } from 'sonner';
 export function ShareButtons({ url, title }: { url: string; title: string }) {
   const enc = encodeURIComponent(url);
   const text = encodeURIComponent(`Check out ${title} on OrizzonCart!`);
+
   const copy = async () => {
-    try { await navigator.clipboard.writeText(url); toast.success('Store link copied!'); }
-    catch { toast.error('Copy failed'); }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Store link copied!');
+    } catch {
+      toast.error('Copy failed');
+    }
   };
+
   const native = async () => {
-    try { if (navigator.share) await navigator.share({ title, url }); } catch {}
+    try {
+      if (navigator.share) await navigator.share({ title, url });
+    } catch {}
   };
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 py-3 px-4">
       <span className="text-xs font-bold text-gray-500">Share store:</span>
