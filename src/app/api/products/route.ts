@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: merchant } = await admin
     .from('merchants')
-    .select('id, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at')
+    .select('id, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at, shipping_mode, shipping_flat_fee, shipping_pickup_address')
     .eq('store_slug', slug)
     .single();
 
@@ -23,5 +23,13 @@ export async function GET(request: NextRequest) {
     .eq('merchant_id', merchant.id)
     .eq('is_active', true);
 
-  return NextResponse.json({ products: products || [], showcase });
+  return NextResponse.json({
+    products: products || [],
+    showcase,
+    shipping: {
+      mode: merchant.shipping_mode || 'FLAT',
+      flat_fee: merchant.shipping_flat_fee || 2500,
+      pickup_address: merchant.shipping_pickup_address || '',
+    },
+  });
 }
