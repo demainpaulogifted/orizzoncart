@@ -38,6 +38,13 @@ export default function AddProductPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { data: merchant } = await supabase.from('merchants').select('id').eq('user_id', user?.id).single();
+    
+    // NULL CHECK FIX
+    if (!merchant) {
+      toast.error('Store not found. Please refresh and try again.');
+      setSaving(false);
+      return;
+    }
 
     const { error } = await supabase.from('products').insert({
       merchant_id: merchant.id,
