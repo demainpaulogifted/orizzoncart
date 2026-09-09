@@ -42,16 +42,22 @@ export default function PaymentSettingsPage() {
   const finalFee = fee - discountAmount;
   const feePaid = status === 'PENDING_KEYS' || status === 'ACTIVE';
   const keysUnlocked = feePaid || hasKeysConfigured;
+  // KEY FIX: if fee is paid AND keys already saved → can go live without re-typing
+  const canGoLiveWithoutKey = status === 'PENDING_KEYS' && hasKeysConfigured;
 
   const handleSaveKeys = async () => {
+    if (!secretKey && !canGoLiveWithoutKey) {
+      toast.error('Paste your secret key first');
+      return;
+    }
     setIsSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const updateData: any = { preferred_gateway: gateway };
-    if (gateway === 'paystack') updateData.paystack_secret_key = secretKey;
-    else updateData.flutterwave_secret_key = secretKey;
-
-    // If fee is paid and keys are now saved → STORE GOES LIVE
+    if (secretKey) {
+      if (gateway === 'paystack') updateData.paystack_secret_key = secretKey;
+      else updateData.flutterwave_secret_key = secretKey;
+    }
     if (status === 'PENDING_KEYS') {
       updateData.payment_receiving_status = 'ACTIVE';
       updateData.cart_status = 'ENABLED';
@@ -59,7 +65,7 @@ export default function PaymentSettingsPage() {
     }
 
     const { error } = await supabase.from('merchants').update(updateData).eq('user_id', user?.id);
-    if (error) toast.error('Failed to save keys');
+    if (error) toast.error('Failed to save');
     else {
       setHasKeysConfigured(true);
       setSecretKey('');
@@ -118,7 +124,7 @@ export default function PaymentSettingsPage() {
         </div>
       )}
 
-      {/* STEP 1: ACTIVATION FEE */}
+      {/* STEP 1 */}
       <div className="bg-white rounded-2xl shadow-sm border p-6 sm:p-8 space-y-4">
         <h2 className="text-lg font-bold">Step 1️⃣ — Activation Fee</h2>
         <div className="bg-purple-100/70 rounded-2xl p-5 space-y-3">
@@ -137,13 +143,19 @@ export default function PaymentSettingsPage() {
         </div>
       </div>
 
-      {/* STEP 2: GATEWAY KEYS (locked until fee paid) */}
+      {/* STEP 2 */}
       <div className={`bg-white rounded-2xl shadow-sm border p-6 sm:p-8 space-y-5 ${!keysUnlocked ? 'opacity-60' : ''}`}>
         <h2 className="text-lg font-bold">Step 2️⃣ — Connect Your Payment Keys {!keysUnlocked && '🔒'}</h2>
 
         {!keysUnlocked && (
           <p className="text-sm font-bold text-gray-500 bg-gray-100 rounded-lg py-3 px-4 text-center">
             🔒 Pay the activation fee in Step 1 to unlock this section.
+          </p>
+        )}
+
+        {canGoLiveWithoutKey && !secretKey && (
+          <p className="text-sm font-bold text-green-700 bg-green-50 rounded-lg py-3 px-4 text-center">
+            ✅ Your keys are already saved — just tap "Go LIVE" below!
           </p>
         )}
 
@@ -171,8 +183,17 @@ export default function PaymentSettingsPage() {
             <p className="text-xs text-gray-500 mt-2 text-center">Your secret key is stored securely and never shown again.</p>
           </div>
 
-          <button type="button" onClick={handleSaveKeys} disabled={isSaving || !secretKey} className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50">
-            {isSaving ? 'Saving...' : status === 'PENDING_KEYS' ? 'Save Keys & Go LIVE 🚀' : 'Save Keys'}
+          <button
+            type="button"
+            onClick={handleSaveKeys}
+            disabled={isSaving || (!secretKey && !canGoLiveWithoutKey)}
+            className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50"
+          >
+            {isSaving
+              ? 'Saving...'
+              : status === 'PENDING_KEYS'
+                ? secretKey ? 'Save Keys & Go LIVE 🚀' : 'Go LIVE 🚀'
+                : 'Save Keys'}
           </button>
         </fieldset>
       </div>
