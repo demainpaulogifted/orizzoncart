@@ -50,8 +50,10 @@ export default function AddProductPage() {
       images: images.map((url) => ({ url })),
     });
 
-    if (error) toast.error('Failed: ' + error.message);
-    else {
+    if (error) {
+      console.error('Insert error:', error);
+      toast.error('Failed: ' + error.message);
+    } else {
       toast.success('Product published! 🎉');
       router.push('/dashboard/products');
     }
@@ -108,7 +110,6 @@ export default function AddProductPage() {
         </button>
       </form>
 
-      {/* Live preview of how it will look in their theme */}
       <div>
         <p className="text-sm font-bold text-gray-500 mb-2">LIVE PREVIEW</p>
         <div className="bg-white rounded-2xl border p-4">
