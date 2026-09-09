@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
     }).select().single();
     if (txErr) throw txErr;
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
+
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: { Authorization: `Bearer ${platformSecret}`, 'Content-Type': 'application/json' },
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         amount: Math.round(amount * 100),
         reference,
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/payment?ref=${reference}`,
+        callback_url: `${appUrl}/payment/verify?reference=${reference}`,
         metadata: { ...metadata, transaction_id: tx.id },
       }),
     });
