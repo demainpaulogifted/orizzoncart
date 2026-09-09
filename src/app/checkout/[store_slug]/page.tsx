@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { formatCurrency } from '@/lib/utils';
 
 export default function CheckoutPage() {
   const params = useParams();
@@ -12,6 +13,7 @@ export default function CheckoutPage() {
 
   const [products, setProducts] = useState<any[]>([]);
   const [showcase, setShowcase] = useState(false);
+  const [shipping, setShipping] = useState<any>({ mode: 'FLAT', flat_fee: 2500, pickup_address: '' });
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -23,6 +25,7 @@ export default function CheckoutPage() {
       const data = await res.json();
       setProducts(data.products || []);
       setShowcase(!!data.showcase);
+      setShipping(data.shipping || { mode: 'FLAT', flat_fee: 2500, pickup_address: '' });
       try { setItems(JSON.parse(localStorage.getItem(`orz_cart_${slug}`) || '[]')); } catch {}
       setLoading(false);
     };
@@ -34,9 +37,27 @@ export default function CheckoutPage() {
     .filter((p: any) => p.id);
 
   const hasPhysical = cartProducts.some((p: any) => !p.is_digital);
+
+  // Calculate shipping based on merchant's setting
+  let shippingCost = 0;
+  let shippingLabel = 'Free';
+  if (hasPhysical) {
+    if (shipping.mode === 'FLAT') {
+      shippingCost = Number(shipping.flat_fee);
+      shippingLabel = `Waybill: ${formatCurrency(shippingCost)}`;
+    } else if (shipping.mode === 'PICKUP') {
+      shippingCost = 0;
+      shippingLabel = 'Free (Customer Pickup)';
+    } else {
+      shippingCost = 0;
+      shippingLabel = 'Free Shipping';
+    }
+  } else {
+    shippingLabel = 'Free (Digital delivery)';
+  }
+
   const subtotal = cartProducts.reduce((a: number, p: any) => a + Number(p.price) * p.quantity, 0);
-  const shipping = hasPhysical ? 2500 : 0;
-  const total = subtotal + shipping;
+  const total = subtotal + shippingCost;
 
   const setQty = (id: string, qty: number) => {
     const next = qty <= 0 ? items.filter((i: any) => i.product_id !== id) : items.map((i: any) => (i.product_id === id ? { ...i, quantity: qty } : i));
@@ -55,6 +76,8 @@ export default function CheckoutPage() {
           store_slug: slug,
           items: items.map((i: any) => ({ product_id: i.product_id, quantity: i.quantity })),
           customer,
+          shipping_mode: shipping.mode,
+          shipping_cost: shippingCost,
         }),
       });
       const data = await res.json();
@@ -68,6 +91,8 @@ export default function CheckoutPage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading checkout...</div>;
+
+  const needAddress = hasPhysical && shipping.mode !== 'PICKUP';
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -95,7 +120,7 @@ export default function CheckoutPage() {
                 <input required placeholder="Full name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
                 <input required type="email" placeholder="Email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
                 <input required type="tel" placeholder="Phone number" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
-                {hasPhysical && (
+                {needAddress && (
                   <>
                     <input required placeholder="Delivery address" value={customer.address_line1} onChange={(e) => setCustomer({ ...customer, address_line1: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
                     <div className="grid grid-cols-2 gap-3">
@@ -105,6 +130,14 @@ export default function CheckoutPage() {
                   </>
                 )}
               </div>
+
+              {shipping.mode === 'PICKUP' && shipping.pickup_address && (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                  <h2 className="font-bold text-blue-900 mb-1">🏪 Pickup Location</h2>
+                  <p className="text-sm text-blue-800">{shipping.pickup_address}</p>
+                  <p className="text-xs text-blue-600 mt-2">You'll receive the exact address & opening hours after payment.</p>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-2xl border p-5 space-y-4 h-fit">
@@ -117,7 +150,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
-                      <p className="text-xs text-gray-500">₦{Number(p.price).toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{formatCurrency(p.price)}</p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button type="button" onClick={() => setQty(p.id, p.quantity - 1)} className="w-6 h-6 rounded-full bg-gray-100 text-xs font-bold">−</button>
@@ -128,12 +161,12 @@ export default function CheckoutPage() {
                 ))}
               </div>
               <div className="border-t pt-3 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-bold">₦{subtotal.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Shipping</span><span className="font-bold">{hasPhysical ? '₦2,500' : 'Free (digital)'}</span></div>
-                <div className="flex justify-between text-base border-t pt-2"><span className="font-extrabold">Total</span><span className="font-extrabold text-purple-700">₦{total.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-bold">{formatCurrency(subtotal)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">{shippingLabel}</span><span className="font-bold">{shippingCost > 0 ? formatCurrency(shippingCost) : 'Free'}</span></div>
+                <div className="flex justify-between text-base border-t pt-2"><span className="font-extrabold">Total</span><span className="font-extrabold text-purple-700">{formatCurrency(total)}</span></div>
               </div>
               <button type="submit" disabled={paying || showcase} className="w-full py-4 rounded-full bg-green-600 text-white font-bold text-lg hover:bg-green-700 disabled:opacity-50">
-                {paying ? 'Redirecting to Paystack...' : `Pay ₦${total.toLocaleString()} securely`}
+                {paying ? 'Redirecting to Paystack...' : `Pay ${formatCurrency(total)} securely`}
               </button>
               <p className="text-xs text-gray-400 text-center">🔒 Powered by Paystack — card, transfer, USSD</p>
             </div>
