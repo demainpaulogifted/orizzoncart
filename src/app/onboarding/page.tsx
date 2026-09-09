@@ -17,6 +17,9 @@ export default function OnboardingPage() {
     store_description: '',
   });
 
+  // Auto-switch: shows orizzoncart.name.ng now, orizzoncart.com when you upgrade
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.com';
+
   useEffect(() => {
     const check = async () => {
       const supabase = createClient();
@@ -63,7 +66,7 @@ export default function OnboardingPage() {
         store_description: form.store_description,
       }).eq('id', merchant.id);
 
-      toast.success('Store created! Welcome to OrizzonCart 🎉');
+      toast.success(`Store created! Your live link: ${form.store_slug}.${rootDomain} 🎉`);
       router.push('/dashboard');
     } catch (err: any) {
       toast.error(err.message || 'Failed to create store');
@@ -95,8 +98,11 @@ export default function OnboardingPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Your Store Link *</label>
             <div className="flex items-center gap-2">
               <input required value={form.store_slug} onChange={(e) => setForm({ ...form, store_slug: generateSlug(e.target.value) })} className="flex-1 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="paulsfashion" />
-              <span className="text-sm text-gray-500 whitespace-nowrap">.orizzoncart.com</span>
+              <span className="text-sm text-gray-500 whitespace-nowrap">.{rootDomain}</span>
             </div>
+            <p className="text-xs text-purple-600 mt-2 font-semibold">
+              ✨ Your customers will visit: <span className="font-mono">{form.store_slug || 'yourstore'}.{rootDomain}</span>
+            </p>
           </div>
 
           <div>
