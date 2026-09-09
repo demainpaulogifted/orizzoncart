@@ -4,6 +4,17 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 const DAYS: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
 
+// SAFETY NET: if a human browser ever lands here (misconfigured callback),
+// bounce them to the beautiful receipt/verify page instead of showing an error
+export async function GET(request: NextRequest) {
+  const reference =
+    request.nextUrl.searchParams.get('reference') ||
+    request.nextUrl.searchParams.get('trxref');
+  const url = new URL('/payment/verify', request.url);
+  if (reference) url.searchParams.set('reference', reference);
+  return NextResponse.redirect(url);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
@@ -37,18 +48,11 @@ export async function POST(request: NextRequest) {
       const { data: m } = await admin.from('merchants').select('paystack_secret_key, flutterwave_secret_key').eq('id', tx.merchant_id).single();
       const hasKeys = !!(m?.paystack_secret_key || m?.flutterwave_secret_key);
       const now = new Date().toISOString();
-
-      if (hasKeys) {
-        // Keys were already saved → go fully live immediately
-        await admin.from('merchants').update({
-          payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED', payment_activated_at: now,
-        }).eq('id', tx.merchant_id);
-      } else {
-        // Fee paid → now they must connect keys (Step 2)
-        await admin.from('merchants').update({
-          payment_receiving_status: 'PENDING_KEYS', cart_status: 'LOCKED', checkout_status: 'DISABLED', payment_activated_at: now,
-        }).eq('id', tx.merchant_id);
-      }
+      await admin.from('merchants').update(
+        hasKeys
+          ? { payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED', payment_activated_at: now }
+          : { payment_receiving_status: 'PENDING_KEYS', cart_status: 'LOCKED', checkout_status: 'DISABLED', payment_activated_at: now }
+      ).eq('id', tx.merchant_id);
     }
 
     if (tx.transaction_type === 'theme_purchase' && tx.metadata?.theme_name) {
@@ -57,11 +61,10 @@ export async function POST(request: NextRequest) {
 
     if (tx.transaction_type === 'maintenance_payment' && tx.metadata?.frequency) {
       const days = DAYS[tx.metadata.frequency] || 30;
-      const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
       await admin.from('merchants').update({
         maintenance_plan: tx.metadata.frequency,
         maintenance_status: 'active',
-        maintenance_expires_at: expires,
+        maintenance_expires_at: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
         payment_receiving_status: 'ACTIVE',
         cart_status: 'ENABLED',
         checkout_status: 'ENABLED',
