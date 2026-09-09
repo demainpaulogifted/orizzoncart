@@ -39,9 +39,19 @@ export default function OrderDetailPage() {
     if (!action) return;
     setUpdating(true);
     const supabase = createClient();
-    const { error } = await supabase.from('orders').update({ status: action.next }).eq('id', id);
-    if (error) alert('Failed to update');
-    else setOrder({ ...order, status: action.next });
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status: action.next })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      alert('Failed to update: ' + error.message);
+    } else if (!data || data.length === 0) {
+      alert('⚠️ Status did NOT save (permission problem). Run the orders RLS SQL in Supabase.');
+    } else {
+      setOrder({ ...order, status: data[0].status });
+    }
     setUpdating(false);
   };
 
@@ -76,7 +86,7 @@ export default function OrderDetailPage() {
         order.status === 'processing' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'
       }`}>
         {order.status === 'pending' && '⏳ Awaiting processing — customer sees "Processing"'}
-        {order.status === 'processing' && '👨‍ You are preparing this order — customer sees "Processing"'}
+        {order.status === 'processing' && '👨‍💼 You are preparing this order — customer sees "Processing"'}
         {order.status === 'shipped' && '🚚 Ready for delivery — customer sees "Processed, ready for delivery"'}
         {order.status === 'delivered' && '✅ Delivered — customer sees "Delivered"'}
       </div>
@@ -92,7 +102,7 @@ export default function OrderDetailPage() {
         <div className="bg-white rounded-2xl border p-6 space-y-2">
           <h2 className="text-lg font-bold mb-2">💳 Payment</h2>
           <div className="flex justify-between text-sm"><span className="text-gray-500">Status</span><span className={`font-bold ${order.payment_status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>{(order.payment_status || '').toUpperCase()}</span></div>
-          <div className="flex justify-between text-sm"><span className="text-gray-500">Reference</span><span className="font-mono text-xs">{order.payment_intent_id || 'N/A'}</span></div>
+          <div className="flex justify-between text-sm"><span className="text-gray-500">Reference</span><span className="font-mono text-xs break-all text-right">{order.payment_intent_id || 'N/A'}</span></div>
           <div className="flex justify-between text-sm border-t pt-2"><span className="font-bold">Total</span><span className="font-extrabold">{formatCurrency(order.total_amount)}</span></div>
         </div>
 
