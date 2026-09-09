@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
 
     if (!merchant) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
-    // AUTO-STOP ENFORCEMENT: expired maintenance = no checkout
     const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
     if (expired || merchant.payment_receiving_status !== 'ACTIVE' || merchant.checkout_status !== 'ENABLED') {
       return NextResponse.json({ error: 'This store is currently not accepting orders.' }, { status: 403 });
@@ -58,12 +57,20 @@ export async function POST(request: NextRequest) {
     if (!secretKey) return NextResponse.json({ error: 'Merchant payment gateway not configured' }, { status: 500 });
 
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
+
+    // Save the reference so we can verify the payment later
+    await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
+
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: customer.email, amount: totalAmount * 100, reference,
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?order=${order.id}`,
+        email: customer.email,
+        amount: totalAmount * 100,
+        reference,
+        callback_url: `${appUrl}/checkout/success?order=${order.id}&reference=${reference}`,
         metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
       }),
     });
