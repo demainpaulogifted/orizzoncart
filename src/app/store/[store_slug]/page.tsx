@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getMerchantBySlug } from '@/lib/supabase/queries';
 import { ProductCard } from '@/components/storefront/ProductCard';
@@ -6,6 +7,43 @@ import { MerchantHeader } from '@/components/storefront/MerchantHeader';
 import { ThemeWrapper } from '@/components/storefront/ThemeWrapper';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
+import { getStoreUrl } from '@/lib/store-url';
+
+export async function generateMetadata({ params }: any): Promise<Metadata> {
+  const { store_slug } = await params;
+  const merchant = await getMerchantBySlug(store_slug);
+  if (!merchant) return {};
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
+  const image =
+    merchant.products?.find((p: any) => p.is_active && p.images?.[0]?.url)?.images?.[0]?.url ||
+    `${appUrl}/icon-512.png`;
+  const url = getStoreUrl(store_slug);
+  const title = `${merchant.store_name} — Online Store | OrizzonCart`;
+  const description =
+    merchant.store_description ||
+    `Shop ${merchant.store_name} online. Secure payments, fast delivery & WhatsApp support.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'OrizzonCart',
+      type: 'website',
+      images: [{ url: image, width: 1200, height: 630, alt: merchant.store_name }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
+  };
+}
 
 export default async function StorePage({ params, searchParams }: any) {
   const { store_slug } = await params;
@@ -18,6 +56,7 @@ export default async function StorePage({ params, searchParams }: any) {
   const maintenanceExpired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
   const isShowcaseMode = merchant.cart_status === 'LOCKED' || !!maintenanceExpired;
   const products = (merchant.products || []).filter((p: any) => p.is_active);
+  const storeUrl = getStoreUrl(store_slug);
 
   return (
     <ThemeWrapper themeId={themeId}>
@@ -37,9 +76,8 @@ export default async function StorePage({ params, searchParams }: any) {
         </div>
       )}
 
-      <ShareButtons url={`${process.env.NEXT_PUBLIC_APP_URL}/store/${merchant.store_slug}`} title={merchant.store_name} />
+      <ShareButtons url={storeUrl} title={merchant.store_name} />
 
-      {/* Premium Hero */}
       <section className="px-4 pt-16 pb-20 text-center bg-[var(--color-surface)]">
         <p className="text-xs font-bold uppercase tracking-[0.3em] text-[var(--color-primary)] mb-4">
           Premium Collection
@@ -60,7 +98,6 @@ export default async function StorePage({ params, searchParams }: any) {
         </div>
       </section>
 
-      {/* Products */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-[var(--font-heading)] text-[var(--color-text)]">Featured Pieces</h2>
