@@ -41,7 +41,7 @@ export default function SettingsPage() {
     <div className="space-y-8 max-w-3xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-gray-600 text-sm">Payments, plans, themes and store information all live here.</p>
+        <p className="text-gray-600 text-sm">Payments, plans, themes, shipping, domains and store information all live here.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -50,16 +50,31 @@ export default function SettingsPage() {
           <p className="font-bold mt-2">Payments</p>
           <p className="text-xs text-gray-500 mt-1">Paystack / Flutterwave keys, activation fee & payouts.</p>
         </Link>
+
         <Link href="/dashboard/settings/plans" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
           <span className="text-2xl">🔄</span>
           <p className="font-bold mt-2">Maintenance Plans</p>
           <p className="text-xs text-gray-500 mt-1">Choose monthly, quarterly or yearly to stay active.</p>
         </Link>
+
         <Link href="/dashboard/settings/theme" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
           <span className="text-2xl">🎨</span>
           <p className="font-bold mt-2">Themes</p>
           <p className="text-xs text-gray-500 mt-1">Switch your storefront design instantly.</p>
         </Link>
+
+        <Link href="/dashboard/settings/shipping" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
+          <span className="text-2xl">🚚</span>
+          <p className="font-bold mt-2">Shipping</p>
+          <p className="text-xs text-gray-500 mt-1">Free, flat waybill, or customer pickup.</p>
+        </Link>
+
+        <Link href="/dashboard/settings/domain" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
+          <span className="text-2xl">🌐</span>
+          <p className="font-bold mt-2">Custom Domain</p>
+          <p className="text-xs text-gray-500 mt-1">Connect your own .com or .name.ng.</p>
+        </Link>
+
         <Link href="/dashboard/settings/commerce" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
           <span className="text-2xl">🌍</span>
           <p className="font-bold mt-2">Orizzon Commerce</p>
