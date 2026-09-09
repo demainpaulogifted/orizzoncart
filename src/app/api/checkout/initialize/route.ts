@@ -5,12 +5,12 @@ import { generateOrderNumber } from '@/lib/utils';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { store_slug, items, customer } = body;
+    const { store_slug, items, customer, shipping_mode, shipping_cost } = body;
     const supabase = createAdminClient();
 
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, store_name, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at')
+      .select('id, store_name, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee')
       .eq('store_slug', store_slug)
       .single();
 
@@ -26,17 +26,16 @@ export async function POST(request: NextRequest) {
     if (!products || products.length === 0) return NextResponse.json({ error: 'Invalid products in cart' }, { status: 400 });
 
     let subtotal = 0;
-    let isDigitalOnly = true;
     const orderItems = items.map((item: any) => {
       const product = products.find((p: any) => p.id === item.product_id);
       if (!product || !product.is_active) throw new Error('Product unavailable');
-      if (!product.is_digital) isDigitalOnly = false;
       subtotal += product.price * item.quantity;
       return { product_id: product.id, product_name: product.name, quantity: item.quantity, unit_price: product.price, total_price: product.price * item.quantity };
     });
 
-    const shippingCost = isDigitalOnly ? 0 : 2500;
-    const totalAmount = subtotal + shippingCost;
+    // Use client-calculated shipping (respects merchant's config + digital exemption)
+    const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
+    const totalAmount = subtotal + finalShippingCost;
 
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       order_number: generateOrderNumber(),
@@ -44,9 +43,9 @@ export async function POST(request: NextRequest) {
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone,
-      subtotal, shipping_cost: shippingCost, total_amount: totalAmount, currency: 'NGN',
+      subtotal, shipping_cost: finalShippingCost, total_amount: totalAmount, currency: 'NGN',
       status: 'pending', payment_status: 'pending',
-      shipping_address: isDigitalOnly ? null : { address_line1: customer.address_line1, city: customer.city, state: customer.state },
+      shipping_address: (shipping_mode === 'PICKUP' || !customer.address_line1) ? null : { address_line1: customer.address_line1, city: customer.city, state: customer.state },
       tracking_number: `TRK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
     }).select().single();
     if (orderError) throw orderError;
@@ -57,8 +56,6 @@ export async function POST(request: NextRequest) {
     if (!secretKey) return NextResponse.json({ error: 'Merchant payment gateway not configured' }, { status: 500 });
 
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
-
-    // Save the reference so we can verify the payment later
     await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
