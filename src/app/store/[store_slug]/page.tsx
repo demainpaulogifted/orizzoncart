@@ -7,17 +7,26 @@ import { ThemeWrapper } from '@/components/storefront/ThemeWrapper';
 import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
 
-export default async function StorePage({ params }: any) {
+export default async function StorePage({ params, searchParams }: any) {
   const { store_slug } = await params;
+  const sp = await searchParams;
 
   const merchant = await getMerchantBySlug(store_slug);
   if (!merchant) notFound();
 
+  const themeId = sp?.preview_theme || merchant.theme_id;
   const maintenanceExpired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
   const isShowcaseMode = merchant.cart_status === 'LOCKED' || !!maintenanceExpired;
+  const products = (merchant.products || []).filter((p: any) => p.is_active);
 
   return (
-    <ThemeWrapper themeId={merchant.theme_id}>
+    <ThemeWrapper themeId={themeId}>
+      {sp?.preview_theme && (
+        <div className="bg-purple-600 text-white text-center text-xs font-bold py-2 px-4">
+          👁 Theme Preview Mode — this is how your store looks with this theme.
+        </div>
+      )}
+
       <MerchantHeader merchant={merchant} isShowcaseMode={isShowcaseMode} />
 
       {isShowcaseMode && (
@@ -30,26 +39,49 @@ export default async function StorePage({ params }: any) {
 
       <ShareButtons url={`${process.env.NEXT_PUBLIC_APP_URL}/store/${merchant.store_slug}`} title={merchant.store_name} />
 
-      <section className="py-20 px-4 text-center bg-[var(--color-surface)]">
-        <h2 className="text-5xl md:text-6xl font-[var(--font-heading)] text-[var(--color-text)] mb-4">
-          {merchant.store_name}
-        </h2>
-        <p className="text-lg text-[var(--color-text-muted)] mb-8 max-w-2xl mx-auto">
-          {merchant.store_description || 'Welcome to our premium store.'}
+      {/* Premium Hero */}
+      <section className="px-4 pt-16 pb-20 text-center bg-[var(--color-surface)]">
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-[var(--color-primary)] mb-4">
+          Premium Collection
         </p>
-        <button className="bg-[var(--color-primary)] text-white px-8 py-3 rounded-full font-medium hover:opacity-90 transition-opacity shadow-lg">
+        <h1 className="text-5xl md:text-7xl font-[var(--font-heading)] text-[var(--color-text)] mb-5 leading-tight">
+          {merchant.store_name}
+        </h1>
+        <p className="text-lg md:text-xl italic text-[var(--color-text-muted)] mb-10 max-w-2xl mx-auto font-[var(--font-heading)]">
+          {merchant.store_description || 'Curated pieces, crafted for you.'}
+        </p>
+        <button className="bg-[var(--color-primary)] text-white px-10 py-4 rounded-full font-semibold tracking-wide hover:opacity-90 transition-opacity shadow-xl hover:-translate-y-0.5 transform duration-300">
           Shop New Arrivals
         </button>
+        <div className="flex flex-wrap justify-center gap-6 mt-10 text-xs font-semibold text-[var(--color-text-muted)]">
+          <span>🔒 Secure Payments</span>
+          <span>🚚 Fast Delivery</span>
+          <span>💬 WhatsApp Support</span>
+        </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h3 className="text-2xl font-bold text-[var(--color-text)] mb-8 font-[var(--font-heading)]">Featured Products</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {(merchant as any).products?.filter((p: any) => p.is_active).map((product: any) => (
-            <ProductCard key={product.id} product={product} isShowcaseMode={isShowcaseMode} />
-          ))}
+      {/* Products */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-[var(--font-heading)] text-[var(--color-text)]">Featured Pieces</h2>
+          <div className="w-16 h-0.5 bg-[var(--color-primary)] mx-auto mt-3" />
         </div>
+
+        {products.length === 0 ? (
+          <p className="text-center text-[var(--color-text-muted)] py-16">New arrivals coming soon.</p>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
+            {products.map((product: any) => (
+              <ProductCard key={product.id} product={product} isShowcaseMode={isShowcaseMode} />
+            ))}
+          </div>
+        )}
       </main>
+
+      <footer className="py-10 text-center bg-[var(--color-surface)] border-t border-[var(--color-text-muted)]/10">
+        <p className="font-[var(--font-heading)] text-lg text-[var(--color-text)]">{merchant.store_name}</p>
+        <p className="text-xs text-[var(--color-text-muted)] mt-2">Powered by OrizzonCart • OrizzonS Inc.</p>
+      </footer>
 
       {merchant.whatsapp_number && (
         <WhatsAppButton phoneNumber={merchant.whatsapp_number} storeName={merchant.store_name} />
