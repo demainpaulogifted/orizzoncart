@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get('host') || '';
-  const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng').replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-  // Skip static files
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('.')) {
-    return NextResponse.next();
-  }
+  const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng')
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
 
   // ============================================
-  // 1. REFRESH SUPABASE SESSION ON EVERY REQUEST
+  // 1. REFRESH SUPABASE SESSION (keeps merchants logged in on refresh)
   // ============================================
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  });
+  let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,7 +21,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
             response.cookies.set(name, value, options);
@@ -36,25 +31,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // This refreshes the session token if expired
   await supabase.auth.getUser();
 
   // ============================================
-  // 2. SUBDOMAIN ROUTING (after session refresh)
+  // 2. SUBDOMAIN ROUTING (x.orizzoncart.name.ng → /store/x)
   // ============================================
   const platformPaths = [
-    '/login',
-    '/signup',
-    '/onboarding',
-    '/dashboard',
-    '/admin',
-    '/checkout',
-    '/payment',
-    '/track-order',
-    '/store',
-    '/api',
+    '/login', '/signup', '/onboarding', '/dashboard', '/admin',
+    '/checkout', '/payment', '/track-order', '/store', '/api',
   ];
-
   const isPlatformPath = platformPaths.some((p) => pathname.startsWith(p));
 
   if (host.endsWith(ROOT) && host !== ROOT && host !== `www.${ROOT}` && !isPlatformPath) {
@@ -70,5 +55,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)'],
+  // NOTE: api is excluded again — webhooks & cron must never touch session middleware
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)'],
 };
