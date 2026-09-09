@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   const todaySales = todayOrders.reduce((acc: number, o: any) => acc + o.total_amount, 0);
   const conversion = visitors ? ((paid.length / visitors) * 100).toFixed(1) : '0.0';
 
-  const isShowcaseMode = merchant?.cart_status === 'LOCKED';
+  const status = merchant?.payment_receiving_status;
 
   const cards = [
     { label: "Today's Visitors", value: (visitors || 0).toString(), grad: 'from-blue-400 to-indigo-600' },
@@ -36,11 +36,24 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {isShowcaseMode && (
+      {(status === 'SUSPENDED' || status === 'HELD') && (
+        <div className="bg-red-100 border border-red-300 rounded-xl px-6 py-4 text-center shadow-sm">
+          <p className="font-bold text-red-800">🛑 Payments suspended — renew your maintenance plan to resume.</p>
+          <Link href="/dashboard/settings/plans" className="text-sm font-bold text-red-700 underline">Renew now</Link>
+        </div>
+      )}
+
+      {status === 'PENDING_KEYS' && (
+        <div className="bg-blue-100 border border-blue-300 rounded-xl px-6 py-4 text-center shadow-sm">
+          <p className="font-bold text-blue-800">🔑 Activation fee paid! Add your payment keys to go live.</p>
+          <Link href="/dashboard/settings/payment" className="text-sm font-bold text-blue-700 underline">Complete Step 2</Link>
+        </div>
+      )}
+
+      {status !== 'ACTIVE' && status !== 'PENDING_KEYS' && status !== 'SUSPENDED' && status !== 'HELD' && (
         <div className="bg-yellow-200/70 rounded-xl px-6 py-4 text-center shadow-sm">
-          <p className="font-bold text-gray-900 text-base sm:text-lg">
-            ⚠️ Showcase Mode - Activate payment to enable cart
-          </p>
+          <p className="font-bold text-gray-900 text-base sm:text-lg">⚠️ Showcase Mode - Activate payment to enable cart</p>
+          <Link href="/dashboard/settings/payment" className="text-sm font-bold text-purple-700 underline">Activate my store now</Link>
         </div>
       )}
 
@@ -68,8 +81,8 @@ export default async function DashboardPage() {
         </Link>
         <Link href="/dashboard/settings/payment" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
           <span className="text-2xl">💳</span>
-          <p className="font-bold mt-2">Activate payments</p>
-          <p className="text-xs text-gray-500 mt-1">Connect Paystack & unlock checkout.</p>
+          <p className="font-bold mt-2">{status === 'ACTIVE' ? 'Manage payments' : 'Activate payments'}</p>
+          <p className="text-xs text-gray-500 mt-1">{status === 'ACTIVE' ? 'Update your gateway keys anytime.' : 'Pay fee, connect keys, go live.'}</p>
         </Link>
         <Link href="/dashboard/settings/theme" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
           <span className="text-2xl">🎨</span>
