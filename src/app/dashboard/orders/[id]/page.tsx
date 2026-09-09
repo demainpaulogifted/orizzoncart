@@ -100,14 +100,17 @@ export default function OrderDetailPage({ params }: { params: any }) {
               'text-gray-600'
             }`}>{order.status.toUpperCase()}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Tracking Number</span><span className="font-mono font-bold">{order.tracking_number}</span></div>
-            {order.shipping_address && (
+            {order.shipping_address ? (
               <>
-                <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-bold text-right">{order.shipping_address.address_line1}, {order.shipping_address.city}, {order.shipping_address.state}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-bold text-right max-w-[60%]">{order.shipping_address.address_line1}, {order.shipping_address.city}, {order.shipping_address.state}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Shipping Cost</span><span className="font-bold">{formatCurrency(order.shipping_cost)}</span></div>
               </>
-            )}
-            {!order.shipping_address && (
-              <p className="text-gray-500 italic">Digital product — no shipping required</p>
+            ) : order.shipping_cost === 0 ? (
+              <p className="text-gray-500 italic">
+                {order.shipping_cost === 0 ? 'Free shipping (digital product or pickup)' : 'No shipping address'}
+              </p>
+            ) : (
+              <div className="flex justify-between"><span className="text-gray-500">Shipping Cost</span><span className="font-bold">{formatCurrency(order.shipping_cost)}</span></div>
             )}
           </div>
         </div>
