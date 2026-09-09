@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     showcase,
     shipping: {
       mode: merchant.shipping_mode || 'FLAT',
-      flat_fee: merchant.shipping_flat_fee || 2500,
+      flat_fee: merchant.shipping_flat_fee ?? 2500,
       pickup_address: merchant.shipping_pickup_address || '',
     },
   });
