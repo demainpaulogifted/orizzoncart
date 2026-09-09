@@ -1,5 +1,11 @@
 export function getStoreUrl(slug: string): string {
-  const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  const raw = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
+  // Strip any https:// or http:// if someone pasted it by mistake
+  const root = raw.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
   if (root) return `https://${slug}.${root}`;
-  return `${process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app'}/store/${slug}`;
+
+  const fallback = (process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app')
+    .replace(/\/$/, '');
+  return `${fallback}/store/${slug}`;
 }
