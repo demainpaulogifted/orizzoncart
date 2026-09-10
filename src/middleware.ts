@@ -1,12 +1,17 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  const { pathname } = request.nextUrl;
+  const host = request.headers.get('host') || '';
+  const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng')
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+
+  // ============================================
+  // 1. REFRESH SUPABASE SESSION (keeps merchants logged in on refresh)
+  // ============================================
+  let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,22 +21,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-
-        setAll(
-          cookiesToSet: {
-            name: string;
-            value: string;
-            options?: {
-              path?: string;
-              domain?: string;
-              maxAge?: number;
-              expires?: Date;
-              httpOnly?: boolean;
-              secure?: boolean;
-              sameSite?: "strict" | "lax" | "none";
-            };
-          }[]
-        ) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
             response.cookies.set(name, value, options);
@@ -43,11 +33,28 @@ export async function middleware(request: NextRequest) {
 
   await supabase.auth.getUser();
 
+  // ============================================
+  // 2. SUBDOMAIN ROUTING (x.orizzoncart.name.ng → /store/x)
+  // ============================================
+  const platformPaths = [
+    '/login', '/signup', '/onboarding', '/dashboard', '/admin',
+    '/checkout', '/payment', '/track-order', '/store', '/api',
+  ];
+  const isPlatformPath = platformPaths.some((p) => pathname.startsWith(p));
+
+  if (host.endsWith(ROOT) && host !== ROOT && host !== `www.${ROOT}` && !isPlatformPath) {
+    const sub = host.replace(`.${ROOT}`, '');
+    if (sub) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/store/${sub}${pathname === '/' ? '' : pathname}`;
+      return NextResponse.rewrite(url, { headers: response.headers });
+    }
+  }
+
   return response;
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
+  // NOTE: api is excluded again — webhooks & cron must never touch session middleware
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)'],
 };

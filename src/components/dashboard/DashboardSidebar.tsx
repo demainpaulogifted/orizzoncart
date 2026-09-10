@@ -1,59 +1,65 @@
 'use client';
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-  { name: 'Products', href: '/dashboard/products', icon: '📦' },
-  { name: 'Orders', href: '/dashboard/orders', icon: '' },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: '📈' },
-  { name: 'Themes', href: '/dashboard/settings/theme', icon: '🎨' },
-  { name: 'Payments', href: '/dashboard/settings/payment', icon: '💳' },
-  { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
+const baseNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: '📊', grad: 'from-blue-400 to-indigo-600' },
+  { name: 'Products', href: '/dashboard/products', icon: '📦', grad: 'from-orange-400 to-red-500' },
+  { name: 'Orders', href: '/dashboard/orders', icon: '🛒', grad: 'from-green-400 to-emerald-600' },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: '📈', grad: 'from-fuchsia-400 to-purple-600' },
+  { name: 'Support', href: '/dashboard/support', icon: '💬', grad: 'from-cyan-400 to-blue-600' },
+  { name: 'Settings', href: '/dashboard/settings', icon: '⚙️', grad: 'from-slate-500 to-slate-700' },
 ];
 
-export function DashboardSidebar({ merchant }: { merchant: any }) {
+const adminItem = { name: 'Admin', href: '/admin', icon: '👑', grad: 'from-amber-400 to-yellow-600' };
+
+export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin?: boolean }) {
   const pathname = usePathname();
-  const isShowcaseMode = merchant.cart_status === 'LOCKED';
+  const navigation = isAdmin ? [...baseNavigation, adminItem] : baseNavigation;
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
 
   return (
-    <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-      <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r bg-white px-6">
-        <div className="flex h-16 shrink-0 items-center border-b">
-          <div>
-            <h2 className="text-lg font-bold">{merchant.store_name}</h2>
-            <p className="text-xs text-gray-500">{merchant.business_name}</p>
-          </div>
-        </div>
-        
-        {isShowcaseMode && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-xs text-yellow-800">⚠️ Showcase Mode<br/><span className="font-medium">Activate payment to enable cart</span></p>
-          </div>
-        )}
-        
-        <nav className="flex flex-1 flex-col">
-          <ul className="flex flex-1 flex-col gap-y-2 pt-4">
-            {navigation.map((item) => (
-              <li key={item.name}>
-                <Link 
-                  href={item.href} 
-                  className={cn(
-                    'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6', 
-                    pathname === item.href 
-                      ? 'bg-gray-50 text-gray-900' 
-                      : 'text-gray-700 hover:bg-gray-50'
-                  )}
-                >
-                  <span>{item.icon}</span> {item.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+    <aside className="fixed inset-y-0 left-0 z-40 w-20 sm:w-24 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-1 overflow-y-auto">
+      <Link
+        href="/dashboard"
+        className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 text-white font-extrabold flex items-center justify-center mb-3 shadow-md"
+      >
+        O
+      </Link>
+
+      {navigation.map((item) => {
+        const active = isActive(item.href);
+        return (
+          <Link key={item.name} href={item.href} className="flex flex-col items-center gap-1 w-full py-2 group">
+            <span
+              className={cn(
+                'w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105',
+                item.grad,
+                active && 'ring-2 ring-offset-2 ring-purple-400'
+              )}
+            >
+              {item.icon}
+            </span>
+            <span className={cn('text-[10px] font-semibold', active ? 'text-purple-600' : 'text-gray-600')}>
+              {item.name}
+            </span>
+          </Link>
+        );
+      })}
+
+      <div className="mt-auto pt-4">
+        <Link href="/dashboard/preview" className="flex flex-col items-center gap-1 py-2 group">
+          <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105">
+            👀
+          </span>
+          <span className={cn('text-[10px] font-semibold', pathname === '/dashboard/preview' ? 'text-purple-600' : 'text-gray-600')}>
+            My Store
+          </span>
+        </Link>
       </div>
-    </div>
+    </aside>
   );
 }

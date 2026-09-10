@@ -1,28 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { ProductService } from '@/lib/services/product.service';
+import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(request: NextRequest) {
+  const slug = request.nextUrl.searchParams.get('slug');
+  if (!slug) return NextResponse.json({ error: 'slug required' }, { status: 400 });
 
-    const { data: merchant } = await supabase.from('merchants').select('id').eq('user_id', user.id).single();
-    if (!merchant) return NextResponse.json({ error: 'Merchant not found' }, { status: 404 });
+  const admin = createAdminClient();
+  const { data: merchant } = await admin
+    .from('merchants')
+    .select('id, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at, shipping_mode, shipping_flat_fee, shipping_pickup_address')
+    .eq('store_slug', slug)
+    .single();
 
-    const body = await request.json();
-    const product = await ProductService.create({
-      merchant_id: merchant.id,
-      name: body.name,
-      price: body.price,
-      description: body.description,
-      category: body.category,
-      images: body.images || [],
-    });
+  if (!merchant) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
-    return NextResponse.json({ success: true, product }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
-  }
+  const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
+  const showcase = merchant.cart_status === 'LOCKED' || merchant.checkout_status !== 'ENABLED' || merchant.payment_receiving_status !== 'ACTIVE' || !!expired;
+
+  const { data: products } = await admin
+    .from('products')
+    .select('id, name, price, description, images, is_digital')
+    .eq('merchant_id', merchant.id)
+    .eq('is_active', true);
+
+  return NextResponse.json({
+    products: products || [],
+    showcase,
+    shipping: {
+      mode: merchant.shipping_mode || 'FLAT',
+      flat_fee: merchant.shipping_flat_fee ?? 2500,
+      pickup_address: merchant.shipping_pickup_address || '',
+    },
+  });
 }

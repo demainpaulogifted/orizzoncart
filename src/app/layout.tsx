@@ -1,51 +1,40 @@
-// force new build
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Toaster } from "sonner";
-import Script from "next/script";
-
-const inter = Inter({ subsets: ["latin"] });
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: "OrizzonCart | Premium Multi-tenant E-commerce",
-  description: "Open your online store in minutes with OrizzonCart by OrizzonS Inc.",
-  manifest: "/manifest.json",
-  themeColor: "#4c1d95",
+  title: 'OrizzonCart — Own Your Sales',
+  description: 'Premium multi-tenant e-commerce platform for Nigerian businesses.',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/icon-192.png',
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "OrizzonCart",
+    statusBarStyle: 'default',
+    title: 'OrizzonCart',
+  },
+  openGraph: {
+    title: 'OrizzonCart — Own Your Sales',
+    description: 'Premium multi-tenant e-commerce platform for Nigerian businesses.',
+    siteName: 'OrizzonCart',
+    type: 'website',
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: '#8B5CF6',
+  width: 'device-width',
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-      </head>
-      <body className={inter.className}>
+      <body className="antialiased">
         {children}
-        <Toaster position="top-right" richColors />
-        
-        {/* Register the PWA Service Worker */}
-        <Script id="register-sw" strategy="afterInteractive">
-          {`
-            if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js');
-              });
-            }
-          `}
-        </Script>
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

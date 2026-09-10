@@ -1,105 +1,103 @@
 'use client';
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
+const STEPS = [
+  { key: 'pending', label: 'Order Placed', msg: 'We received your order successfully.' },
+  { key: 'processing', label: 'Processing', msg: 'The merchant is preparing your order.' },
+  { key: 'shipped', label: 'Ready for Delivery', msg: 'Your order is processed and ready for delivery! 🚚' },
+  { key: 'delivered', label: 'Delivered', msg: 'Delivered! Enjoy your purchase 💚' },
+];
+
 export default function TrackOrderPage() {
-  const [email, setEmail] = useState('');
-  const [trackingNumber, setTrackingNumber] = useState('');
+  const [code, setCode] = useState('');
+  const [state, setState] = useState<'idle' | 'loading' | 'found' | 'notfound'>('idle');
   const [order, setOrder] = useState<any>(null);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    setOrder(null);
-
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*, merchant:merchants(store_name, whatsapp_number, contact_email)')
-      .eq('tracking_number', trackingNumber)
-      .eq('customer_email', email)
-      .single();
-
-    if (error || !data) {
-      setError('Order not found. Please check your email and tracking number.');
-    } else {
-      setOrder(data);
+    setState('loading');
+    try {
+      const res = await fetch(`/api/orders/track?code=${encodeURIComponent(code)}`);
+      if (res.status === 404) {
+        setState('notfound');
+        setOrder(null);
+        return;
+      }
+      const data = await res.json();
+      setOrder(data.order);
+      setState('found');
+    } catch {
+      setState('notfound');
     }
-    setIsLoading(false);
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: any = { pending: 'bg-yellow-500', paid: 'bg-blue-500', shipped: 'bg-purple-500', delivered: 'bg-green-500' };
-    return colors[status] || 'bg-gray-400';
-  };
+  const currentIndex = order ? STEPS.findIndex((s) => s.key === order.status) : -1;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-900 font-display">Track Your Order</h1>
-          <p className="text-gray-600 mt-2">Enter your details below to see the status of your purchase.</p>
+      <div className="max-w-lg mx-auto space-y-6">
+        <div className="text-center">
+          <span className="text-5xl">📦</span>
+          <h1 className="text-3xl font-extrabold text-gray-900 mt-3">Track Your Order</h1>
+          <p className="text-gray-600 text-sm mt-1">Enter your order number (ORD-...) or tracking number (TRK-...)</p>
         </div>
 
-        <form onSubmit={handleTrack} className="bg-white p-8 rounded-2xl shadow-lg border space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="you@example.com" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tracking Number</label>
-            <input type="text" required value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="ORD-XXXXXX" />
-          </div>
-          <button type="submit" disabled={isLoading} className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-gray-800 disabled:opacity-50">
-            {isLoading ? 'Tracking...' : 'Track Order'}
+        <form onSubmit={handleTrack} className="flex gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="ORD-MTTVS8PXX1LU or TRK-A1B2C3"
+            className="flex-1 px-4 py-3.5 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm uppercase"
+          />
+          <button type="submit" disabled={state === 'loading' || !code.trim()} className="px-6 py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50">
+            {state === 'loading' ? '...' : 'Track'}
           </button>
         </form>
 
-        {error && <div className="mt-6 p-4 bg-red-50 text-red-700 rounded-lg text-center">{error}</div>}
+        {state === 'notfound' && (
+          <div className="bg-red-100 border border-red-300 text-red-800 rounded-xl p-5 text-center font-bold text-sm">
+            ❌ This order number doesn't exist. Please check it and try again.
+          </div>
+        )}
 
-        {order && (
-          <div className="mt-8 bg-white p-8 rounded-2xl shadow-lg border animate-in fade-in slide-in-from-bottom-4">
-            <div className="flex justify-between items-start border-b pb-4 mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Order #{order.order_number}</h2>
-                <p className="text-sm text-gray-500">Placed on {formatDate(order.created_at)}</p>
-              </div>
-              <span className={`px-4 py-2 rounded-full text-white font-bold text-sm uppercase ${getStatusColor(order.status)}`}>
-                {order.status}
-              </span>
+        {state === 'found' && order && (
+          <div className="bg-white rounded-2xl border p-6 space-y-5">
+            <div className="text-center">
+              <p className="text-xs text-gray-500">{order.merchants?.store_name}</p>
+              <p className="font-mono font-bold text-gray-900">{order.order_number}</p>
+              <p className="text-xs text-gray-500 mt-1">Placed {formatDate(order.created_at)} • {formatCurrency(order.total_amount)}</p>
             </div>
 
-            {/* Progress Timeline */}
-            <div className="flex justify-between mb-8">
-              {['pending', 'paid', 'shipped', 'delivered'].map((step, i) => (
-                <div key={step} className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${order.status === step || ['pending','paid','shipped','delivered'].indexOf(order.status) >= i ? 'bg-green-500' : 'bg-gray-300'}`}>
-                    {['pending','paid','shipped','delivered'].indexOf(order.status) >= i ? '✓' : i + 1}
+            <div className="space-y-0">
+              {STEPS.map((step, i) => {
+                const done = i <= currentIndex;
+                const current = i === currentIndex;
+                return (
+                  <div key={step.key} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                        done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'
+                      } ${current ? 'ring-4 ring-green-200' : ''}`}>
+                        {done ? '✓' : i + 1}
+                      </span>
+                      {i < STEPS.length - 1 && <span className={`w-0.5 h-8 ${i < currentIndex ? 'bg-green-500' : 'bg-gray-200'}`} />}
+                    </div>
+                    <div className="pb-6">
+                      <p className={`font-bold text-sm ${done ? 'text-gray-900' : 'text-gray-400'}`}>{step.label}</p>
+                      {current && <p className="text-xs text-green-700 font-semibold mt-0.5">{step.msg}</p>}
+                    </div>
                   </div>
-                  <p className="text-xs mt-2 capitalize text-gray-600">{step}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Total Amount</span>
-                <span className="font-bold text-xl">{formatCurrency(order.total_amount)}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Store</span>
-                <span className="font-medium">{order.merchant?.store_name}</span>
-              </div>
-              {order.merchant?.whatsapp_number && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Store WhatsApp</span>
-                  <a href={`https://wa.me/${order.merchant.whatsapp_number}`} className="font-medium text-green-600 hover:underline">{order.merchant.whatsapp_number}</a>
-                </div>
-              )}
+            <div className="bg-gray-50 rounded-xl p-4 text-xs space-y-1">
+              <p className="font-bold text-gray-700 mb-1">Items:</p>
+              {order.order_items?.map((i: any, x: number) => (
+                <p key={x} className="text-gray-600">• {i.product_name} × {i.quantity}</p>
+              ))}
+              <p className="pt-2 text-gray-500">Tracking number: <span className="font-mono font-bold">{order.tracking_number}</span></p>
             </div>
           </div>
         )}
