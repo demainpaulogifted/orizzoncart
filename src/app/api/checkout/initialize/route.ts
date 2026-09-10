@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateOrderNumber } from '@/lib/utils';
+import { sendOrderAlert } from '@/lib/notify';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +34,6 @@ export async function POST(request: NextRequest) {
       return { product_id: product.id, product_name: product.name, quantity: item.quantity, unit_price: product.price, total_price: product.price * item.quantity };
     });
 
-    // Use client-calculated shipping (respects merchant's config + digital exemption)
     const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
     const totalAmount = subtotal + finalShippingCost;
 
@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     if (orderError) throw orderError;
 
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
+
+    // 🔔 FIRE PUSH + WHATSAPP ALERTS (never blocks checkout)
+    sendOrderAlert(merchant.id, order, orderItems.map((i: any) => `${i.product_name} x${i.quantity}`).join(', ')).catch(() => {});
 
     const secretKey = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
     if (!secretKey) return NextResponse.json({ error: 'Merchant payment gateway not configured' }, { status: 500 });
