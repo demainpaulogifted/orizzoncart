@@ -49,9 +49,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-slate-100">
       <DashboardSidebar merchant={merchant} isAdmin={isAdmin} />
-      <main className="pl-20 sm:pl-24">
-        <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-          <div className="flex items-center justify-end mb-6">
+      <main className="pl-14">
+        <div className="px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex items-center justify-end mb-5">
             <StoreSwitcher currentMerchant={merchant} />
           </div>
           {children}
