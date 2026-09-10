@@ -8,6 +8,7 @@ import { WhatsAppButton } from '@/components/storefront/WhatsAppButton';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
 import { StoreShop } from '@/components/storefront/StoreShop';
 import { CartProvider } from '@/components/storefront/CartContext';
+import { VisitTracker } from '@/components/storefront/VisitTracker';
 import { getStoreUrl } from '@/lib/store-url';
 
 export async function generateMetadata({ params }: any): Promise<Metadata> {
@@ -42,6 +43,8 @@ export default async function StorePage({ params, searchParams }: any) {
   return (
     <ThemeWrapper themeId={themeId}>
       <CartProvider storeSlug={store_slug}>
+        <VisitTracker merchantId={merchant.id} />
+
         {sp?.preview_theme && (
           <div className="bg-purple-600 text-white text-center text-xs font-bold py-2 px-4">
             👁 Theme Preview Mode
