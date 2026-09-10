@@ -1,65 +1,46 @@
-'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 
-const baseNavigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: '📊', grad: 'from-blue-400 to-indigo-600' },
-  { name: 'Products', href: '/dashboard/products', icon: '📦', grad: 'from-orange-400 to-red-500' },
-  { name: 'Orders', href: '/dashboard/orders', icon: '🛒', grad: 'from-green-400 to-emerald-600' },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: '📈', grad: 'from-fuchsia-400 to-purple-600' },
-  { name: 'Support', href: '/dashboard/support', icon: '💬', grad: 'from-cyan-400 to-blue-600' },
-  { name: 'Settings', href: '/dashboard/settings', icon: '⚙️', grad: 'from-slate-500 to-slate-700' },
-];
-
-const adminItem = { name: 'Admin', href: '/admin', icon: '👑', grad: 'from-amber-400 to-yellow-600' };
-
-export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin?: boolean }) {
-  const pathname = usePathname();
-  const navigation = isAdmin ? [...baseNavigation, adminItem] : baseNavigation;
-
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
+export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin: boolean }) {
+  const items = [
+    { href: '/dashboard', icon: '🏠', label: 'Home' },
+    { href: '/dashboard/products', icon: '📦', label: 'Products' },
+    { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
+    { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
+    { href: '/dashboard/support', icon: '💬', label: 'Help' },
+    { href: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
+  ];
+  if (isAdmin) items.push({ href: '/admin', icon: '👑', label: 'Admin' });
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 w-20 sm:w-24 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-1 overflow-y-auto">
+    <aside className="fixed inset-y-0 left-0 w-14 bg-white border-r border-gray-200 flex flex-col items-center py-3 gap-0.5 z-40">
       <Link
         href="/dashboard"
-        className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 text-white font-extrabold flex items-center justify-center mb-3 shadow-md"
+        className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center text-sm font-extrabold mb-2 shrink-0"
       >
         O
       </Link>
 
-      {navigation.map((item) => {
-        const active = isActive(item.href);
-        return (
-          <Link key={item.name} href={item.href} className="flex flex-col items-center gap-1 w-full py-2 group">
-            <span
-              className={cn(
-                'w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105',
-                item.grad,
-                active && 'ring-2 ring-offset-2 ring-purple-400'
-              )}
-            >
-              {item.icon}
-            </span>
-            <span className={cn('text-[10px] font-semibold', active ? 'text-purple-600' : 'text-gray-600')}>
-              {item.name}
-            </span>
-          </Link>
-        );
-      })}
-
-      <div className="mt-auto pt-4">
-        <Link href="/dashboard/preview" className="flex flex-col items-center gap-1 py-2 group">
-          <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-xl shadow-sm transition-transform group-hover:scale-105">
-            👀
-          </span>
-          <span className={cn('text-[10px] font-semibold', pathname === '/dashboard/preview' ? 'text-purple-600' : 'text-gray-600')}>
-            My Store
-          </span>
+      {items.map((it) => (
+        <Link
+          key={it.href}
+          href={it.href}
+          className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors"
+        >
+          <span className="text-base leading-none">{it.icon}</span>
+          <span className="text-[9px] font-semibold mt-1 leading-none">{it.label}</span>
         </Link>
-      </div>
+      ))}
+
+      <div className="mt-auto" />
+
+      <Link
+        href={`/store/${merchant?.store_slug}`}
+        target="_blank"
+        className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors"
+      >
+        <span className="text-base leading-none">👀</span>
+        <span className="text-[9px] font-semibold mt-1 leading-none">Store</span>
+      </Link>
     </aside>
   );
 }
