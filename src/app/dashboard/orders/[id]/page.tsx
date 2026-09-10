@@ -59,6 +59,9 @@ export default function OrderDetailPage() {
   if (!order) return <div className="p-10 text-center font-bold text-gray-700">Order not found</div>;
 
   const action = NEXT_ACTION[order.status];
+  const waLink = `https://wa.me/${(order.customer_phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+    `Hello ${order.customer_name}! 😊 Your order ${order.order_number} (₦${Number(order.total_amount).toLocaleString()}) is confirmed and being processed. Tracking: ${order.tracking_number}. We will update you when it's out for delivery. — ${order.merchants?.store_name || 'Our store'}`
+  )}`;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -74,6 +77,9 @@ export default function OrderDetailPage() {
               {updating ? '...' : action.label}
             </button>
           )}
+          <a href={waLink} target="_blank" rel="noopener" className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700">
+            💬 Process via WhatsApp
+          </a>
           <button onClick={() => downloadReceipt(order)} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800">
             📥 Download Receipt
           </button>
@@ -86,7 +92,7 @@ export default function OrderDetailPage() {
         order.status === 'processing' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'
       }`}>
         {order.status === 'pending' && '⏳ Awaiting processing — customer sees "Processing"'}
-        {order.status === 'processing' && '👨‍💼 You are preparing this order — customer sees "Processing"'}
+        {order.status === 'processing' && '👨‍ You are preparing this order — customer sees "Processing"'}
         {order.status === 'shipped' && '🚚 Ready for delivery — customer sees "Processed, ready for delivery"'}
         {order.status === 'delivered' && '✅ Delivered — customer sees "Delivered"'}
       </div>
