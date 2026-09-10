@@ -4,7 +4,7 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET() {
   const admin = createAdminClient();
-  const { data } = await admin.from('platform_settings').select('vapid_public, vapid_private').limit(1).maybeSingle();
+  const { data } = await admin.from('platform_settings').select('id, vapid_public, vapid_private').limit(1).maybeSingle();
 
   if (data?.vapid_public && data?.vapid_private) {
     return NextResponse.json({ publicKey: data.vapid_public });

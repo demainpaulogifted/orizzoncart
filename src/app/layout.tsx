@@ -15,12 +15,6 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'OrizzonCart',
   },
-  openGraph: {
-    title: 'OrizzonCart — Own Your Sales',
-    description: 'Premium multi-tenant e-commerce platform for Nigerian businesses.',
-    siteName: 'OrizzonCart',
-    type: 'website',
-  },
 };
 
 export const viewport: Viewport = {
@@ -35,6 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         {children}
         <Toaster position="top-center" richColors />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js'); }); }",
+          }}
+        />
       </body>
     </html>
   );
