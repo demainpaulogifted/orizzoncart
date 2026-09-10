@@ -3,27 +3,24 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { StoreSwitcher } from '@/components/dashboard/StoreSwitcher';
+import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Fetch ALL merchants for this user (not just one)
   const { data: merchants } = await supabase
     .from('merchants')
     .select('*')
     .eq('user_id', user.id);
 
-  // If no stores at all, send to onboarding
   if (!merchants || merchants.length === 0) redirect('/onboarding');
 
-  // Get active merchant from cookie, or use the first one
   const cookieStore = await cookies();
   const activeId = cookieStore.get('active_merchant_id')?.value;
   const currentMerchant = merchants.find((m) => m.id === activeId) || merchants[0];
 
-  // Auto-suspend expired maintenance
   let merchant = currentMerchant;
   if (
     currentMerchant.maintenance_expires_at &&
@@ -58,6 +55,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <StoreSwitcher currentMerchant={merchant} />
           </div>
           {children}
+          <DashboardFooter />
         </div>
       </main>
     </div>
