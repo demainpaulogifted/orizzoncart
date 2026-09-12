@@ -16,6 +16,10 @@ const GRADIENTS: Record<string, string> = {
   gray: 'from-slate-500 to-slate-700',
 };
 
+function makeSlug(title: string) {
+  return `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 6)}`;
+}
+
 export default function SourceDigitalPage() {
   const [catalog, setCatalog] = useState<any[]>([]);
   const [sourced, setSourced] = useState<string[]>([]);
@@ -64,19 +68,25 @@ export default function SourceDigitalPage() {
     const { error } = await supabase.from('products').insert({
       merchant_id: storeId,
       name: p.title,
-      description: p.description,
+      slug: makeSlug(p.title),
       price: p.suggested_price,
+      description: p.description,
       is_digital: true,
       is_active: true,
       catalog_id: p.id,
       images: [],
     });
     if (error) {
-      toast.error('Already sourced or failed');
+      if (error.code === '23505') {
+        toast.info('Already in your store ✅');
+        setSourced((prev) => [...prev, p.id]);
+        return;
+      }
+      toast.error('Source failed: ' + error.message);
       return;
     }
     toast.success('⚡ Added to your store!');
-    setSourced([...sourced, p.id]);
+    setSourced((prev) => [...prev, p.id]);
   };
 
   const categories = ['All', ...Array.from(new Set(catalog.map((p) => p.category)))];
