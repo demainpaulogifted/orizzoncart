@@ -60,7 +60,7 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const setQty = (id: string, qty: number) => {
-    const next = qty <= 0 ? items.filter((i: any) => i.product_id !== id) : items.map((i: any) => (i.product_id === id ? { ...i, quantity: qty }));
+    const next = qty <= 0 ? items.filter((i: any) => i.product_id !== id) : items.map((i: any) => (i.product_id === id ? { ...i, quantity: qty } : i));
     setItems(next);
     localStorage.setItem(`orz_cart_${slug}`, JSON.stringify(next));
   };
