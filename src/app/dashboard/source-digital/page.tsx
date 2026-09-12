@@ -2,19 +2,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-
-const GRADIENTS: Record<string, string> = {
-  green: 'from-green-500 to-emerald-700',
-  blue: 'from-blue-500 to-indigo-700',
-  purple: 'from-purple-500 to-violet-700',
-  pink: 'from-pink-500 to-rose-700',
-  orange: 'from-orange-500 to-red-700',
-  yellow: 'from-amber-400 to-orange-600',
-  teal: 'from-teal-500 to-cyan-700',
-  red: 'from-red-500 to-rose-700',
-  indigo: 'from-indigo-500 to-purple-700',
-  gray: 'from-slate-500 to-slate-700',
-};
+import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 function makeSlug(title: string) {
   return `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 6)}`;
@@ -138,15 +126,7 @@ export default function SourceDigitalPage() {
           const isSourced = sourced.includes(p.id);
           return (
             <div key={p.id} className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
-              <div className={`h-28 bg-gradient-to-br ${GRADIENTS[p.cover_color] || GRADIENTS.purple} p-2.5 flex flex-col justify-between relative overflow-hidden`}>
-                <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
-                <div className="absolute -right-1 -top-6 w-16 h-16 rounded-full bg-white/10" />
-                <span className="self-start bg-black/25 text-white text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded">
-                  {p.category}
-                </span>
-                <p className="text-white font-extrabold text-[13px] leading-tight uppercase line-clamp-3 relative">{p.title}</p>
-                <span className="absolute top-2 right-2 bg-white/95 text-purple-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">🔥 {p.profit_score}%</span>
-              </div>
+              <FlyerCover title={p.title} category={p.category} colorKey={p.cover_color} profit={p.profit_score} className="h-28" />
               <div className="p-2.5 flex flex-col gap-1.5 flex-1">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-extrabold text-gray-900">₦{Number(p.suggested_price).toLocaleString()}</p>
