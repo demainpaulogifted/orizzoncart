@@ -1,20 +1,31 @@
 import Image from 'next/image';
+import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 export function ProductCard({ product, isShowcaseMode, onClick }: { product: any; isShowcaseMode: boolean; onClick: () => void }) {
-  const imageUrl = product.images?.[0]?.url || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800';
+  const imageUrl = product.images?.[0]?.url;
 
   return (
     <div className="group block cursor-pointer" onClick={onClick}>
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--color-surface)] shadow-md group-hover:shadow-2xl transition-shadow duration-300">
-        <Image
-          src={imageUrl}
-          alt={product.name}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          quality={75}
-          loading="lazy"
-          className="object-cover group-hover:scale-105 transition-transform duration-700"
-        />
+        {product.is_digital || !imageUrl ? (
+          product.is_digital ? (
+            <FlyerCover title={product.name} category="Digital Product" colorKey={flyerColorKey(product.name)} className="absolute inset-0" />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+              <span className="text-4xl opacity-40">🛍️</span>
+            </div>
+          )
+        ) : (
+          <Image
+            src={imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            quality={75}
+            loading="lazy"
+            className="object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <span className="px-4 py-1.5 rounded-full bg-white/95 text-gray-900 text-xs font-bold whitespace-nowrap shadow-lg">
