@@ -24,15 +24,29 @@ export async function POST(request: NextRequest) {
     }
 
     const productIds = items.map((i: any) => i.product_id);
-    const { data: products } = await supabase.from('products').select('id, name, price, is_active, is_digital').in('id', productIds).eq('merchant_id', merchant.id);
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name, price, is_active, is_digital, catalog_id')
+      .in('id', productIds)
+      .eq('merchant_id', merchant.id);
+    
     if (!products || products.length === 0) return NextResponse.json({ error: 'Invalid products in cart' }, { status: 400 });
+
+    // Detect sourced digital products (those with catalog_id)
+    const hasSourcedDigital = products.some((p: any) => p.catalog_id);
 
     let subtotal = 0;
     const orderItems = items.map((item: any) => {
       const product = products.find((p: any) => p.id === item.product_id);
       if (!product || !product.is_active) throw new Error('Product unavailable');
       subtotal += product.price * item.quantity;
-      return { product_id: product.id, product_name: product.name, quantity: item.quantity, unit_price: product.price, total_price: product.price * item.quantity };
+      return { 
+        product_id: product.id, 
+        product_name: product.name, 
+        quantity: item.quantity, 
+        unit_price: product.price, 
+        total_price: product.price * item.quantity 
+      };
     });
 
     const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
@@ -44,16 +58,24 @@ export async function POST(request: NextRequest) {
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone,
-      subtotal, shipping_cost: finalShippingCost, total_amount: totalAmount, currency: 'NGN',
-      status: 'pending', payment_status: 'pending',
-      shipping_address: (shipping_mode === 'PICKUP' || !customer.address_line1) ? null : { address_line1: customer.address_line1, city: customer.city, state: customer.state },
+      subtotal, 
+      shipping_cost: finalShippingCost, 
+      total_amount: totalAmount, 
+      currency: 'NGN',
+      status: 'pending', 
+      payment_status: 'pending',
+      shipping_address: (shipping_mode === 'PICKUP' || !customer.address_line1) ? null : { 
+        address_line1: customer.address_line1, 
+        city: customer.city, 
+        state: customer.state 
+      },
       tracking_number: `TRK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
     }).select().single();
+    
     if (orderError) throw orderError;
 
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
 
-    // 🔔 FIRE PUSH + WHATSAPP ALERTS (never blocks checkout)
     sendOrderAlert(merchant.id, order, orderItems.map((i: any) => `${i.product_name} x${i.quantity}`).join(', ')).catch(() => {});
 
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
@@ -61,7 +83,6 @@ export async function POST(request: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
 
-    // 🏦 ORIZZONPAY: Try platform umbrella with splits first
     const platformKey = process.env.PLATFORM_PAYSTACK_SECRET_KEY;
     let enrichedMerchant = merchant;
     if (platformKey && merchant.bank_name && merchant.account_number) {
@@ -71,19 +92,15 @@ export async function POST(request: NextRequest) {
     let secretKey: string | null = null;
     let splitCode: string | null = null;
 
-    // Priority 1: OrizzonPay with split (merchant has bank + platform key exists)
     if (platformKey && enrichedMerchant.split_code_token) {
       secretKey = platformKey;
-      // Future: check if any item is sourced → use split_code_source (40%)
-      // For now: all merchant products use split_code_token (1.5%)
-      splitCode = enrichedMerchant.split_code_token;
-    }
-    // Priority 2: Legacy fallback (merchant's own keys)
-    else {
+      // Use 40% split for sourced digital, 1.5% for everything else
+      splitCode = hasSourcedDigital ? enrichedMerchant.split_code_source : enrichedMerchant.split_code_token;
+    } else {
       secretKey = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
     }
 
-    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured. Please contact support.' }, { status: 500 });
+    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured.' }, { status: 500 });
 
     const paystackBody: any = {
       email: customer.email,
@@ -93,7 +110,6 @@ export async function POST(request: NextRequest) {
       metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
     };
 
-    // Attach split code if using OrizzonPay
     if (splitCode) {
       paystackBody.split = { code: splitCode };
     }
