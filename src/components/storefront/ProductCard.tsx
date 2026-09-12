@@ -7,15 +7,11 @@ export function ProductCard({ product, isShowcaseMode, onClick }: { product: any
   return (
     <div className="group block cursor-pointer" onClick={onClick}>
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--color-surface)] shadow-md group-hover:shadow-2xl transition-shadow duration-300">
-        {product.is_digital || !imageUrl ? (
-          product.is_digital ? (
-            <FlyerCover title={product.name} category="Digital Product" colorKey={flyerColorKey(product.name)} className="absolute inset-0" />
-          ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-              <span className="text-4xl opacity-40">🛍️</span>
-            </div>
-          )
-        ) : (
+        {product.is_digital ? (
+          <div className="absolute inset-0">
+            <FlyerCover title={product.name} category="Digital Product" colorKey={flyerColorKey(product.name)} className="w-full h-full" />
+          </div>
+        ) : imageUrl ? (
           <Image
             src={imageUrl}
             alt={product.name}
@@ -25,6 +21,10 @@ export function ProductCard({ product, isShowcaseMode, onClick }: { product: any
             loading="lazy"
             className="object-cover group-hover:scale-105 transition-transform duration-700"
           />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+            <span className="text-4xl opacity-40">🛍️</span>
+          </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
