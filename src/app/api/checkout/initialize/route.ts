@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
     };
 
-    // ✅ CORRECT PAYSTACK FORMAT: split_code as a plain string parameter
+    // ✅ CORRECT FORMAT: split_code as a plain string (not an object)
     if (splitCode) paystackBody.split_code = splitCode;
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
