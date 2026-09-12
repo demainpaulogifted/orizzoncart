@@ -37,9 +37,12 @@ export default function AddProductPage() {
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: merchant } = await supabase.from('merchants').select('id').eq('user_id', user?.id).single();
-    
-    // NULL CHECK FIX
+
+    // MULTI-STORE SAFE: pick active store from cookie, else first store
+    const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user?.id);
+    const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
+    const merchant = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
+
     if (!merchant) {
       toast.error('Store not found. Please refresh and try again.');
       setSaving(false);
@@ -74,7 +77,7 @@ export default function AddProductPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Product Photos *</label>
-          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl p-6 cursor-pointer hover:border-purple-400 bg-gray-50">
+          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer hover:border-purple-400 bg-gray-50">
             <span className="text-3xl">📸</span>
             <span className="text-sm font-bold text-gray-700">{uploading ? 'Uploading...' : 'Tap to upload photos'}</span>
             <span className="text-xs text-gray-500">Beautiful photos sell 3x more</span>
