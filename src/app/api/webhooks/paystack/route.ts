@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const secret = keys?.secret_key || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
     if (!secret) return NextResponse.json({ error: 'Platform keys missing' }, { status: 500 });
 
-    const hash = crypto.createHmac('sha512', secret).update(body).digest('hex');
+    const hash = crypto.createHmac('sha512', secret).update(body).update(body).digest('hex');
     if (hash !== signature) return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
 
     const event = JSON.parse(body);
@@ -45,11 +45,16 @@ export async function POST(request: NextRequest) {
     await admin.from('platform_transactions').update({ status: 'paid' }).eq('id', tx.id);
 
     if (tx.transaction_type === 'payment_activation') {
-      const { data: m } = await admin.from('merchants').select('paystack_secret_key, flutterwave_secret_key').eq('id', tx.merchant_id).single();
+      const { data: m } = await admin
+        .from('merchants')
+        .select('paystack_secret_key, flutterwave_secret_key, bank_name, account_number')
+        .eq('id', tx.merchant_id)
+        .single();
       const hasKeys = !!(m?.paystack_secret_key || m?.flutterwave_secret_key);
+      const hasBank = !!(m?.bank_name && m?.account_number);
       const now = new Date().toISOString();
       await admin.from('merchants').update(
-        hasKeys
+        hasKeys || hasBank
           ? { payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED', payment_activated_at: now }
           : { payment_receiving_status: 'PENDING_KEYS', cart_status: 'LOCKED', checkout_status: 'DISABLED', payment_activated_at: now }
       ).eq('id', tx.merchant_id);
