@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateOrderNumber } from '@/lib/utils';
 import { sendOrderAlert } from '@/lib/notify';
+import { ensureOrizzonPay } from '@/lib/paystack-engine';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, store_name, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee')
+      .select('id, store_name, store_slug, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_token, split_code_source')
       .eq('store_slug', store_slug)
       .single();
 
@@ -55,24 +56,52 @@ export async function POST(request: NextRequest) {
     // 🔔 FIRE PUSH + WHATSAPP ALERTS (never blocks checkout)
     sendOrderAlert(merchant.id, order, orderItems.map((i: any) => `${i.product_name} x${i.quantity}`).join(', ')).catch(() => {});
 
-    const secretKey = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
-    if (!secretKey) return NextResponse.json({ error: 'Merchant payment gateway not configured' }, { status: 500 });
-
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
     await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
 
+    // 🏦 ORIZZONPAY: Try platform umbrella with splits first
+    const platformKey = process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+    let enrichedMerchant = merchant;
+    if (platformKey && merchant.bank_name && merchant.account_number) {
+      enrichedMerchant = await ensureOrizzonPay(merchant);
+    }
+
+    let secretKey: string | null = null;
+    let splitCode: string | null = null;
+
+    // Priority 1: OrizzonPay with split (merchant has bank + platform key exists)
+    if (platformKey && enrichedMerchant.split_code_token) {
+      secretKey = platformKey;
+      // Future: check if any item is sourced → use split_code_source (40%)
+      // For now: all merchant products use split_code_token (1.5%)
+      splitCode = enrichedMerchant.split_code_token;
+    }
+    // Priority 2: Legacy fallback (merchant's own keys)
+    else {
+      secretKey = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
+    }
+
+    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured. Please contact support.' }, { status: 500 });
+
+    const paystackBody: any = {
+      email: customer.email,
+      amount: totalAmount * 100,
+      reference,
+      callback_url: `${appUrl}/checkout/success?order=${order.id}&reference=${reference}`,
+      metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
+    };
+
+    // Attach split code if using OrizzonPay
+    if (splitCode) {
+      paystackBody.split = { code: splitCode };
+    }
+
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: customer.email,
-        amount: totalAmount * 100,
-        reference,
-        callback_url: `${appUrl}/checkout/success?order=${order.id}&reference=${reference}`,
-        metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
-      }),
+      body: JSON.stringify(paystackBody),
     });
     const paystackData = await paystackRes.json();
     if (!paystackData.status) throw new Error(paystackData.message);
