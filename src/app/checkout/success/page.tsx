@@ -24,25 +24,31 @@ export default function CheckoutSuccessPage() {
       setOrder(data);
       
       // Create digital purchases for sourced products
-      if (data) {
-        const { data: items } = await supabase
-          .from('order_items')
-          .select('product_id, products(catalog_id)')
-          .eq('order_id', orderId);
+      if (data && data.order_items) {
+        const sourcedProducts = data.order_items.filter((item: any) => item.products?.catalog_id);
         
-        const sourcedItems = items?.filter((i: any) => i.products?.catalog_id) || [];
-        
-        if (sourcedItems.length > 0) {
-          const { data: purchases } = await supabase.rpc('create_digital_purchases', {
-            p_order_id: orderId,
-            p_customer_email: data.customer_email,
-            p_catalog_ids: sourcedItems.map((i: any) => i.products.catalog_id)
-          });
+        const links: string[] = [];
+        for (const item of sourcedProducts) {
+          const accessToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
           
-          if (purchases) {
-            setDigitalLinks(purchases.map((p: any) => `/d/${p.access_token}`));
+          const { data: purchase } = await supabase
+            .from('digital_purchases')
+            .insert({
+              order_id: orderId,
+              merchant_id: data.merchant_id,
+              catalog_id: item.products.catalog_id,
+              customer_email: data.customer_email,
+              access_token: accessToken,
+            })
+            .select()
+            .single();
+          
+          if (purchase) {
+            links.push(`/d/${accessToken}`);
           }
         }
+        
+        setDigitalLinks(links);
       }
     };
     
