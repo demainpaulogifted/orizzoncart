@@ -1,24 +1,28 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: merchant } = await supabase.from('merchants').select('*').eq('user_id', user?.id).single();
+
+  const cookieStore = await cookies();
+  const activeId = cookieStore.get('active_merchant_id')?.value;
+
+  const { data: merchants } = await supabase.from('merchants').select('*').eq('user_id', user?.id);
+  const merchant = (merchants || []).find((m: any) => m.id === activeId) || (merchants || [])[0] || null;
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const { data: orders } = await supabase
-    .from('orders')
-    .select('total_amount, payment_status, created_at')
-    .eq('merchant_id', merchant?.id);
+  const { data: orders } = merchant
+    ? await supabase.from('orders').select('total_amount, payment_status, created_at').eq('merchant_id', merchant.id)
+    : { data: [] };
 
-  const { count: visitors } = await supabase
-    .from('analytics_events')
-    .select('*', { count: 'exact', head: true })
-    .eq('merchant_id', merchant?.id);
+  const { count: visitors } = merchant
+    ? await supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('merchant_id', merchant.id)
+    : { count: 0 };
 
   const paid = (orders || []).filter((o: any) => o.payment_status === 'paid');
   const todayOrders = paid.filter((o: any) => new Date(o.created_at) >= startOfToday);
@@ -62,7 +66,7 @@ export default async function DashboardPage() {
       )}
 
       <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-        Welcome back to {merchant?.store_name}!
+        Welcome back to {merchant?.store_name || 'your store'}!
       </h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
