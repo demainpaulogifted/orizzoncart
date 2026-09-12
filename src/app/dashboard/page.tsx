@@ -45,15 +45,19 @@ export default async function DashboardPage() {
 
       {status === 'PENDING_KEYS' && (
         <div className="bg-blue-100 border border-blue-300 rounded-xl px-6 py-4 text-center shadow-sm">
-          <p className="font-bold text-blue-800">🔑 Activation fee paid! Add your payment keys to go live.</p>
-          <Link href="/dashboard/settings/payment" className="text-sm font-bold text-blue-700 underline">Complete Step 2</Link>
+          <p className="font-bold text-blue-800">🏦 Activation fee paid! Add your bank account to go live.</p>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700">
+            Add Bank Account
+          </Link>
         </div>
       )}
 
       {status !== 'ACTIVE' && status !== 'PENDING_KEYS' && status !== 'SUSPENDED' && status !== 'HELD' && (
         <div className="bg-yellow-200/70 rounded-xl px-6 py-4 text-center shadow-sm">
-          <p className="font-bold text-gray-900 text-base sm:text-lg">⚠️ Showcase Mode - Activate payment to enable cart</p>
-          <Link href="/dashboard/settings/payment" className="text-sm font-bold text-purple-700 underline">Activate my store now</Link>
+          <p className="font-bold text-gray-900 text-base sm:text-lg">⚠️ Showcase Mode — activate payment & add your bank account to start selling</p>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-2 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">
+            Activate My Store
+          </Link>
         </div>
       )}
 
@@ -80,9 +84,9 @@ export default async function DashboardPage() {
           <p className="text-xs text-gray-500 mt-1">Name, price, photo. Done.</p>
         </Link>
         <Link href="/dashboard/settings/payment" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
-          <span className="text-2xl">💳</span>
-          <p className="font-bold mt-2">{status === 'ACTIVE' ? 'Manage payments' : 'Activate payments'}</p>
-          <p className="text-xs text-gray-500 mt-1">{status === 'ACTIVE' ? 'Update your gateway keys anytime.' : 'Pay fee, connect keys, go live.'}</p>
+          <span className="text-2xl">🏦</span>
+          <p className="font-bold mt-2">{status === 'ACTIVE' ? 'Payout account' : 'Activate payments'}</p>
+          <p className="text-xs text-gray-500 mt-1">{status === 'ACTIVE' ? 'View or change your bank account.' : 'Pay fee, add bank account, go live.'}</p>
         </Link>
         <Link href="/dashboard/settings/theme" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
           <span className="text-2xl">🎨</span>
