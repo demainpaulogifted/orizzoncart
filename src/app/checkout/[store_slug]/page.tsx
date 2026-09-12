@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
+import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 export default function CheckoutPage() {
   const params = useParams();
@@ -38,7 +39,6 @@ export default function CheckoutPage() {
 
   const hasPhysical = cartProducts.some((p: any) => !p.is_digital);
 
-  // Calculate shipping based on merchant's setting
   let shippingCost = 0;
   let shippingLabel = 'Free';
   if (hasPhysical) {
@@ -60,7 +60,7 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
 
   const setQty = (id: string, qty: number) => {
-    const next = qty <= 0 ? items.filter((i: any) => i.product_id !== id) : items.map((i: any) => (i.product_id === id ? { ...i, quantity: qty } : i));
+    const next = qty <= 0 ? items.filter((i: any) => i.product_id !== id) : items.map((i: any) => (i.product_id === id ? { ...i, quantity: qty }));
     setItems(next);
     localStorage.setItem(`orz_cart_${slug}`, JSON.stringify(next));
   };
@@ -146,7 +146,11 @@ export default function CheckoutPage() {
                 {cartProducts.map((p: any) => (
                   <div key={p.id} className="flex items-center gap-3">
                     <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                      {p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />}
+                      {p.is_digital ? (
+                        <FlyerCover title={p.name} category="Digital" colorKey={flyerColorKey(p.name)} className="w-full h-full" />
+                      ) : (
+                        p.images?.[0]?.url && <Image src={p.images[0].url} alt={p.name} fill className="object-cover" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 truncate">{p.name}</p>
