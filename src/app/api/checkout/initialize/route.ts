@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
     const totalAmount = subtotal + finalShippingCost;
 
-    // SHIPPING FIX: never null — digital & pickup get a safe placeholder
     const shippingAddress =
       shipping_mode === 'PICKUP' || !customer.address_line1
         ? {
@@ -114,7 +113,8 @@ export async function POST(request: NextRequest) {
       metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
     };
 
-    if (splitCode) paystackBody.split = { code: splitCode };
+    // ✅ CORRECT PAYSTACK FORMAT: split_code as a plain string parameter
+    if (splitCode) paystackBody.split_code = splitCode;
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
