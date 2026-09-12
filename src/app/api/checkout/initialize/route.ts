@@ -29,10 +29,9 @@ export async function POST(request: NextRequest) {
       .select('id, name, price, is_active, is_digital, catalog_id')
       .in('id', productIds)
       .eq('merchant_id', merchant.id);
-    
+
     if (!products || products.length === 0) return NextResponse.json({ error: 'Invalid products in cart' }, { status: 400 });
 
-    // Detect sourced digital products (those with catalog_id)
     const hasSourcedDigital = products.some((p: any) => p.catalog_id);
 
     let subtotal = 0;
@@ -40,17 +39,27 @@ export async function POST(request: NextRequest) {
       const product = products.find((p: any) => p.id === item.product_id);
       if (!product || !product.is_active) throw new Error('Product unavailable');
       subtotal += product.price * item.quantity;
-      return { 
-        product_id: product.id, 
-        product_name: product.name, 
-        quantity: item.quantity, 
-        unit_price: product.price, 
-        total_price: product.price * item.quantity 
+      return {
+        product_id: product.id,
+        product_name: product.name,
+        quantity: item.quantity,
+        unit_price: product.price,
+        total_price: product.price * item.quantity,
       };
     });
 
     const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
     const totalAmount = subtotal + finalShippingCost;
+
+    // SHIPPING FIX: never null — digital & pickup get a safe placeholder
+    const shippingAddress =
+      shipping_mode === 'PICKUP' || !customer.address_line1
+        ? {
+            address_line1: shipping_mode === 'PICKUP' ? 'Store pickup' : 'Digital delivery — no shipping required',
+            city: customer.city || 'N/A',
+            state: customer.state || 'N/A',
+          }
+        : { address_line1: customer.address_line1, city: customer.city, state: customer.state };
 
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       order_number: generateOrderNumber(),
@@ -58,20 +67,16 @@ export async function POST(request: NextRequest) {
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone,
-      subtotal, 
-      shipping_cost: finalShippingCost, 
-      total_amount: totalAmount, 
+      subtotal,
+      shipping_cost: finalShippingCost,
+      total_amount: totalAmount,
       currency: 'NGN',
-      status: 'pending', 
+      status: 'pending',
       payment_status: 'pending',
-      shipping_address: (shipping_mode === 'PICKUP' || !customer.address_line1) ? null : { 
-        address_line1: customer.address_line1, 
-        city: customer.city, 
-        state: customer.state 
-      },
+      shipping_address: shippingAddress,
       tracking_number: `TRK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
     }).select().single();
-    
+
     if (orderError) throw orderError;
 
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
@@ -94,7 +99,6 @@ export async function POST(request: NextRequest) {
 
     if (platformKey && enrichedMerchant.split_code_token) {
       secretKey = platformKey;
-      // Use 40% split for sourced digital, 1.5% for everything else
       splitCode = hasSourcedDigital ? enrichedMerchant.split_code_source : enrichedMerchant.split_code_token;
     } else {
       secretKey = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
@@ -110,9 +114,7 @@ export async function POST(request: NextRequest) {
       metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
     };
 
-    if (splitCode) {
-      paystackBody.split = { code: splitCode };
-    }
+    if (splitCode) paystackBody.split = { code: splitCode };
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
