@@ -33,3 +33,16 @@ html {
 .btn-secondary {
   @apply px-8 py-3 bg-white text-purple-600 border-2 border-purple-600 rounded-full font-medium hover:bg-purple-50 transition-all duration-300;
 }
+
+/* Mobile: stop horizontal page cutoffs */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Images never overflow containers */
+img {
+  max-width: 100%;
+  height: auto;
+}
