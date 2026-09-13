@@ -32,70 +32,81 @@ export default async function DashboardPage() {
   const status = merchant?.payment_receiving_status;
 
   const cards = [
-    { label: "Today's Visitors", value: (visitors || 0).toString(), grad: 'from-blue-400 to-indigo-600' },
-    { label: "Today's Orders", value: todayOrders.length.toString(), grad: 'from-green-400 to-teal-600' },
-    { label: "Today's Sales (₦)", value: formatCurrency(todaySales), grad: 'from-purple-400 to-purple-600' },
-    { label: 'Conversion Rate', value: `${conversion}%`, grad: 'from-orange-300 to-orange-500' },
+    { label: "Visitors", value: (visitors || 0).toString(), grad: 'from-blue-500 to-indigo-600' },
+    { label: "Orders", value: todayOrders.length.toString(), grad: 'from-emerald-500 to-teal-600' },
+    { label: "Sales", value: formatCurrency(todaySales), grad: 'from-purple-500 to-violet-600' },
+    { label: "Conv.", value: `${conversion}%`, grad: 'from-orange-400 to-amber-500' },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
+      {/* Status Banners */}
       {(status === 'SUSPENDED' || status === 'HELD') && (
-        <div className="bg-red-100 border border-red-300 rounded-xl px-6 py-4 text-center shadow-sm">
-          <p className="font-bold text-red-800">🛑 Payments suspended — renew your maintenance plan to resume.</p>
-          <Link href="/dashboard/settings/plans" className="text-sm font-bold text-red-700 underline">Renew now</Link>
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center shadow-sm">
+          <p className="font-bold text-red-800 text-sm">🛑 Payments suspended</p>
+          <Link href="/dashboard/settings/plans" className="text-xs font-bold text-red-700 underline">Renew now</Link>
         </div>
       )}
 
       {status === 'PENDING_KEYS' && (
-        <div className="bg-blue-100 border border-blue-300 rounded-xl px-6 py-4 text-center shadow-sm">
-          <p className="font-bold text-blue-800">🏦 Activation fee paid! Add your bank account to go live.</p>
-          <Link href="/dashboard/settings/payment" className="inline-block mt-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-center shadow-sm">
+          <p className="font-bold text-blue-800 text-sm">🏦 Add bank account to go live</p>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-1 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
             Add Bank Account
           </Link>
         </div>
       )}
 
       {status !== 'ACTIVE' && status !== 'PENDING_KEYS' && status !== 'SUSPENDED' && status !== 'HELD' && (
-        <div className="bg-yellow-200/70 rounded-xl px-6 py-4 text-center shadow-sm">
-          <p className="font-bold text-gray-900 text-base sm:text-lg">⚠️ Showcase Mode — activate payment & add your bank account to start selling</p>
-          <Link href="/dashboard/settings/payment" className="inline-block mt-2 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">
-            Activate My Store
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-center shadow-sm">
+          <p className="font-bold text-gray-900 text-sm">⚠️ Showcase Mode — activate to sell</p>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-1 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
+            Activate Store
           </Link>
         </div>
       )}
 
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-        Welcome back to {merchant?.store_name || 'your store'}!
+      <h1 className="text-xl font-extrabold text-gray-900 truncate">
+        Welcome back, {merchant?.store_name?.split(' ')[0] || 'Merchant'}!
       </h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {/* Compact Stats Grid */}
+      <div className="grid grid-cols-2 gap-3">
         {cards.map((c) => (
           <div
             key={c.label}
-            className={`bg-gradient-to-br ${c.grad} rounded-3xl shadow-xl p-6 min-h-[150px] flex flex-col items-center justify-center text-center text-white transform hover:scale-[1.03] transition-transform`}
+            className={`bg-gradient-to-br ${c.grad} rounded-2xl p-4 flex flex-col justify-center text-white shadow-md min-h-[90px]`}
           >
-            <p className="text-lg sm:text-xl font-bold leading-tight">{c.label}</p>
-            <p className="text-3xl font-extrabold mt-2">{c.value}</p>
+            <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wide">{c.label}</p>
+            <p className="text-2xl font-extrabold mt-1 leading-none">{c.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link href="/dashboard/products/add" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
-          <span className="text-2xl">➕</span>
-          <p className="font-bold mt-2">Add a product</p>
-          <p className="text-xs text-gray-500 mt-1">Name, price, photo. Done.</p>
+      {/* Tight Action Buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Link href="/dashboard/products/add" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-400 hover:shadow-md transition-all flex items-start gap-3">
+          <span className="text-xl mt-0.5">➕</span>
+          <div>
+            <p className="font-bold text-sm text-gray-900">Add Product</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Name, price, photo.</p>
+          </div>
         </Link>
-        <Link href="/dashboard/settings/payment" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
-          <span className="text-2xl">🏦</span>
-          <p className="font-bold mt-2">{status === 'ACTIVE' ? 'Payout account' : 'Activate payments'}</p>
-          <p className="text-xs text-gray-500 mt-1">{status === 'ACTIVE' ? 'View or change your bank account.' : 'Pay fee, add bank account, go live.'}</p>
+        
+        <Link href="/dashboard/settings/payment" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-400 hover:shadow-md transition-all flex items-start gap-3">
+          <span className="text-xl mt-0.5">🏦</span>
+          <div>
+            <p className="font-bold text-sm text-gray-900">{status === 'ACTIVE' ? 'Payouts' : 'Activate'}</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">{status === 'ACTIVE' ? 'Manage bank account' : 'Pay fee & add bank'}</p>
+          </div>
         </Link>
-        <Link href="/dashboard/settings/theme" className="bg-white rounded-2xl border border-gray-200 p-5 hover:border-purple-400 hover:shadow-md transition-all">
-          <span className="text-2xl">🎨</span>
-          <p className="font-bold mt-2">Change theme</p>
-          <p className="text-xs text-gray-500 mt-1">10 premium designer storefronts.</p>
+
+        <Link href="/dashboard/settings/theme" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-400 hover:shadow-md transition-all flex items-start gap-3">
+          <span className="text-xl mt-0.5">🎨</span>
+          <div>
+            <p className="font-bold text-sm text-gray-900">Theme</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Change storefront look</p>
+          </div>
         </Link>
       </div>
     </div>
