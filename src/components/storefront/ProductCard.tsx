@@ -1,11 +1,12 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 export function ProductCard({ product, isShowcaseMode, onClick }: { product: any; isShowcaseMode: boolean; onClick: () => void }) {
   const imageUrl = product.images?.[0]?.url;
 
   return (
-    <div className="group block cursor-pointer" onClick={onClick}>
+    <Link href={`/store/${product.store_slug || 'demo'}/p/${product.id}`} className="group block cursor-pointer">
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--color-surface)] shadow-md group-hover:shadow-2xl transition-shadow duration-300">
         {product.is_digital ? (
           <div className="absolute inset-0">
@@ -37,6 +38,6 @@ export function ProductCard({ product, isShowcaseMode, onClick }: { product: any
         <h3 className="text-lg font-medium text-[var(--color-text)] font-[var(--font-heading)] leading-snug">{product.name}</h3>
         <p className="mt-1 text-xl font-bold text-[var(--color-primary)]">₦{Number(product.price).toLocaleString()}</p>
       </div>
-    </div>
+    </Link>
   );
 }
