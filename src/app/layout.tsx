@@ -2,8 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from 'sonner';
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
+
 export const metadata: Metadata = {
-  title: 'OrizzonCart — Own Your Sales',
+  metadataBase: new URL(appUrl),
+  title: {
+    default: 'OrizzonCart — Own Your Sales',
+    template: '%s | OrizzonCart',
+  },
   description: 'Premium multi-tenant e-commerce platform for Nigerian businesses.',
   manifest: '/manifest.json',
   icons: {
