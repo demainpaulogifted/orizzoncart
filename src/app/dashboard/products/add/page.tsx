@@ -19,6 +19,7 @@ export default function AddProductPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const urls: string[] = [];
+    
     for (const file of Array.from(files)) {
       const path = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
       const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: false });
@@ -27,9 +28,10 @@ export default function AddProductPage() {
         urls.push(data.publicUrl);
       }
     }
+    
     setImages((prev) => [...prev, ...urls]);
     setUploading(false);
-    toast.success(`${urls.length} photo(s) uploaded!`);
+    if (urls.length > 0) toast.success(`${urls.length} photo(s) uploaded!`);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -38,7 +40,7 @@ export default function AddProductPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // MULTI-STORE SAFE: pick active store from cookie, else first store
+    // Multi-store safe: pick active store from cookie, else first store
     const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user?.id);
     const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
     const merchant = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
@@ -64,7 +66,7 @@ export default function AddProductPage() {
       console.error('Insert error:', error);
       toast.error('Failed: ' + error.message);
     } else {
-      toast.success('Product published! 🎉');
+      toast.success('Product published! ');
       router.push('/dashboard/products');
     }
     setSaving(false);
@@ -77,22 +79,31 @@ export default function AddProductPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Product Photos *</label>
-          <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer hover:border-purple-400 bg-gray-50">
-            <span className="text-3xl">📸</span>
-            <span className="text-sm font-bold text-gray-700">{uploading ? 'Uploading...' : 'Tap to upload photos'}</span>
-            <span className="text-xs text-gray-500">Beautiful photos sell 3x more</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} disabled={uploading} />
-          </label>
+          
+          {/* Existing Images Preview */}
           {images.length > 0 && (
-            <div className="flex gap-2 mt-3 flex-wrap">
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
               {images.map((url, i) => (
-                <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border">
+                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0">
                   <Image src={url} alt="" fill className="object-cover" />
-                  <button type="button" onClick={() => setImages(images.filter((_, x) => x !== i))} className="absolute top-0 right-0 bg-red-600 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-bl">✕</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setImages(images.filter((_, x) => x !== i))} 
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
           )}
+
+          {/* Upload Button */}
+          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer hover:border-purple-400 transition-colors ${uploading ? 'opacity-50' : 'bg-gray-50'}`}>
+            <span className="text-3xl">📸</span>
+            <span className="text-sm font-bold text-gray-700">{uploading ? 'Uploading...' : 'Tap to add photos'}</span>
+            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} disabled={uploading} />
+          </label>
         </div>
 
         <div>
