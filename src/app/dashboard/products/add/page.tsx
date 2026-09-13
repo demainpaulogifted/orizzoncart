@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils';
 import Image from 'next/image';
+import { SeoDescriptionHelper } from '@/components/dashboard/SeoDescriptionHelper';
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function AddProductPage() {
     const urls: string[] = [];
     
     for (const file of Array.from(files)) {
-      const path = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      const path = `\( {user?.id}/ \){Date.now()}-${file.name.replace(/\s+/g, '-')}`;
       const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: false });
       if (!error) {
         const { data } = supabase.storage.from('product-images').getPublicUrl(path);
@@ -54,7 +55,7 @@ export default function AddProductPage() {
     const { error } = await supabase.from('products').insert({
       merchant_id: merchant.id,
       name: form.name,
-      slug: `${generateSlug(form.name)}-${Math.random().toString(36).substring(2, 6)}`,
+      slug: `\( {generateSlug(form.name)}- \){Math.random().toString(36).substring(2, 6)}`,
       price: parseFloat(form.price),
       description: form.description,
       is_digital: form.is_digital,
@@ -117,8 +118,26 @@ export default function AddProductPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" placeholder="Fabric, size, color..." />
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <SeoDescriptionHelper
+              name={form.name}
+              price={form.price}
+              isDigital={form.is_digital}
+              currentDescription={form.description}
+              onApply={(description) => setForm({ ...form, description })}
+            />
+          </div>
+          <textarea
+            rows={4}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Fabric, size, color... or tap “Help me write SEO description”"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Tip: add real product details first, then use the helper to polish for Google.
+          </p>
         </div>
 
         <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
