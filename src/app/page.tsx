@@ -27,11 +27,28 @@ export default function HomePage() {
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <span className="text-xl font-extrabold tracking-tight">Orizzon<span className="text-purple-600">Cart</span></span>
+          <span className="text-xl font-extrabold tracking-tight">
+            Orizzon<span className="text-purple-600">Cart</span>
+          </span>
           <nav className="flex items-center gap-2">
-            <Link href="/track-order" className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2">Track Order</Link>
-            <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2">Log in</Link>
-            <Link href="/signup" className="text-sm font-semibold text-white bg-gray-900 rounded-full px-4 py-2 hover:bg-gray-800">Get Started</Link>
+            <Link
+              href="/track-order"
+              className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2"
+            >
+              Track Order
+            </Link>
+            <Link
+              href="/login"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/signup"
+              className="text-sm font-semibold text-white bg-gray-900 rounded-full px-4 py-2 hover:bg-gray-800"
+            >
+              Get Started
+            </Link>
           </nav>
         </div>
       </header>
@@ -43,46 +60,69 @@ export default function HomePage() {
             🇳🇬 Built for Nigerian businesses by OrizzonS Inc.
           </span>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
-            Open your online store<br className="hidden md:block" /> in minutes, not months.
+            Open your online store
+            <br className="hidden md:block" /> in minutes, not months.
           </h1>
           <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-            OrizzonCart gives every business a beautiful storefront, secure Paystack & Flutterwave payments, WhatsApp selling and automatic order tracking — no coding required.
+            OrizzonCart gives every business a beautiful storefront, secure Paystack & Flutterwave
+            payments, WhatsApp selling and automatic order tracking — no coding required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup" className="px-8 py-4 bg-purple-600 text-white rounded-full font-bold text-lg shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all">
+            <Link
+              href="/signup"
+              className="px-8 py-4 bg-purple-600 text-white rounded-full font-bold text-lg shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all"
+            >
               Create Your Online Store →
             </Link>
-            <a href="#themes" className="px-8 py-4 bg-white text-purple-700 border-2 border-purple-600 rounded-full font-bold text-lg hover:bg-purple-50 transition-all">
+            <a
+              href="#themes"
+              className="px-8 py-4 bg-white text-purple-700 border-2 border-purple-600 rounded-full font-bold text-lg hover:bg-purple-50 transition-all"
+            >
               Explore Premium Themes
             </a>
           </div>
-          <p className="mt-8 text-sm text-gray-500">Free to launch • No monthly fees to start • Live in 6 simple steps</p>
+          <p className="mt-8 text-sm text-gray-500">
+            Free to launch • No monthly fees to start • Live in 6 simple steps
+          </p>
         </div>
       </section>
 
       {/* Story */}
       <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
         <div className="text-center max-w-3xl mx-auto mb-12">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Selling online in Nigeria shouldn't be this hard.</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">
+            Selling online in Nigeria shouldn&apos;t be this hard.
+          </h2>
           <p className="text-gray-600 text-lg">
-            Most business owners lose sales because customers can't find prices, can't pay easily, and can't track orders. OrizzonCart fixes all three — with a store that looks like it cost millions, for a one-time activation fee.
+            Most business owners lose sales because customers can&apos;t find prices, can&apos;t pay
+            easily, and can&apos;t track orders. OrizzonCart fixes all three — with a store that
+            looks like it cost millions, for a one-time activation fee.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-red-50 border border-red-100 rounded-2xl p-6">
             <p className="text-2xl mb-2">😩</p>
             <h3 className="font-bold mb-1">The Problem</h3>
-            <p className="text-sm text-gray-600">"I sell on WhatsApp & Instagram, but I lose orders in DMs and customers don't trust bank transfers."</p>
+            <p className="text-sm text-gray-600">
+              &quot;I sell on WhatsApp & Instagram, but I lose orders in DMs and customers don&apos;t
+              trust bank transfers.&quot;
+            </p>
           </div>
           <div className="bg-purple-50 border border-purple-100 rounded-2xl p-6">
             <p className="text-2xl mb-2">🛠️</p>
             <h3 className="font-bold mb-1">The OrizzonCart Way</h3>
-            <p className="text-sm text-gray-600">A real storefront with real checkout. Customers pay securely, get a receipt and a tracking number automatically.</p>
+            <p className="text-sm text-gray-600">
+              A real storefront with real checkout. Customers pay securely, get a receipt and a
+              tracking number automatically.
+            </p>
           </div>
           <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
             <p className="text-2xl mb-2">📈</p>
             <h3 className="font-bold mb-1">The Result</h3>
-            <p className="text-sm text-gray-600">You look like a brand, get paid directly into your account, and manage everything from your phone.</p>
+            <p className="text-sm text-gray-600">
+              You look like a brand, get paid directly into your account, and manage everything from
+              your phone.
+            </p>
           </div>
         </div>
       </section>
@@ -98,7 +138,9 @@ export default function HomePage() {
             {steps.map((s, i) => (
               <div key={s.title} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 font-extrabold flex items-center justify-center">{i + 1}</span>
+                  <span className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 font-extrabold flex items-center justify-center">
+                    {i + 1}
+                  </span>
                   <span className="text-2xl">{s.icon}</span>
                 </div>
                 <h3 className="font-bold mb-1">{s.title}</h3>
@@ -112,33 +154,76 @@ export default function HomePage() {
       {/* Themes */}
       <section id="themes" className="max-w-6xl mx-auto px-4 py-16 md:py-24">
         <div className="text-center mb-12">
-          <span className="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full uppercase tracking-wider">Premium Theme Store</span>
+          <span className="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full uppercase tracking-wider">
+            Premium Theme Store
+          </span>
           <h2 className="text-3xl md:text-4xl font-extrabold mt-4 mb-3">Your store. Your style.</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">Every theme is a complete designer storefront — colors, fonts and layout included. Preview them live below.</p>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Every theme is a complete designer storefront — colors, fonts and layout included.
+            Preview them live below.
+          </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {themes.map((t) => (
-            <div key={t.name} className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-shadow">
+            <div
+              key={t.name}
+              className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
+            >
               <div className="p-4" style={{ backgroundColor: t.variables['--color-bg'] }}>
-                <div className="rounded-lg overflow-hidden border" style={{ borderColor: t.variables['--color-text-muted'] }}>
-                  <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: t.variables['--color-surface'] }}>
-                    <span className="text-xs font-bold" style={{ color: t.variables['--color-text'], fontFamily: t.variables['--font-heading'] }}>{t.display_name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-semibold" style={{ backgroundColor: t.variables['--color-primary'] }}>Cart</span>
+                <div
+                  className="rounded-lg overflow-hidden border"
+                  style={{ borderColor: t.variables['--color-text-muted'] }}
+                >
+                  <div
+                    className="px-3 py-2 flex items-center justify-between"
+                    style={{ backgroundColor: t.variables['--color-surface'] }}
+                  >
+                    <span
+                      className="text-xs font-bold"
+                      style={{
+                        color: t.variables['--color-text'],
+                        fontFamily: t.variables['--font-heading'],
+                      }}
+                    >
+                      {t.display_name}
+                    </span>
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full text-white font-semibold"
+                      style={{ backgroundColor: t.variables['--color-primary'] }}
+                    >
+                      Cart
+                    </span>
                   </div>
                   <div className="p-3 grid grid-cols-3 gap-2">
-                    <div className="h-10 rounded" style={{ backgroundColor: t.variables['--color-surface'] }} />
-                    <div className="h-10 rounded" style={{ backgroundColor: t.variables['--color-surface'] }} />
-                    <div className="h-10 rounded" style={{ backgroundColor: t.variables['--color-surface'] }} />
+                    <div
+                      className="h-10 rounded"
+                      style={{ backgroundColor: t.variables['--color-surface'] }}
+                    />
+                    <div
+                      className="h-10 rounded"
+                      style={{ backgroundColor: t.variables['--color-surface'] }}
+                    />
+                    <div
+                      className="h-10 rounded"
+                      style={{ backgroundColor: t.variables['--color-surface'] }}
+                    />
                   </div>
                   <div className="px-3 pb-3">
-                    <div className="h-6 rounded-full text-[10px] flex items-center justify-center text-white font-semibold" style={{ backgroundColor: t.variables['--color-primary'] }}>Shop Now</div>
+                    <div
+                      className="h-6 rounded-full text-[10px] flex items-center justify-center text-white font-semibold"
+                      style={{ backgroundColor: t.variables['--color-primary'] }}
+                    >
+                      Shop Now
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="p-4 bg-white">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold">{t.display_name}</h3>
-                  <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">₦{t.price.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                    ₦{t.price.toLocaleString()}
+                  </span>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">{t.description}</p>
               </div>
@@ -150,7 +235,9 @@ export default function HomePage() {
       {/* Features */}
       <section className="bg-gray-50 py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-12">Everything a modern store needs</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-12">
+            Everything a modern store needs
+          </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((f) => (
               <div key={f.title} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
@@ -177,12 +264,21 @@ export default function HomePage() {
               <li>✅ Premium theme preview</li>
               <li> Cart & checkout locked</li>
             </ul>
-            <Link href="/signup" className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50">Start Free</Link>
+            <Link
+              href="/signup"
+              className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50"
+            >
+              Start Free
+            </Link>
           </div>
           <div className="rounded-2xl border-2 border-purple-600 p-8 relative shadow-xl">
-            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">MOST POPULAR</span>
+            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+              MOST POPULAR
+            </span>
             <h3 className="font-bold text-lg">Activated Store</h3>
-            <p className="text-4xl font-extrabold mt-2">₦5,000 <span className="text-sm font-medium text-gray-500">one-time</span></p>
+            <p className="text-4xl font-extrabold mt-2">
+              ₦5,000 <span className="text-sm font-medium text-gray-500">one-time</span>
+            </p>
             <ul className="mt-6 space-y-2 text-sm text-gray-600">
               <li>✅ Cart & checkout unlocked</li>
               <li>✅ Receive payments (Paystack/Flutterwave)</li>
@@ -190,18 +286,30 @@ export default function HomePage() {
               <li>✅ WhatsApp selling button</li>
               <li>✅ Full analytics dashboard</li>
             </ul>
-            <Link href="/signup" className="mt-8 block text-center px-6 py-3 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700">Activate My Store</Link>
+            <Link
+              href="/signup"
+              className="mt-8 block text-center px-6 py-3 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700"
+            >
+              Activate My Store
+            </Link>
           </div>
           <div className="rounded-2xl border border-gray-200 p-8">
             <h3 className="font-bold text-lg">Premium Themes</h3>
-            <p className="text-4xl font-extrabold mt-2">₦12,000+ <span className="text-sm font-medium text-gray-500">one-time</span></p>
+            <p className="text-4xl font-extrabold mt-2">
+              ₦12,000+ <span className="text-sm font-medium text-gray-500">one-time</span>
+            </p>
             <ul className="mt-6 space-y-2 text-sm text-gray-600">
               <li>✅ 10 designer storefronts</li>
               <li>✅ Unique colors & fonts</li>
               <li>✅ Mobile-optimized layouts</li>
               <li>✅ Instant theme switching</li>
             </ul>
-            <a href="#themes" className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50">Browse Themes</a>
+            <a
+              href="#themes"
+              className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50"
+            >
+              Browse Themes
+            </a>
           </div>
         </div>
       </section>
@@ -209,9 +317,16 @@ export default function HomePage() {
       {/* Final CTA */}
       <section className="bg-gradient-to-br from-purple-600 to-blue-600 py-16 md:py-20 text-center text-white">
         <div className="max-w-3xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Your competitors are still posting prices in captions.</h2>
-          <p className="text-purple-100 text-lg mb-8">Be the business with a real store, real checkout and real receipts.</p>
-          <Link href="/signup" className="inline-block px-10 py-4 bg-white text-purple-700 rounded-full font-bold text-lg shadow-lg hover:bg-purple-50">
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">
+            Your competitors are still posting prices in captions.
+          </h2>
+          <p className="text-purple-100 text-lg mb-8">
+            Be the business with a real store, real checkout and real receipts.
+          </p>
+          <Link
+            href="/signup"
+            className="inline-block px-10 py-4 bg-white text-purple-700 rounded-full font-bold text-lg shadow-lg hover:bg-purple-50"
+          >
             Create Your Online Store →
           </Link>
         </div>
@@ -219,12 +334,34 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-10">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-white font-extrabold">Orizzon<span className="text-purple-400">Cart</span></span>
-          <p className="text-sm">Powered by OrizzonS Inc. • Orizzon Search • Orizzon Commerce (coming soon)</p>
-          <div className="flex gap-4 text-sm">
-            <Link href="/login" className="hover:text-white">Log in</Link>
-            <Link href="/track-order" className="hover:text-white">Track Order</Link>
+        <div className="max-w-6xl mx-auto px-4 flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <span className="text-white font-extrabold">
+              Orizzon<span className="text-purple-400">Cart</span>
+            </span>
+            <p className="text-sm text-center">
+              Powered by OrizzonS Inc. • Built for Nigerian businesses
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center md:justify-end gap-x-5 gap-y-2 text-sm">
+            <Link href="/about" className="hover:text-white">
+              About
+            </Link>
+            <Link href="/contact" className="hover:text-white">
+              Contact
+            </Link>
+            <Link href="/privacy" className="hover:text-white">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-white">
+              Terms
+            </Link>
+            <Link href="/track-order" className="hover:text-white">
+              Track Order
+            </Link>
+            <Link href="/login" className="hover:text-white">
+              Log in
+            </Link>
           </div>
         </div>
       </footer>
