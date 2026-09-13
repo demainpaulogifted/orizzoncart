@@ -22,7 +22,7 @@ export function BulkSeoButton() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           force,
-          syncProducts: true, // also update already-sourced products
+          syncProducts: true,
           minLength: 80,
         }),
       });
@@ -35,7 +35,6 @@ export function BulkSeoButton() {
       }
 
       toast.success(data.message || `Updated ${data.updated} products`);
-      // Refresh list so you see new descriptions
       window.location.reload();
     } catch (err: any) {
       toast.error(err.message || 'Request failed');
@@ -45,12 +44,12 @@ export function BulkSeoButton() {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <button
         type="button"
         disabled={loading}
         onClick={() => run(false)}
-        className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 disabled:opacity-50"
+        className="px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap"
       >
         {loading ? 'Optimizing…' : '⚡ Bulk SEO (safe)'}
       </button>
@@ -58,7 +57,7 @@ export function BulkSeoButton() {
         type="button"
         disabled={loading}
         onClick={() => run(true)}
-        className="px-4 py-2.5 bg-amber-600 text-white rounded-xl font-bold text-sm hover:bg-amber-700 disabled:opacity-50"
+        className="px-3 sm:px-4 py-2 sm:py-2.5 bg-amber-600 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap"
         title="Overwrites every description"
       >
         Force overwrite
