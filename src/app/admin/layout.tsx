@@ -11,10 +11,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (profile?.role !== 'platform_admin' && profile?.role !== 'staff') redirect('/dashboard');
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 overflow-x-hidden">
       <AdminSidebar role={profile?.role} />
-      <main className="pl-20 sm:pl-24">
-        <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8">{children}</div>
+      <main className="pl-16 sm:pl-20 md:pl-24 min-w-0">
+        <div className="w-full max-w-full px-3 sm:px-5 lg:px-8 py-4 sm:py-6 lg:py-8 min-w-0">
+          {children}
+        </div>
       </main>
     </div>
   );
