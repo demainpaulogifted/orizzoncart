@@ -2,29 +2,18 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
-
-const GRADIENTS: Record<string, string> = {
-  green: 'from-green-500 to-emerald-700',
-  blue: 'from-blue-500 to-indigo-700',
-  purple: 'from-purple-500 to-violet-700',
-  pink: 'from-pink-500 to-rose-700',
-  orange: 'from-orange-500 to-red-700',
-  yellow: 'from-amber-400 to-orange-600',
-  teal: 'from-teal-500 to-cyan-700',
-  red: 'from-red-500 to-rose-700',
-  indigo: 'from-indigo-500 to-purple-700',
-  gray: 'from-slate-500 to-slate-700',
-};
+import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
+import Link from 'next/link';
 
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { store_slug, product_id } = await params;
   const admin = createAdminClient();
   const { data: product } = await admin.from('products').select('name, description, images').eq('id', product_id).maybeSingle();
   if (!product) return {};
-  const title = `${product.name} | ${store_slug} on OrizzonCart`;
-  const description = product.description || `Buy ${product.name} online. Secure payment & instant delivery.`;
-  const image = product.images?.[0]?.url || `${process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng'}/icon-512.png`;
-  return { title, description, openGraph: { title, description, images: [image] }, twitter: { card: 'summary_large_image', title, description } };
+  const title = `${product.name} | ${store_slug}`;
+  const description = product.description || `Buy ${product.name} online.`;
+  const image = product.images?.[0]?.url || `${process.env.NEXT_PUBLIC_APP_URL}/icon-512.png`;
+  return { title, description, openGraph: { title, description, images: [image] } };
 }
 
 export default async function ProductPage({ params }: any) {
@@ -37,41 +26,65 @@ export default async function ProductPage({ params }: any) {
   const { data: product } = await admin.from('products').select('*').eq('id', product_id).eq('merchant_id', merchant.id).maybeSingle();
   if (!product) notFound();
 
+  // Fetch catalog info for flyer cover if digital
   let catalog: any = null;
-  if (product.catalog_id) {
+  if (product.is_digital && product.catalog_id) {
     const { data: c } = await admin.from('digital_catalog').select('cover_color, category').eq('id', product.catalog_id).maybeSingle();
     catalog = c;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden grid md:grid-cols-2">
-        <div className="flex items-center justify-center p-10 min-h-[300px] bg-gradient-to-br from-purple-100 to-blue-100">
-          {product.images?.[0]?.url ? (
-            <Image src={product.images[0].url} alt={product.name} width={500} height={500} className="rounded-2xl object-cover" />
-          ) : product.is_digital ? (
-            <div className={`w-full h-64 rounded-2xl bg-gradient-to-br ${GRADIENTS[catalog?.cover_color] || GRADIENTS.purple} p-6 flex flex-col justify-between relative overflow-hidden shadow-lg`}>
-              <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/10" />
-              <span className="self-start bg-black/25 text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-1 rounded">{catalog?.category || 'Digital'}</span>
-              <p className="text-white font-extrabold text-xl leading-tight uppercase relative">{product.name}</p>
-              <p className="text-white/70 text-[9px] font-bold tracking-widest relative">ORIZZONCART DIGITAL</p>
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Hero Image / Flyer */}
+      <div className="relative aspect-[4/5] w-full bg-white">
+        {product.is_digital ? (
+          <FlyerCover 
+            title={product.name} 
+            category={catalog?.category || 'Digital'} 
+            colorKey={catalog?.cover_color || flyerColorKey(product.name)} 
+            className="w-full h-full" 
+          />
+        ) : product.images?.[0]?.url ? (
+          <Image src={product.images[0].url} alt={product.name} fill className="object-cover" priority />
+        ) : (
+          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-6xl">🛍️</div>
+        )}
+        
+        <Link href={`/store/${store_slug}`} className="absolute top-4 left-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-gray-900 font-bold">
+          ←
+        </Link>
+      </div>
+
+      {/* Content Section */}
+      <div className="px-5 py-6 space-y-5">
+        <div>
+          <h1 className="text-2xl font-extrabold text-gray-900 leading-tight">{product.name}</h1>
+          <p className="mt-2 text-3xl font-black text-purple-700">{Number(product.price).toLocaleString()}</p>
+        </div>
+
+        {product.is_digital && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-2xl">⚡</span>
+            <div>
+              <p className="font-bold text-blue-900 text-sm">Instant Digital Delivery</p>
+              <p className="text-xs text-blue-700 mt-0.5">You will receive access immediately after payment.</p>
             </div>
-          ) : (
-            <span className="text-8xl">🛍️</span>
-          )}
+          </div>
+        )}
+
+        <div className="prose prose-sm max-w-none text-gray-600">
+          <p>{product.description || 'No description provided.'}</p>
         </div>
-        <div className="p-8 space-y-4">
-          <p className="text-xs font-bold text-purple-600 uppercase">{merchant.store_name}</p>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">{product.name}</h1>
-          <p className="text-3xl font-extrabold text-purple-600">₦{Number(product.price).toLocaleString()}</p>
-          {product.is_digital && (
-            <span className="inline-block bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">⚡ Digital • Instant Delivery</span>
-          )}
-          <p className="text-gray-600 leading-relaxed">{product.description}</p>
-          <a href={`/store/${store_slug}`} className="block text-center bg-purple-600 text-white py-3.5 rounded-xl font-bold hover:bg-purple-700">
-            Buy from {merchant.store_name}
-          </a>
-        </div>
+      </div>
+
+      {/* Sticky Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 safe-area-pb flex gap-3 items-center z-50">
+        <Link 
+          href={`/store/${store_slug}?add=${product.id}`}
+          className="flex-1 bg-purple-600 text-white font-bold py-3.5 rounded-xl text-center hover:bg-purple-700 transition-colors"
+        >
+          Add to Cart
+        </Link>
       </div>
     </div>
   );
