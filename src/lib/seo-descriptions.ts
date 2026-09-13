@@ -16,7 +16,7 @@ type MerchantProductLike = {
   description?: string | null;
   price?: number | string | null;
   is_digital?: boolean;
-  category?: string | null; // optional free-text
+  category?: string | null;
 };
 
 const CATEGORY_TEMPLATES: Record<string, (title: string, price: string) => string> = {
@@ -89,10 +89,7 @@ export function generateSeoDescription(
   return generated;
 }
 
-/**
- * Merchant product SEO helper (own products).
- * More natural tone; works for physical + digital.
- */
+/** Merchant product SEO helper */
 export function generateMerchantSeoDescription(product: MerchantProductLike): string {
   const name = (product.name || '').trim();
   if (!name) return '';
@@ -102,7 +99,6 @@ export function generateMerchantSeoDescription(product: MerchantProductLike): st
   const isDigital = Boolean(product.is_digital);
   const category = (product.category || '').trim();
 
-  // Keep useful existing details and expand them
   if (existing.length >= 40) {
     const tip = isDigital
       ? ' Instant delivery after payment.'
@@ -117,7 +113,6 @@ export function generateMerchantSeoDescription(product: MerchantProductLike): st
     return `\( {name} \){catBit} — digital product with instant access after payment. Clear, practical and ready to use. Only ₦${price}.`;
   }
 
-  // Physical product – more natural shop language
   const extras = existing
     ? ` ${existing.replace(/\s+/g, ' ').trim()}`
     : ' Quality product, secure payment and fast support.';
