@@ -1,38 +1,60 @@
 'use client';
-import { useState } from 'react';
-import { ProductCard } from './ProductCard';
-import { ProductModal } from './ProductModal';
-import { CartDrawer } from './CartDrawer';
-import { useCart } from './CartContext';
+import { useState, useEffect } from 'react';
+import { ProductCard } from '@/components/storefront/ProductCard';
+import { ProductModal } from '@/components/storefront/ProductModal';
 
-export function StoreShop({ merchant, products, isShowcaseMode }: { merchant: any; products: any[]; isShowcaseMode: boolean }) {
-  const [selected, setSelected] = useState<any>(null);
-  const { drawerOpen, setDrawerOpen } = useCart();
+export function StoreShop({ products, merchant, isShowcaseMode }: { products: any[]; merchant: any; isShowcaseMode: boolean }) {
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Handle URL params for direct product view
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const productId = params.get('add');
+    if (productId && products.length > 0) {
+      const product = products.find((p: any) => p.id === productId);
+      if (product) {
+        setSelectedProduct(product);
+        setIsModalOpen(true);
+        // Clean URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [products]);
+
+  const handleProductClick = (product: any) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
 
   return (
-    <>
-      <main id="shop" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-10">
-          <h2 className="text-3xl font-[var(--font-heading)] text-[var(--color-text)]">Featured Pieces</h2>
-          <div className="w-16 h-0.5 bg-[var(--color-primary)] mx-auto mt-3" />
-        </div>
-
-        {products.length === 0 ? (
-          <p className="text-center text-[var(--color-text-muted)] py-16">New arrivals coming soon.</p>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
-            {products.map((product: any) => (
-              <ProductCard key={product.id} product={product} isShowcaseMode={isShowcaseMode} onClick={() => setSelected(product)} />
-            ))}
+    <div className="space-y-6">
+      {/* Products Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {products.map((product: any) => (
+          <div key={product.id} onClick={() => handleProductClick(product)}>
+            <ProductCard 
+              product={{ ...product, store_slug: merchant?.store_slug }} 
+              isShowcaseMode={isShowcaseMode} 
+              onClick={() => handleProductClick(product)}
+            />
           </div>
-        )}
-      </main>
+        ))}
+      </div>
 
-      {selected && (
-        <ProductModal product={selected} merchant={merchant} isShowcaseMode={isShowcaseMode} onClose={() => setSelected(null)} />
+      {products.length === 0 && (
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed">
+          <p className="text-gray-500 font-medium">No products available yet.</p>
+        </div>
       )}
 
-      <CartDrawer products={products} merchant={merchant} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </>
+      {/* Product Modal */}
+      <ProductModal 
+        product={selectedProduct} 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        storeSlug={merchant?.store_slug || ''}
+      />
+    </div>
   );
 }
