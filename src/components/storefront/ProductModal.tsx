@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Image from 'next/image';
-import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 import Link from 'next/link';
+import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 interface ProductModalProps {
   product: any;
@@ -29,7 +29,10 @@ export function ProductModal({ product, isOpen, onClose, storeSlug }: ProductMod
       <div className="relative bg-white w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
         
         {/* Close Button */}
-        <button onClick={onClose} className="absolute top-4 right-4 z-10 w-8 h-8 bg-black/20 hover:bg-black/40 text-white rounded-full flex items-center justify-center backdrop-blur-md transition-colors">
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 right-4 z-10 w-8 h-8 bg-black/20 hover:bg-black/40 text-white rounded-full flex items-center justify-center backdrop-blur-md transition-colors"
+        >
           ✕
         </button>
 
