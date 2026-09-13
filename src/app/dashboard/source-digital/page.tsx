@@ -20,14 +20,19 @@ export default function SourceDigitalPage() {
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
+      
+      // Fetch catalog and SHUFFLE it randomly for this user
       const { data: catalogData } = await supabase.from('digital_catalog').select('*').eq('is_active', true);
-      setCatalog(catalogData || []);
+      const shuffled = (catalogData || []).sort(() => Math.random() - 0.5);
+      setCatalog(shuffled);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: m } = await supabase.from('merchants').select('id, store_name').eq('user_id', user.id).order('created_at');
         const list = m || [];
         setStores(list);
+        
+        // Pick active store from cookie or default to first
         const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
         const chosen = list.find((s: any) => s.id === cookieId) || list[0];
         if (chosen) setStoreId(chosen.id);
@@ -37,6 +42,7 @@ export default function SourceDigitalPage() {
     load();
   }, []);
 
+  // Refresh sourced list whenever selected store changes
   useEffect(() => {
     const loadSourced = async () => {
       if (!storeId) return;
@@ -64,7 +70,9 @@ export default function SourceDigitalPage() {
       catalog_id: p.id,
       images: [],
     });
+    
     if (error) {
+      // Handle duplicate gracefully instead of showing red error
       if (error.code === '23505') {
         toast.info('Already in your store ✅');
         setSourced((prev) => [...prev, p.id]);
@@ -73,6 +81,7 @@ export default function SourceDigitalPage() {
       toast.error('Source failed: ' + error.message);
       return;
     }
+    
     toast.success('⚡ Added to your store!');
     setSourced((prev) => [...prev, p.id]);
   };
@@ -126,7 +135,9 @@ export default function SourceDigitalPage() {
           const isSourced = sourced.includes(p.id);
           return (
             <div key={p.id} className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+              {/* Uses the 6-design flyer engine instead of static gradients */}
               <FlyerCover title={p.title} category={p.category} colorKey={p.cover_color} profit={p.profit_score} className="h-28" />
+              
               <div className="p-2.5 flex flex-col gap-1.5 flex-1">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-extrabold text-gray-900">₦{Number(p.suggested_price).toLocaleString()}</p>
