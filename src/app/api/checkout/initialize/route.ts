@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateOrderNumber } from '@/lib/utils';
-import { sendOrderAlert } from '@/lib/notify';
 import { ensureOrizzonPay } from '@/lib/paystack-engine';
 
 export async function POST(request: NextRequest) {
@@ -60,6 +59,7 @@ export async function POST(request: NextRequest) {
           }
         : { address_line1: customer.address_line1, city: customer.city, state: customer.state };
 
+    // Create order as PENDING. No alert yet!
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       order_number: generateOrderNumber(),
       merchant_id: merchant.id,
@@ -79,8 +79,6 @@ export async function POST(request: NextRequest) {
     if (orderError) throw orderError;
 
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
-
-    sendOrderAlert(merchant.id, order, orderItems.map((i: any) => `${i.product_name} x${i.quantity}`).join(', ')).catch(() => {});
 
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
     await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
@@ -113,7 +111,6 @@ export async function POST(request: NextRequest) {
       metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
     };
 
-    // ✅ CORRECT FORMAT: split_code as a plain string (not an object)
     if (splitCode) paystackBody.split_code = splitCode;
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
