@@ -28,7 +28,6 @@ export default async function ProductDetailPage({ params }: any) {
   const { store_slug, product_id } = await params;
   const admin = createAdminClient();
 
-  // Fetch merchant to validate store exists
   const { data: merchant } = await admin
     .from('merchants')
     .select('id, store_name, store_slug')
@@ -37,7 +36,6 @@ export default async function ProductDetailPage({ params }: any) {
     
   if (!merchant) notFound();
 
-  // Fetch product ensuring it belongs to this merchant
   const { data: product } = await admin
     .from('products')
     .select('*')
@@ -47,7 +45,6 @@ export default async function ProductDetailPage({ params }: any) {
     
   if (!product) notFound();
 
-  // Fetch catalog info for digital flyer cover
   let catalog: any = null;
   if (product.is_digital && product.catalog_id) {
     const { data: c } = await admin
@@ -60,7 +57,6 @@ export default async function ProductDetailPage({ params }: any) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      {/* Hero Section */}
       <div className="relative aspect-[4/5] w-full max-w-4xl mx-auto bg-white overflow-hidden">
         {product.is_digital ? (
           <FlyerCover 
@@ -81,7 +77,6 @@ export default async function ProductDetailPage({ params }: any) {
           <div className="w-full h-full bg-gray-200 flex items-center justify-center text-6xl">🛍️</div>
         )}
         
-        {/* Back Button */}
         <Link 
           href={`/store/${store_slug}`} 
           className="absolute top-4 left-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-gray-900 font-bold hover:bg-white transition-colors"
@@ -90,11 +85,10 @@ export default async function ProductDetailPage({ params }: any) {
         </Link>
       </div>
 
-      {/* Content Section */}
       <div className="max-w-4xl mx-auto px-5 py-8 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">{product.name}</h1>
-          <p className="mt-3 text-3xl sm:text-4xl font-black text-purple-700">{Number(product.price).toLocaleString()}</p>
+          <p className="mt-3 text-3xl sm:text-4xl font-black text-purple-700">₦{Number(product.price).toLocaleString()}</p>
         </div>
 
         {product.is_digital && (
@@ -112,7 +106,6 @@ export default async function ProductDetailPage({ params }: any) {
         </div>
       </div>
 
-      {/* Sticky Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 safe-area-pb flex gap-3 items-center z-50 max-w-4xl mx-auto left-0 right-0 lg:left-1/2 lg:-translate-x-1/2">
         <Link 
           href={`/store/${store_slug}?add=${product.id}`}
