@@ -6,19 +6,23 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user?.id);
-      const ids = (merchants || []).map((m: any) => m.id);
-      if (ids.length > 0) {
+      const { data: merchants } = await supabase.from('merchants').select('id, store_name').eq('user_id', user?.id);
+      const list = merchants || [];
+      const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
+      const active = list.find((m: any) => m.id === cookieId) || list[0];
+      if (active) {
+        setStoreName(active.store_name);
         const { data } = await supabase
           .from('orders')
           .select('*, order_items(product_name)')
-          .in('merchant_id', ids)
+          .eq('merchant_id', active.id)
           .order('created_at', { ascending: false });
         setOrders(data || []);
       }
@@ -33,14 +37,14 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Orders</h1>
-        <p className="text-gray-600 text-sm">{orders.length} total orders across your stores</p>
+        <p className="text-gray-600 text-sm">{orders.length} orders for {storeName}</p>
       </div>
 
       {orders.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-16 text-center">
           <p className="text-5xl mb-4">🛒</p>
           <h2 className="text-xl font-bold mb-2">No orders yet</h2>
-          <p className="text-gray-600">When customers buy from your store, their orders appear here with full details.</p>
+          <p className="text-gray-600">When customers buy from {storeName}, their orders appear here with full details.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
