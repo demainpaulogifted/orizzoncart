@@ -179,7 +179,7 @@ export default function AddProductPage() {
             {images[0] ? (
               <Image src={images[0]} alt="" fill className="object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">📸</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl"></div>
             )}
           </div>
           <div className="mt-4 text-center">
