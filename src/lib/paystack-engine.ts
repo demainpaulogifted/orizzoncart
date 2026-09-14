@@ -57,19 +57,28 @@ const BANK_CODES: Record<string, string> = {
 
 /**
  * OrizzonPay engine: lazily creates the merchant's Paystack subaccount
- * + the two split codes (1.5% platform token / 40% sourced products).
+ * + two split codes:
+ *   - split_code_token  → merchant 95% / platform 5%  (physical store + platform pay)
+ *   - split_code_source → merchant 60% / platform 40% (digital store — all sales)
  * Safe to call on every checkout — does nothing if already set up.
  */
 export async function ensureOrizzonPay(merchant: any): Promise<any> {
   if (!merchant?.bank_name || !merchant?.account_number) return merchant;
-  if (merchant.paystack_subaccount_code && merchant.split_code_token && merchant.split_code_source) {
+  if (
+    merchant.paystack_subaccount_code &&
+    merchant.split_code_token &&
+    merchant.split_code_source
+  ) {
     return merchant;
   }
 
   const secretKey = process.env.PLATFORM_PAYSTACK_SECRET_KEY;
   if (!secretKey) return merchant;
 
-  const headers = { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' };
+  const headers = {
+    Authorization: `Bearer ${secretKey}`,
+    'Content-Type': 'application/json',
+  };
   const admin = createAdminClient();
 
   let subaccountCode = merchant.paystack_subaccount_code || null;
@@ -87,7 +96,8 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
           settlement_bank: BANK_CODES[merchant.bank_name] || '044',
           account_number: merchant.account_number,
           percentage_charge: 0,
-          primary_contact_email: merchant.contact_email || 'support@orizzoncart.name.ng',
+          primary_contact_email:
+            merchant.contact_email || 'support@orizzoncart.name.ng',
           primary_contact_name: merchant.account_name || merchant.store_name,
           primary_contact_phone: merchant.whatsapp_number || '08000000000',
         }),
@@ -97,16 +107,16 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
       subaccountCode = data.data.subaccount_code;
     }
 
-    // 2. Token split: merchant 98.5% / platform 1.5%
+    // 2. Platform-pay split: merchant 95% / platform 5%
     if (!splitToken) {
       const res = await fetch('https://api.paystack.co/split', {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          name: `${merchant.store_slug}-token`,
+          name: `${merchant.store_slug}-platform5`,
           type: 'percentage',
           currency: 'NGN',
-          subaccounts: [{ subaccount: subaccountCode, share: 98.5 }],
+          subaccounts: [{ subaccount: subaccountCode, share: 95 }],
           bearer_type: 'subaccount',
           bearer_subaccount: subaccountCode,
         }),
@@ -115,7 +125,7 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
       if (data.status) splitToken = data.data.split_code;
     }
 
-    // 3. Source split: merchant 60% / platform 40%
+    // 3. Digital / catalog split: merchant 60% / platform 40%
     if (!splitSource) {
       const res = await fetch('https://api.paystack.co/split', {
         method: 'POST',
