@@ -19,27 +19,42 @@ export default function AddProductPage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [storeType, setStoreType] = useState<'CUSTOM' | 'PLATFORM' | null>(null);
+  const [showWarning, setShowWarning] = useState(false);
 
-  // Load existing categories for autocomplete
   useEffect(() => {
-    const loadCategories = async () => {
+    const load = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { data: merchant } = await supabase.from('merchants').select('id').eq('user_id', user.id).single();
-      if (!merchant) return;
-
-      const { data: products } = await supabase
-        .from('products')
-        .select('category')
-        .eq('merchant_id', merchant.id)
-        .not('category', 'is', null);
+      const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
+      const { data: merchants } = await supabase.from('merchants').select('id, store_type').eq('user_id', user.id);
+      const active = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
+      
+      if (active) {
+        // Check if store has sourced products
+        const { count } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('merchant_id', active.id)
+          .not('catalog_id', 'is', null);
         
-      const cats = Array.from(new Set((products || []).map(p => p.category).filter(Boolean)));
-      setExistingCategories(cats);
+        setStoreType((count || 0) > 0 ? 'PLATFORM' : 'CUSTOM');
+      }
+
+      // Load categories for autocomplete
+      if (active) {
+        const { data: products } = await supabase
+          .from('products')
+          .select('category')
+          .eq('merchant_id', active.id)
+          .not('category', 'is', null);
+        const cats = Array.from(new Set((products || []).map(p => p.category).filter(Boolean)));
+        setExistingCategories(cats);
+      }
     };
-    loadCategories();
+    load();
   }, []);
 
   const handleUpload = async (files: FileList | null) => {
@@ -65,12 +80,19 @@ export default function AddProductPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ENFORCE STORE TYPE RULE
+    if (storeType === 'PLATFORM') {
+      setShowWarning(true);
+      return;
+    }
+    
     setSaving(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user?.id);
     const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
+    const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user?.id);
     const merchant = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
 
     if (!merchant) {
@@ -86,27 +108,54 @@ export default function AddProductPage() {
       price: parseFloat(form.price),
       description: form.description,
       is_digital: form.is_digital,
-      category: form.category || null, // Save custom category
+      category: form.category || null,
       is_active: true,
       images: images.map((url) => ({ url })),
     });
 
     if (error) {
-      console.error('Insert error:', error);
       toast.error('Failed: ' + error.message);
     } else {
-      toast.success('Product published! ');
+      toast.success('Product published! 🚀');
       router.push('/dashboard/products');
     }
     setSaving(false);
   };
+
+  if (showWarning) {
+    return (
+      <div className="max-w-2xl mx-auto p-8 bg-white rounded-2xl shadow-xl mt-10">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-900">Store Type Conflict</h2>
+          <p className="text-gray-600 leading-relaxed">
+            Your current store <strong>only accepts platform-sourced products</strong> (digital products from OrizzonCart catalog). 
+            To add your own custom products, you need to create a separate store.
+          </p>
+          <div className="flex gap-3 pt-4">
+            <button 
+              onClick={() => router.push('/onboarding')}
+              className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700"
+            >
+              Create New Store
+            </button>
+            <button 
+              onClick={() => router.push('/dashboard/source-digital')}
+              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200"
+            >
+              Source Platform Products
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
       <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border p-6 space-y-5">
         <h1 className="text-xl font-bold">Add Product</h1>
 
-        {/* Category Input with Autocomplete */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Category (Optional)</label>
           <input 
@@ -134,7 +183,9 @@ export default function AddProductPage() {
                     type="button" 
                     onClick={() => setImages(images.filter((_, x) => x !== i))} 
                     className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
-                  ></button>
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
@@ -179,7 +230,7 @@ export default function AddProductPage() {
             {images[0] ? (
               <Image src={images[0]} alt="" fill className="object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl"></div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">📸</div>
             )}
           </div>
           <div className="mt-4 text-center">
