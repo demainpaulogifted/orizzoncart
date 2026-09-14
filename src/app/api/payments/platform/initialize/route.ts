@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
+export async function GET() {
+  const admin = createAdminClient();
+  const { data: s } = await admin.from('platform_settings').select('activation_fee, activation_discount_percent').limit(1).maybeSingle();
+  const base = s?.activation_fee ?? 5000;
+  const disc = s?.activation_discount_percent ?? 0;
+  return NextResponse.json({ activation_fee: base, discount_percent: disc, final_amount: base - (base * disc / 100) });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -16,7 +24,11 @@ export async function POST(request: NextRequest) {
     const platformSecret = keys?.secret_key || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
     if (!platformSecret) return NextResponse.json({ error: 'Platform Paystack keys are not configured yet.' }, { status: 500 });
 
-    const { data: merchant } = await admin.from('merchants').select('*').eq('user_id', user.id).single();
+    // MULTI-STORE SAFE: resolve active store from cookie
+    const cookieStore = await (await import('next/headers')).cookies();
+    const activeId = cookieStore.get('active_merchant_id')?.value;
+    const { data: merchants } = await admin.from('merchants').select('*').eq('user_id', user.id);
+    const merchant = (merchants || []).find((m: any) => m.id === activeId) || (merchants || [])[0];
     if (!merchant) return NextResponse.json({ error: 'Merchant not found' }, { status: 404 });
 
     let amount = 0;
