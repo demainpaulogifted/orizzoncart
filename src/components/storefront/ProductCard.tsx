@@ -2,15 +2,31 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
-export function ProductCard({ product, isShowcaseMode, onClick }: { product: any; isShowcaseMode: boolean; onClick: () => void }) {
+export function ProductCard({
+  product,
+  isShowcaseMode,
+  onClick,
+}: {
+  product: any;
+  isShowcaseMode: boolean;
+  onClick: () => void;
+}) {
   const imageUrl = product.images?.[0]?.url;
 
   return (
-    <Link href={`/store/${product.store_slug || 'demo'}/p/${product.id}`} className="group block cursor-pointer">
+    <Link
+      href={`/store/\( {product.store_slug || 'demo'}/p/ \){product.id}`}
+      className="group block cursor-pointer"
+    >
       <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--color-surface)] shadow-md group-hover:shadow-2xl transition-shadow duration-300">
         {product.is_digital ? (
           <div className="absolute inset-0">
-            <FlyerCover title={product.name} category="Digital Product" colorKey={flyerColorKey(product.name)} className="w-full h-full" />
+            <FlyerCover
+              title={product.name}
+              category={product.category || 'Digital Product'}
+              colorKey={flyerColorKey(product.name)}
+              className="w-full h-full"
+            />
           </div>
         ) : imageUrl ? (
           <Image
@@ -35,8 +51,12 @@ export function ProductCard({ product, isShowcaseMode, onClick }: { product: any
         </div>
       </div>
       <div className="mt-4 text-center px-2">
-        <h3 className="text-lg font-medium text-[var(--color-text)] font-[var(--font-heading)] leading-snug">{product.name}</h3>
-        <p className="mt-1 text-xl font-bold text-[var(--color-primary)]">₦{Number(product.price).toLocaleString()}</p>
+        <h3 className="text-lg font-medium text-[var(--color-text)] font-[var(--font-heading)] leading-snug">
+          {product.name}
+        </h3>
+        <p className="mt-1 text-xl font-bold text-[var(--color-primary)]">
+          ₦{Number(product.price).toLocaleString()}
+        </p>
       </div>
     </Link>
   );
