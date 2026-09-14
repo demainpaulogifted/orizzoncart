@@ -3,13 +3,13 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const host = request.headers.get('host') || '';
+  const host = (request.headers.get('host') || '').split(':')[0];
   const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng')
     .replace(/^https?:\/\//, '')
     .replace(/\/$/, '');
 
   // ============================================
-  // 1. REFRESH SUPABASE SESSION (keeps merchants logged in on refresh)
+  // 1. REFRESH SUPABASE SESSION
   // ============================================
   let response = NextResponse.next({ request: { headers: request.headers } });
 
@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
+            response.cookies.set(name, value);
           });
         },
       },
@@ -34,17 +34,22 @@ export async function middleware(request: NextRequest) {
   await supabase.auth.getUser();
 
   // ============================================
-  // 2. SUBDOMAIN ROUTING (x.orizzoncart.name.ng → /store/x)
+  // 2. SUBDOMAIN ROUTING (x.root → /store/x)
   // ============================================
-  const platformPaths = [
-    '/login', '/signup', '/onboarding', '/dashboard', '/admin',
-    '/checkout', '/payment', '/track-order', '/store', '/api',
-  ];
-  const isPlatformPath = platformPaths.some((p) => pathname.startsWith(p));
+  const isSubdomain =
+    host.endsWith(`.${ROOT}`) && host !== ROOT && host !== `www.${ROOT}` && !host.includes('vercel.app');
 
-  if (host.endsWith(ROOT) && host !== ROOT && host !== `www.${ROOT}` && !isPlatformPath) {
+  if (isSubdomain) {
     const sub = host.replace(`.${ROOT}`, '');
-    if (sub) {
+
+    // Platform paths always render normally even on subdomains
+    const platformPaths = ['/login', '/signup', '/onboarding', '/dashboard', '/admin', '/checkout', '/payment', '/track-order', '/api', '/d/'];
+    const isPlatformPath = platformPaths.some((p) => pathname.startsWith(p));
+
+    // Already a /store/... path? Serve directly (no double prefix)
+    const alreadyStorePath = pathname === '/store' || pathname.startsWith('/store/');
+
+    if (!isPlatformPath && !alreadyStorePath && sub) {
       const url = request.nextUrl.clone();
       url.pathname = `/store/${sub}${pathname === '/' ? '' : pathname}`;
       return NextResponse.rewrite(url, { headers: response.headers });
@@ -55,6 +60,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // NOTE: api is excluded again — webhooks & cron must never touch session middleware
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)'],
 };
