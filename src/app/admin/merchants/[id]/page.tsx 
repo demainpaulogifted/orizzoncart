@@ -1,0 +1,87 @@
+import { createClient } from '@/lib/supabase/server';
+import Link from 'next/link';
+import { formatCurrency } from '@/lib/utils';
+
+export default async function AdminMerchantDetailPage({ params }: any) {
+  const supabase = await createClient();
+  const { id } = await params;
+
+  // Fetch merchant details
+  const { data: merchant } = await supabase.from('merchants').select('*').eq('id', id).single();
+  if (!merchant) return <div className="p-10 text-center">Merchant not found</div>;
+
+  // Fetch stats
+  const { count: totalOrders } = await supabase.from('orders').select('*', { count: 'exact' }).eq('merchant_id', id);
+  const { count: totalProducts } = await supabase.from('products').select('*', { count: 'exact' }).eq('merchant_id', id);
+  const { data: sourcedCount } = await supabase.from('products').select('catalog_id', { count: 'exact' }).eq('merchant_id', id).not('catalog_id', 'is', null);
+
+  // Determine store type
+  const hasDigital = merchant.has_digital_products || sourcedCount?.count > 0;
+  const hasPhysical = totalProducts && totalProducts > (sourcedCount?.count || 0);
+  const storeType = hasDigital && hasPhysical ? 'Hybrid' : hasDigital ? 'Digital' : 'Physical';
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{merchant.store_name}</h1>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+          merchant.payment_receiving_status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+        }`}>
+          {merchant.payment_receiving_status}
+        </span>
+      </div>
+
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border">
+          <p className="text-xs text-gray-500 uppercase">Store Type</p>
+          <p className="text-lg font-bold">{storeType}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border">
+          <p className="text-xs text-gray-500 uppercase">Total Products</p>
+          <p className="text-lg font-bold">{totalProducts || 0}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border">
+          <p className="text-xs text-gray-500 uppercase">Sourced Items</p>
+          <p className="text-lg font-bold">{sourcedCount?.count || 0}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border">
+          <p className="text-xs text-gray-500 uppercase">Total Orders</p>
+          <p className="text-lg font-bold">{totalOrders || 0}</p>
+        </div>
+      </div>
+
+      {/* Merchant Details Card */}
+      <div className="bg-white rounded-xl border p-6 space-y-4">
+        <h2 className="font-bold text-lg">Contact & Banking</h2>
+        <div className="grid md:grid-cols-2 gap-4 text-sm">
+          <div><p className="text-gray-500">Email</p><p className="font-medium">{merchant.user_email || 'N/A'}</p></div>
+          <div><p className="text-gray-500">Phone</p><p className="font-medium">{merchant.phone || 'N/A'}</p></div>
+          <div><p className="text-gray-500">Bank</p><p className="font-medium">{merchant.bank_name || 'Not Set'}</p></div>
+          <div><p className="text-gray-500">Account</p><p className="font-mono">{merchant.account_number || 'Not Set'}</p></div>
+        </div>
+      </div>
+
+      {/* Activity Checklist */}
+      <div className="bg-white rounded-xl border p-6">
+        <h2 className="font-bold text-lg mb-4">Onboarding Progress</h2>
+        <div className="space-y-3">
+          {[
+            { label: 'Store Created', done: !!merchant.store_slug },
+            { label: 'Bank Account Added', done: !!merchant.bank_name },
+            { label: 'Payment Active', done: merchant.payment_receiving_status === 'ACTIVE' },
+            { label: 'First Product Added', done: (totalProducts || 0) > 0 },
+            { label: 'First Sale Made', done: (totalOrders || 0) > 0 },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${item.done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                {item.done ? '✓' : '○'}
+              </span>
+              <span className={item.done ? 'text-gray-900' : 'text-gray-500'}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
