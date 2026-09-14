@@ -87,8 +87,16 @@ export default function SourceDigitalPage() {
   };
 
   const categories = ['All', ...Array.from(new Set(catalog.map((p) => p.category)))];
+  
+  // COMBINED FILTER: Search + Category
   let list = filter === 'All' ? catalog : catalog.filter((p) => p.category === filter);
-  if (search) list = list.filter((p) => p.title.toLowerCase().includes(search.toLowerCase()));
+  if (search) {
+    const lowerSearch = search.toLowerCase();
+    list = list.filter((p) => 
+      p.title.toLowerCase().includes(lowerSearch) || 
+      p.description?.toLowerCase().includes(lowerSearch)
+    );
+  }
 
   if (loading) return <div className="p-10 text-center text-gray-500">Loading catalog...</div>;
 
@@ -96,7 +104,7 @@ export default function SourceDigitalPage() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">⚡ Source Digital Products</h1>
+          <h1 className="text-2xl font-bold"> Source Digital Products</h1>
           <p className="text-gray-600 text-sm">{catalog.length} proven products • You keep 60% of every sale</p>
         </div>
         {stores.length > 0 && (
@@ -111,31 +119,42 @@ export default function SourceDigitalPage() {
         )}
       </div>
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search products..."
-        className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-      />
+      {/* ENHANCED SEARCH BAR */}
+      <div className="relative">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search products (e.g., 'POS', 'Import', 'Laundry')..."
+          className="w-full px-4 py-3 pl-10 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-white"
+        />
+        <svg className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      </div>
 
       <div className="flex gap-2 flex-wrap">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold ${filter === cat ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${filter === cat ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             {cat}
           </button>
         ))}
       </div>
 
+      {/* NO RESULTS STATE */}
+      {list.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-2xl border border-dashed">
+          <p className="text-gray-500 font-medium">No products found matching "{search}"</p>
+          <button onClick={() => {setSearch(''); setFilter('All');}} className="mt-2 text-sm text-purple-600 font-bold hover:underline">Clear filters</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {list.map((p) => {
           const isSourced = sourced.includes(p.id);
           return (
             <div key={p.id} className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
-              {/* Uses the 6-design flyer engine instead of static gradients */}
               <FlyerCover title={p.title} category={p.category} colorKey={p.cover_color} profit={p.profit_score} className="h-28" />
               
               <div className="p-2.5 flex flex-col gap-1.5 flex-1">
@@ -146,7 +165,7 @@ export default function SourceDigitalPage() {
                 <button
                   onClick={() => source(p)}
                   disabled={isSourced}
-                  className={`w-full py-1.5 rounded-lg font-bold text-[11px] ${isSourced ? 'bg-green-100 text-green-700' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
+                  className={`w-full py-1.5 rounded-lg font-bold text-[11px] transition-colors ${isSourced ? 'bg-green-100 text-green-700 cursor-default' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
                 >
                   {isSourced ? '✅ In Store' : '⚡ Source to My Store'}
                 </button>
