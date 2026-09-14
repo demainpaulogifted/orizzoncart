@@ -55,6 +55,7 @@ export default function PaymentSettingsPage() {
 
   const feePaid = merchant && (merchant.payment_receiving_status === 'ACTIVE' || merchant.payment_receiving_status === 'PENDING_KEYS' || !!merchant.payment_activated_at);
   const hasBank = merchant && merchant.bank_name && merchant.account_number;
+  const hasOwnKeys = merchant && (merchant.paystack_secret_key || merchant.flutterwave_secret_key);
 
   const payActivationFee = async () => {
     setFeePaying(true);
@@ -107,8 +108,7 @@ export default function PaymentSettingsPage() {
       account_number: accountNumber,
       account_name: accountName,
       paystack_subaccount_code: null,
-      split_code_token: null,
-      split_code_source: null,
+      split_code_platform: null,
     };
     if (isPendingActivation) {
       updatePayload.payment_receiving_status = 'ACTIVE';
@@ -131,12 +131,11 @@ export default function PaymentSettingsPage() {
     if (typed !== 'DELETE') { if (typed !== null) toast.error('Not removed — type DELETE exactly to confirm.'); return; }
     setDeleting(true);
     const supabase = createClient();
-    const hasLegacyKeys = !!(merchant?.paystack_secret_key || merchant?.flutterwave_secret_key);
     const updatePayload: any = {
       bank_name: null, account_number: null, account_name: null,
-      paystack_subaccount_code: null, split_code_token: null, split_code_source: null,
+      paystack_subaccount_code: null, split_code_platform: null,
     };
-    if (!hasLegacyKeys) {
+    if (!hasOwnKeys) {
       updatePayload.payment_receiving_status = 'NOT_CONFIGURED';
       updatePayload.cart_status = 'LOCKED';
       updatePayload.checkout_status = 'DISABLED';
@@ -154,8 +153,17 @@ export default function PaymentSettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">💜 OrizzonPay Settlement</h1>
-        <p className="text-gray-600 text-sm">Where your money lands automatically after the 24hr bank clearing window.</p>
+        <h1 className="text-2xl font-bold">💳 Payment Settings</h1>
+        <p className="text-gray-600 text-sm">Choose how you receive payments from customers.</p>
+      </div>
+
+      {/* Pricing Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
+        <p className="font-bold text-blue-900 mb-2">💰 Pricing Options</p>
+        <div className="space-y-2 text-blue-800">
+          <p>✅ <strong>Use your own Paystack/Flutterwave keys</strong> — 0% platform fee (you keep 100%)</p>
+          <p>✅ <strong>Use OrizzonPay (our platform)</strong> — 5% platform fee (you keep 95%)</p>
+        </div>
       </div>
 
       {/* STEP 1: ACTIVATION FEE */}
@@ -163,7 +171,7 @@ export default function PaymentSettingsPage() {
         <div className="bg-white border rounded-2xl p-6 space-y-4">
           <span className="text-xs font-bold text-purple-600 uppercase">Step 1 of 2</span>
           <h2 className="font-bold text-lg">Pay Activation Fee</h2>
-          <p className="text-sm text-gray-600">One-time fee to activate payments on {merchant.store_name}. Paid securely via Paystack.</p>
+          <p className="text-sm text-gray-600">One-time fee to activate payments on {merchant.store_name}.</p>
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center justify-between">
             <span className="text-sm font-bold text-purple-800">Activation Fee</span>
             <span className="text-2xl font-extrabold text-purple-700">₦{Number(feeInfo?.final_amount ?? 5000).toLocaleString()}</span>
@@ -179,6 +187,7 @@ export default function PaymentSettingsPage() {
         <div className="bg-white border rounded-2xl p-6 space-y-4">
           <span className="text-xs font-bold text-purple-600 uppercase">Step 2 of 2</span>
           <h2 className="font-bold text-lg">Add Your Bank Account</h2>
+          <p className="text-sm text-gray-600">Add your bank to receive payouts via OrizzonPay (5% fee).</p>
           <BankForm
             bankQuery={bankQuery} setBankQuery={setBankQuery}
             bankCode={bankCode} setBankCode={setBankCode}
@@ -204,15 +213,14 @@ export default function PaymentSettingsPage() {
             <p className="text-sm text-gray-600 mt-1">{merchant.bank_name}</p>
             <p className="text-sm font-mono text-gray-600 mt-1">•••• •••• {String(merchant.account_number).slice(-4)}</p>
           </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+            💰 <strong>5% platform fee</strong> per transaction (you keep 95%)
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => setEditing(true)} className="py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">✏️ Change Account</button>
             <button onClick={removeBank} disabled={deleting} className="py-3 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold text-sm hover:bg-red-100 disabled:opacity-50">
               {deleting ? '...' : '🗑️ Remove Account'}
             </button>
-          </div>
-          <div className="text-xs text-gray-500 space-y-1 text-center">
-            <p>Platform token: 1.5% per sale • Payouts auto-arrive after 24hr bank clearing</p>
-            <p>🔒 We never hold your money. Paystack routes it directly to this account.</p>
           </div>
         </div>
       )}
