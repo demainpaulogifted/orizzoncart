@@ -4,7 +4,6 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
   const items = [
     { href: '/dashboard', icon: '📊', label: 'Home' },
     { href: '/dashboard/products', icon: '📦', label: 'Products' },
-    { href: '/dashboard/source-digital', icon: '⚡', label: 'Source' },
     { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
     { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
     { href: '/dashboard/support', icon: '💬', label: 'Help' },
