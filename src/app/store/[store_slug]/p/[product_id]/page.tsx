@@ -9,18 +9,18 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { store_slug, product_id } = await params;
   const admin = createAdminClient();
   const { data: product } = await admin.from('products').select('name, description, images').eq('id', product_id).maybeSingle();
-  
+
   if (!product) return {};
-  
+
   const title = `${product.name} | ${store_slug}`;
   const description = product.description || `Buy ${product.name} online.`;
   const image = product.images?.[0]?.url || `${process.env.NEXT_PUBLIC_APP_URL}/icon-512.png`;
-  
-  return { 
-    title, 
-    description, 
+
+  return {
+    title,
+    description,
     openGraph: { title, description, images: [image] },
-    twitter: { card: 'summary_large_image', title, description }
+    twitter: { card: 'summary_large_image', title, description },
   };
 }
 
@@ -33,7 +33,7 @@ export default async function ProductDetailPage({ params }: any) {
     .select('id, store_name, store_slug')
     .eq('store_slug', store_slug)
     .maybeSingle();
-    
+
   if (!merchant) notFound();
 
   const { data: product } = await admin
@@ -42,7 +42,7 @@ export default async function ProductDetailPage({ params }: any) {
     .eq('id', product_id)
     .eq('merchant_id', merchant.id)
     .maybeSingle();
-    
+
   if (!product) notFound();
 
   let catalog: any = null;
@@ -59,26 +59,20 @@ export default async function ProductDetailPage({ params }: any) {
     <div className="min-h-screen bg-gray-50 pb-32">
       <div className="relative aspect-[4/5] w-full max-w-4xl mx-auto bg-white overflow-hidden">
         {product.is_digital ? (
-          <FlyerCover 
-            title={product.name} 
-            category={catalog?.category || 'Digital'} 
-            colorKey={catalog?.cover_color || flyerColorKey(product.name)} 
-            className="w-full h-full" 
+          <FlyerCover
+            title={product.name}
+            category={catalog?.category || 'Digital'}
+            colorKey={catalog?.cover_color || flyerColorKey(product.name)}
+            className="w-full h-full"
           />
         ) : product.images?.[0]?.url ? (
-          <Image 
-            src={product.images[0].url} 
-            alt={product.name} 
-            fill 
-            className="object-cover" 
-            priority 
-          />
+          <Image src={product.images[0].url} alt={product.name} fill className="object-cover" priority />
         ) : (
           <div className="w-full h-full bg-gray-200 flex items-center justify-center text-6xl">🛍️</div>
         )}
-        
-        <Link 
-          href={`/store/${store_slug}`} 
+
+        <Link
+          href={`/store/${store_slug}`}
           className="absolute top-4 left-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-gray-900 font-bold hover:bg-white transition-colors"
         >
           ←
@@ -106,8 +100,8 @@ export default async function ProductDetailPage({ params }: any) {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 safe-area-pb flex gap-3 items-center z-50 max-w-4xl mx-auto left-0 right-0 lg:left-1/2 lg:-translate-x-1/2">
-        <Link 
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex gap-3 items-center z-50">
+        <Link
           href={`/store/${store_slug}?add=${product.id}`}
           className="flex-1 bg-purple-600 text-white font-bold py-3.5 rounded-xl text-center hover:bg-purple-700 transition-colors shadow-lg"
         >
