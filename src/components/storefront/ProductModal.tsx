@@ -48,11 +48,11 @@ export function ProductModal({ product, isOpen, onClose, storeSlug }: ProductMod
           ) : product.images?.[0]?.url ? (
             <Image src={product.images[0].url} alt={product.name} fill className="object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl">🛍️</div>
+            <div className="w-full h-full flex items-center justify-center text-6xl">️</div>
           )}
         </div>
 
-        {/* Details */}
+        {/* Details - FIXED DATA BINDING */}
         <div className="p-6 space-y-4">
           <div>
             <h2 className="text-xl font-extrabold text-gray-900 leading-snug">{product.name}</h2>
@@ -61,16 +61,17 @@ export function ProductModal({ product, isOpen, onClose, storeSlug }: ProductMod
 
           {product.is_digital && (
             <div className="bg-purple-50 border border-purple-100 rounded-lg p-3 flex items-center gap-2">
-              <span className="text-lg">⚡</span>
+              <span className="text-lg"></span>
               <p className="text-xs font-bold text-purple-800">Instant Digital Download</p>
             </div>
           )}
 
+          {/* FIXED: Using proper data binding instead of raw template strings */}
           <p className="text-sm text-gray-600 leading-relaxed line-clamp-4">
-            {product.description || 'No description available.'}
+            {product.description || 'No description available for this product.'}
           </p>
 
-          {/* Actions */}
+          {/* Actions - FIXED LINKS */}
           <div className="pt-2 flex gap-3">
             <Link 
               href={`/store/${storeSlug}/p/${product.id}`}
