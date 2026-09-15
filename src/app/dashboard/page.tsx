@@ -52,16 +52,20 @@ export default function DashboardHome() {
       {merchant.payment_receiving_status !== 'ACTIVE' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
           <p className="font-bold text-yellow-900">⚠️ Showcase Mode — activate to start selling</p>
-          <Link href="/dashboard/settings/payment" className="inline-block mt-3 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">Activate Store</Link>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-3 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">
+            Activate Store
+          </Link>
         </div>
       )}
 
-      {/* SETUP: compact when complete */}
+      {/* SETUP CHECKLIST — collapses when complete */}
       <div className="bg-white rounded-2xl border p-5">
         {complete ? (
           <div className="flex items-center justify-between gap-3">
             <p className="font-extrabold text-green-700">🎉 Store setup 100% complete — you're ready to sell!</p>
-            <button onClick={() => setShowSteps(!showSteps)} className="text-xs font-bold text-purple-600 shrink-0">{showSteps ? 'Hide steps' : 'View steps'}</button>
+            <button onClick={() => setShowSteps(!showSteps)} className="text-xs font-bold text-purple-600 shrink-0">
+              {showSteps ? 'Hide steps' : 'View steps'}
+            </button>
           </div>
         ) : (
           <>
@@ -87,7 +91,9 @@ export default function DashboardHome() {
                   {!s.done && <p className="text-xs text-gray-500 mt-0.5">💡 {s.tip}</p>}
                 </div>
                 {!s.done && (
-                  <Link href={s.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">{s.cta}</Link>
+                  <Link href={s.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">
+                    {s.cta}
+                  </Link>
                 )}
               </div>
             ))}
@@ -95,7 +101,7 @@ export default function DashboardHome() {
         )}
       </div>
 
-      {/* STATS + ACTIONS WRAPPED TOGETHER */}
+      {/* STATS + QUICK ACTIONS — wrapped together */}
       <div className="bg-white rounded-2xl border p-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
@@ -116,10 +122,13 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 border-t">
           <Link href="/dashboard/products/add" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">➕ Add Product</Link>
-          <Link href="/dashboard/pages" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">📄 Add Trust Page</Link>
-          <Link href={`/store/${merchant.store_slug}`} target="_blank" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">👀 View My Store</Link>
+          <Link href="/dashboard/pages" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">📄 Trust Page</Link>
+          <Link href="/dashboard/settings/payment" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">💳 Payment</Link>
+          <Link href="/dashboard/settings/theme" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">🎨 Theme</Link>
+          <Link href="/dashboard/settings/shipping" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">🚚 Shipping</Link>
+          <Link href={`/store/${merchant.store_slug}`} target="_blank" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">👀 View Store</Link>
         </div>
       </div>
     </div>
