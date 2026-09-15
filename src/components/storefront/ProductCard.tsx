@@ -2,28 +2,28 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
-export function ProductCard({
-  product,
-  isShowcaseMode,
-  onClick,
-}: {
+interface ProductCardProps {
   product: any;
   isShowcaseMode: boolean;
   onClick: () => void;
-}) {
+}
+
+export function ProductCard({ product, isShowcaseMode, onClick }: ProductCardProps) {
   const imageUrl = product.images?.[0]?.url;
+  const slug = product.store_slug || '';
+  const id = product.id || '';
+
+  // Build clean link - works on both subdomain and main domain
+  const productLink = slug && id ? `/store/${slug}/p/${id}` : '#';
 
   return (
-    <Link
-      href={`/store/\( {product.store_slug || 'demo'}/p/ \){product.id}`}
-      className="group block cursor-pointer"
-    >
-      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--color-surface)] shadow-md group-hover:shadow-2xl transition-shadow duration-300">
+    <Link href={productLink} className="group block cursor-pointer" onClick={(e) => { e.preventDefault(); onClick(); }}>
+      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gray-100 shadow-md group-hover:shadow-2xl transition-shadow duration-300">
         {product.is_digital ? (
           <div className="absolute inset-0">
             <FlyerCover
               title={product.name}
-              category={product.category || 'Digital Product'}
+              category="Digital Product"
               colorKey={flyerColorKey(product.name)}
               className="w-full h-full"
             />
@@ -51,12 +51,8 @@ export function ProductCard({
         </div>
       </div>
       <div className="mt-4 text-center px-2">
-        <h3 className="text-lg font-medium text-[var(--color-text)] font-[var(--font-heading)] leading-snug">
-          {product.name}
-        </h3>
-        <p className="mt-1 text-xl font-bold text-[var(--color-primary)]">
-          ₦{Number(product.price).toLocaleString()}
-        </p>
+        <h3 className="text-lg font-medium text-gray-900 leading-snug">{product.name}</h3>
+        <p className="mt-1 text-xl font-bold text-purple-700">₦{Number(product.price).toLocaleString()}</p>
       </div>
     </Link>
   );
