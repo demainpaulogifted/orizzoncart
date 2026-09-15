@@ -15,7 +15,14 @@ export default function ProductsPage() {
   const load = async () => {
     setLoading(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const cookieId = document.cookie
       .split(';')
@@ -26,7 +33,7 @@ export default function ProductsPage() {
     const { data: merchants } = await supabase
       .from('merchants')
       .select('id, store_slug')
-      .eq('user_id', user?.id);
+      .eq('user_id', user.id);
 
     const merchant =
       (merchants || []).find((m: any) => m.id === cookieId) ||
@@ -56,7 +63,11 @@ export default function ProductsPage() {
     load();
   }, [showArchived]);
 
-  const archiveProduct = async (id: string, name: string, currentlyActive: boolean) => {
+  const archiveProduct = async (
+    id: string,
+    name: string,
+    currentlyActive: boolean
+  ) => {
     const action = currentlyActive ? 'Archive' : 'Restore';
     if (!confirm(`\( {action} " \){name}"?`)) return;
 
@@ -77,12 +88,21 @@ export default function ProductsPage() {
     setArchiving(null);
   };
 
+  // Correct product link – uses the store subdomain
+  const getProductViewUrl = (productId: string) => {
+    if (!storeSlug) return '#';
+    return `https://\( {storeSlug}.orizzoncart.name.ng/p/ \){productId}`;
+  };
+
   if (loading) {
-    return <div className="p-10 text-center text-gray-500">Loading...</div>;
+    return (
+      <div className="p-10 text-center text-gray-500">Loading products...</div>
+    );
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
@@ -109,6 +129,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Empty State */}
       {products.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed p-16 text-center">
           <p className="text-5xl mb-4">📦</p>
@@ -128,6 +149,7 @@ export default function ProductsPage() {
           )}
         </div>
       ) : (
+        /* Products Table */
         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -141,7 +163,7 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {products.map((p: any) => (
+                {products.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium">{p.name}</td>
                     <td className="px-6 py-4">{formatCurrency(p.price)}</td>
@@ -169,9 +191,9 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 flex-wrap">
-                        {/* VIEW - safe path that always works */}
+                        {/* VIEW → Store subdomain product page */}
                         <a
-                          href={`/store/\( {storeSlug}/p/ \){p.id}`}
+                          href={getProductViewUrl(p.id)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
@@ -189,7 +211,9 @@ export default function ProductsPage() {
 
                         {/* ARCHIVE / RESTORE */}
                         <button
-                          onClick={() => archiveProduct(p.id, p.name, p.is_active)}
+                          onClick={() =>
+                            archiveProduct(p.id, p.name, p.is_active)
+                          }
                           disabled={archiving === p.id}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${
                             p.is_active
