@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
 
   const title = `${product.name} | ${store_slug}`;
   const description = product.description || `Buy ${product.name} online.`;
-  const image = product.images?.[0]?.url || `${process.env.NEXT_PUBLIC_APP_URL}/icon-512.png`;
+  const image = product.images?.[0]?.url || `${process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng'}/icon-512.png`;
 
   return {
     title,
