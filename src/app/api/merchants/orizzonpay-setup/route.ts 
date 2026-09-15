@@ -1,0 +1,27 @@
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { ensureOrizzonPay } from '@/lib/paystack-engine';
+
+export async function POST() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+
+  const cookieStore = await cookies();
+  const activeId = cookieStore.get('active_merchant_id')?.value;
+  const admin = createAdminClient();
+
+  const { data: merchants } = await admin.from('merchants').select('*').eq('user_id', user.id);
+  const merchant = (merchants || []).find((m: any) => m.id === activeId) || (merchants || [])[0];
+  if (!merchant) return NextResponse.json({ ok: false, error: 'Merchant not found' }, { status: 404 });
+
+  const enriched = await ensureOrizzonPay(merchant);
+
+  return NextResponse.json({
+    ok: !!enriched.split_code_platform,
+    split_code: enriched.split_code_platform || null,
+    subaccount: enriched.paystack_subaccount_code || null,
+  });
+}
