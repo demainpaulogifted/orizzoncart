@@ -1,0 +1,73 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
+import { createClient as createAdminClient } from '@/lib/supabase/admin';
+
+export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: any): Promise<Metadata> {
+  const { store_slug, page_slug } = await params;
+  const admin = createAdminClient();
+  const { data: merchant } = await admin
+    .from('merchants')
+    .select('id, store_name')
+    .eq('store_slug', store_slug)
+    .maybeSingle();
+  if (!merchant) return {};
+  const { data: page } = await admin
+    .from('store_pages')
+    .select('title')
+    .eq('merchant_id', merchant.id)
+    .eq('slug', page_slug)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (!page) return {};
+  return { title: `${page.title} | ${merchant.store_name}` };
+}
+
+export default async function StoreInfoPage({ params }: any) {
+  const { store_slug, page_slug } = await params;
+  const admin = createAdminClient();
+
+  const { data: merchant } = await admin
+    .from('merchants')
+    .select('id, store_name, store_slug')
+    .eq('store_slug', store_slug)
+    .maybeSingle();
+  if (!merchant) notFound();
+
+  const { data: page } = await admin
+    .from('store_pages')
+    .select('*')
+    .eq('merchant_id', merchant.id)
+    .eq('slug', page_slug)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (!page) notFound();
+
+  const paragraphs = (page.content || '').split(/\n+/).filter(Boolean);
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-16">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <Link
+          href={`/store/${store_slug}`}
+          className="text-sm font-bold text-purple-600 hover:underline"
+        >
+          ← Back to {merchant.store_name}
+        </Link>
+        <h1 className="mt-4 text-3xl font-extrabold text-gray-900">{page.title}</h1>
+        <div className="mt-6 bg-white rounded-2xl border p-6 space-y-4">
+          {paragraphs.length === 0 && (
+            <p className="text-gray-500 text-sm">No content yet.</p>
+          )}
+          {paragraphs.map((p: string, i: number) => (
+            <p key={i} className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">
+              {p}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
