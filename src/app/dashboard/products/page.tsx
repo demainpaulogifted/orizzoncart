@@ -10,10 +10,13 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [archiving, setArchiving] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [storeSlug, setStoreSlug] = useState('');
 
   const load = async () => {
+    setLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+
     const cookieId = document.cookie
       .split(';')
       .map((c) => c.trim())
@@ -22,12 +25,16 @@ export default function ProductsPage() {
 
     const { data: merchants } = await supabase
       .from('merchants')
-      .select('id')
+      .select('id, store_slug')
       .eq('user_id', user?.id);
 
-    const merchant = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
+    const merchant =
+      (merchants || []).find((m: any) => m.id === cookieId) ||
+      (merchants || [])[0];
 
     if (merchant) {
+      setStoreSlug(merchant.store_slug || '');
+
       let query = supabase
         .from('products')
         .select('*')
@@ -35,12 +42,13 @@ export default function ProductsPage() {
         .order('created_at', { ascending: false });
 
       if (!showArchived) {
-        query = query.eq('is_active', true); // or .eq('is_archived', false)
+        query = query.eq('is_active', true);
       }
 
       const { data } = await query;
       setProducts(data || []);
     }
+
     setLoading(false);
   };
 
@@ -57,10 +65,7 @@ export default function ProductsPage() {
 
     const { error } = await supabase
       .from('products')
-      .update({
-        is_active: !currentlyActive,          // hide from storefront
-        // is_archived: currentlyActive,      // if you added the column
-      })
+      .update({ is_active: !currentlyActive })
       .eq('id', id);
 
     if (error) {
@@ -72,15 +77,19 @@ export default function ProductsPage() {
     setArchiving(null);
   };
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading...</div>;
+  if (loading) {
+    return <div className="p-10 text-center text-gray-500">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
           <p className="text-gray-600 text-sm">
-            {products.length} product{products.length !== 1 ? 's' : ''} {showArchived ? '(including archived)' : 'in your store'}
+            {products.length} product{products.length !== 1 ? 's' : ''}{' '}
+            {showArchived ? '(including archived)' : 'in your store'}
           </p>
         </div>
 
@@ -101,6 +110,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Empty state */}
       {products.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed p-16 text-center">
           <p className="text-5xl mb-4">📦</p>
@@ -120,6 +130,7 @@ export default function ProductsPage() {
           )}
         </div>
       ) : (
+        /* Products table */
         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -161,7 +172,16 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 flex-wrap">
-                        {/* View / Edit */}
+                        {/* View */}
+                        <Link
+                          href={`/store/\( {storeSlug}/p/ \){p.id}`}
+                          target="_blank"
+                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
+                        >
+                          View
+                        </Link>
+
+                        {/* Edit */}
                         <Link
                           href={`/dashboard/products/${p.id}/edit`}
                           className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100"
@@ -171,7 +191,9 @@ export default function ProductsPage() {
 
                         {/* Archive / Restore */}
                         <button
-                          onClick={() => archiveProduct(p.id, p.name, p.is_active)}
+                          onClick={() =>
+                            archiveProduct(p.id, p.name, p.is_active)
+                          }
                           disabled={archiving === p.id}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${
                             p.is_active
