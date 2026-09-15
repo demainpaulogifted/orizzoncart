@@ -8,6 +8,7 @@ export default function DashboardHome() {
   const [merchant, setMerchant] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [counts, setCounts] = useState({ products: 0, pages: 0, orders: 0 });
+  const [showSteps, setShowSteps] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -26,7 +27,6 @@ export default function DashboardHome() {
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('merchant_id', active.id),
       ]);
       setCounts({ products: products || 0, pages: pages || 0, orders: orders || 0 });
-
       fetch('/api/analytics').then((r) => r.json()).then(setStats).catch(() => {});
     };
     load();
@@ -45,9 +45,10 @@ export default function DashboardHome() {
   ];
   const doneCount = steps.filter((s) => s.done).length;
   const progress = Math.round((doneCount / steps.length) * 100);
+  const complete = progress === 100;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-4 max-w-4xl mx-auto">
       {merchant.payment_receiving_status !== 'ACTIVE' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
           <p className="font-bold text-yellow-900">⚠️ Showcase Mode — activate to start selling</p>
@@ -55,58 +56,71 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* SETUP CHECKLIST */}
-      <div className="bg-white rounded-2xl border p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-extrabold text-gray-900">🚀 Store Setup</h2>
-          <span className="text-sm font-bold text-purple-600">{progress}% complete</span>
-        </div>
-        <div className="w-full bg-gray-100 rounded-full h-2.5 mb-5">
-          <div className="bg-purple-600 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="space-y-3">
-          {steps.map((s, i) => (
-            <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${s.done ? 'bg-green-50' : 'bg-gray-50'}`}>
-              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${s.done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                {s.done ? '✓' : i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-bold ${s.done ? 'text-green-800' : 'text-gray-800'}`}>{s.title}</p>
-                {!s.done && <p className="text-xs text-gray-500 mt-0.5">💡 {s.tip}</p>}
-              </div>
-              {!s.done && (
-                <Link href={s.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">{s.cta}</Link>
-              )}
+      {/* SETUP: compact when complete */}
+      <div className="bg-white rounded-2xl border p-5">
+        {complete ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-extrabold text-green-700">🎉 Store setup 100% complete — you're ready to sell!</p>
+            <button onClick={() => setShowSteps(!showSteps)} className="text-xs font-bold text-purple-600 shrink-0">{showSteps ? 'Hide steps' : 'View steps'}</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-extrabold text-gray-900">🚀 Store Setup</h2>
+              <span className="text-sm font-bold text-purple-600">{progress}% complete</span>
             </div>
-          ))}
-        </div>
+            <div className="w-full bg-gray-100 rounded-full h-2.5 mb-4">
+              <div className="bg-purple-600 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          </>
+        )}
+
+        {(showSteps || !complete) && (
+          <div className="space-y-2 mt-4">
+            {steps.map((s, i) => (
+              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${s.done ? 'bg-green-50' : 'bg-gray-50'}`}>
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${s.done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                  {s.done ? '✓' : i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-bold ${s.done ? 'text-green-800' : 'text-gray-800'}`}>{s.title}</p>
+                  {!s.done && <p className="text-xs text-gray-500 mt-0.5">💡 {s.tip}</p>}
+                </div>
+                {!s.done && (
+                  <Link href={s.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">{s.cta}</Link>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white">
-          <p className="text-white/80 text-[11px] font-bold uppercase">Visitors</p>
-          <p className="text-2xl font-extrabold mt-1">{stats?.visitors || 0}</p>
+      {/* STATS + ACTIONS WRAPPED TOGETHER */}
+      <div className="bg-white rounded-2xl border p-5 space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
+            <p className="text-white/80 text-[11px] font-bold uppercase">Visitors</p>
+            <p className="text-2xl font-extrabold mt-1">{stats?.visitors || 0}</p>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 text-white">
+            <p className="text-white/80 text-[11px] font-bold uppercase">Orders</p>
+            <p className="text-2xl font-extrabold mt-1">{counts.orders}</p>
+          </div>
+          <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl p-4 text-white">
+            <p className="text-white/80 text-[11px] font-bold uppercase">Sales</p>
+            <p className="text-2xl font-extrabold mt-1">{formatCurrency(stats?.revenue || 0)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl p-4 text-white">
+            <p className="text-white/80 text-[11px] font-bold uppercase">Conv.</p>
+            <p className="text-2xl font-extrabold mt-1">{stats?.visitors ? ((stats.orders / stats.visitors) * 100).toFixed(1) : '0.0'}%</p>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white">
-          <p className="text-white/80 text-[11px] font-bold uppercase">Orders</p>
-          <p className="text-2xl font-extrabold mt-1">{counts.orders}</p>
-        </div>
-        <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-4 text-white">
-          <p className="text-white/80 text-[11px] font-bold uppercase">Sales</p>
-          <p className="text-2xl font-extrabold mt-1">{formatCurrency(stats?.revenue || 0)}</p>
-        </div>
-        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-4 text-white">
-          <p className="text-white/80 text-[11px] font-bold uppercase">Conv.</p>
-          <p className="text-2xl font-extrabold mt-1">{stats?.visitors ? ((stats.orders / stats.visitors) * 100).toFixed(1) : '0.0'}%</p>
-        </div>
-      </div>
 
-      {/* QUICK ACTIONS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Link href="/dashboard/products/add" className="bg-white rounded-xl border p-4 hover:border-purple-400 font-bold text-sm">➕ Add Product</Link>
-        <Link href="/dashboard/pages" className="bg-white rounded-xl border p-4 hover:border-purple-400 font-bold text-sm">📄 Add Trust Page</Link>
-        <Link href={`/store/${merchant.store_slug}`} target="_blank" className="bg-white rounded-xl border p-4 hover:border-purple-400 font-bold text-sm">👀 View My Store</Link>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t">
+          <Link href="/dashboard/products/add" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">➕ Add Product</Link>
+          <Link href="/dashboard/pages" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">📄 Add Trust Page</Link>
+          <Link href={`/store/${merchant.store_slug}`} target="_blank" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">👀 View My Store</Link>
+        </div>
       </div>
     </div>
   );
