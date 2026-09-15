@@ -54,7 +54,6 @@ export default function EditProductPage() {
         return;
       }
 
-      // Load product
       const { data: product, error } = await supabase
         .from('products')
         .select('*')
@@ -85,7 +84,6 @@ export default function EditProductPage() {
       setDigitalFileUrl(product.digital_file_url || '');
       setDigitalFileName(product.digital_file_name || '');
 
-      // Categories
       const { data: products } = await supabase
         .from('products')
         .select('category')
@@ -212,11 +210,10 @@ export default function EditProductPage() {
           This is a digital product (no shipping)
         </label>
 
-        {/* Digital File */}
         {form.is_digital && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Digital File (PDF, ZIP, etc.) *
+              Digital File *
             </label>
             {digitalFileUrl ? (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
@@ -259,7 +256,6 @@ export default function EditProductPage() {
           </div>
         )}
 
-        {/* Images (physical) */}
         {!form.is_digital && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -381,7 +377,6 @@ export default function EditProductPage() {
         </button>
       </form>
 
-      {/* Preview */}
       <div>
         <p className="text-sm font-bold text-gray-500 mb-2">LIVE PREVIEW</p>
         <div className="bg-white rounded-2xl border p-4 sticky top-6">
