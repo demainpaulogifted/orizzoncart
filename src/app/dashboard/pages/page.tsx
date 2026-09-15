@@ -10,7 +10,6 @@ function slugify(t: string) {
 export default function StorePagesManager() {
   const [pages, setPages] = useState<any[]>([]);
   const [merchantId, setMerchantId] = useState('');
-  const [storeSlug, setStoreSlug] = useState('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ title: '', content: '' });
@@ -20,11 +19,10 @@ export default function StorePagesManager() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
-    const { data: merchants } = await supabase.from('merchants').select('id, store_slug').eq('user_id', user?.id);
+    const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user?.id);
     const merchant = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
     if (merchant) {
       setMerchantId(merchant.id);
-      setStoreSlug(merchant.store_slug);
       const { data } = await supabase.from('store_pages').select('*').eq('merchant_id', merchant.id).order('created_at');
       setPages(data || []);
     }
@@ -33,24 +31,19 @@ export default function StorePagesManager() {
 
   useEffect(() => { load(); }, []);
 
-  const startNew = () => { setEditing({ id: null }); setForm({ title: '', content: '' }); };
-  const startEdit = (p: any) => { setEditing({ id: p.id }); setForm({ title: p.title, content: p.content }); };
-
   const save = async () => {
     if (!form.title.trim() || !form.content.trim()) { toast.error('Title and content are required'); return; }
     setSaving(true);
     const supabase = createClient();
-    const slug = slugify(form.title) || `page-${Date.now()}`;
-    const payload = { merchant_id: merchantId, title: form.title.trim(), slug, content: form.content };
-
+    const payload = { merchant_id: merchantId, title: form.title.trim(), slug: slugify(form.title) || `page-${Date.now()}`, content: form.content };
     const { error } = editing?.id
       ? await supabase.from('store_pages').update(payload).eq('id', editing.id)
       : await supabase.from('store_pages').insert(payload);
-
     setSaving(false);
     if (error) { toast.error('Failed: ' + error.message); return; }
     toast.success('Page saved — live on your storefront!');
     setEditing(null);
+    setForm({ title: '', content: '' });
     load();
   };
 
@@ -75,28 +68,17 @@ export default function StorePagesManager() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">📄 Store Pages</h1>
-          <p className="text-gray-600 text-sm">Build trust: About Us, Refund Policy, FAQ, Delivery Info...</p>
+          <p className="text-gray-600 text-sm">💡 Build trust: About Us, Refund Policy, FAQ, Delivery Info.</p>
         </div>
         {!editing && (
-          <button onClick={startNew} className="px-5 py-2.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700">+ New Page</button>
+          <button onClick={() => setEditing({ id: null })} className="px-5 py-2.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700">+ New Page</button>
         )}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
-        <p className="font-bold mb-1">💡 Tip:</p>
-        <p>Stores with a Refund Policy + About page convert up to 30% better — customers trust stores that look complete.</p>
       </div>
 
       {editing && (
         <div className="bg-white rounded-2xl border p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Page Title</label>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Refund Policy" className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Content</label>
-            <textarea rows={10} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Write your policy or story. Separate paragraphs with empty lines." className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
-          </div>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Page title e.g. Refund Policy" className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
+          <textarea rows={10} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Write your policy or story. Empty line = new paragraph." className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm" />
           <div className="flex gap-3">
             <button onClick={save} disabled={saving} className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">{saving ? 'Saving...' : 'Save Page'}</button>
             <button onClick={() => setEditing(null)} className="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold">Cancel</button>
@@ -109,20 +91,18 @@ export default function StorePagesManager() {
           <div className="bg-white rounded-2xl border border-dashed p-12 text-center">
             <p className="text-4xl mb-3">📄</p>
             <p className="font-bold text-gray-700">No pages yet</p>
-            <p className="text-sm text-gray-500 mt-1">Create "About Us" and "Refund Policy" first — they appear as tabs on your storefront.</p>
+            <p className="text-sm text-gray-500 mt-1">💡 Stores with About/Refund pages sell up to 30% more.</p>
           </div>
         )}
         {pages.map((p: any) => (
-          <div key={p.id} className="bg-white rounded-2xl border p-4 flex items-center gap-2 flex-wrap">
-            <div className="flex-1 min-w-[150px]">
+          <div key={p.id} className="bg-white rounded-2xl border p-4 flex items-center gap-2">
+            <div className="flex-1 min-w-0">
               <p className="font-bold text-gray-900">{p.title}</p>
-              <p className="text-xs text-gray-500 truncate">/store/{storeSlug}/info/{p.slug}</p>
+              <p className="text-xs text-gray-500 truncate">{p.content.slice(0, 70)}...</p>
             </div>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              {p.is_active ? 'LIVE' : 'HIDDEN'}
-            </span>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{p.is_active ? 'LIVE' : 'HIDDEN'}</span>
             <button onClick={() => toggle(p)} className="px-3 py-1.5 bg-gray-100 rounded-lg text-xs font-bold">{p.is_active ? 'Hide' : 'Show'}</button>
-            <button onClick={() => startEdit(p)} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">Edit</button>
+            <button onClick={() => { setEditing({ id: p.id }); setForm({ title: p.title, content: p.content }); }} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold">Edit</button>
             <button onClick={() => remove(p)} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold">Delete</button>
           </div>
         ))}
