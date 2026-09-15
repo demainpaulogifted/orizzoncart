@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { StorefrontClient } from '@/components/storefront/StorefrontClient';
 
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { store_slug } = await params;
   const admin = createAdminClient();
