@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, store_name, store_slug, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform')
+      .select('id, store_name, store_slug, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform, payout_method')
       .eq('store_slug', store_slug)
       .single();
 
@@ -82,29 +82,35 @@ export async function POST(request: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
 
+    const hasOwn = !!(merchant.paystack_secret_key || merchant.flutterwave_secret_key);
+    const hasBank = !!(merchant.bank_name && merchant.account_number);
+    const orizzonKey = process.env.ORIZZONCART_PAY_SECRET_KEY || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+    const method = merchant.payout_method || (hasOwn ? 'own_keys' : hasBank ? 'orizzonpay' : null);
+
     let secretKey: string | null = null;
     let splitCode: string | null = null;
 
-    // PRIORITY 1: Merchant's own keys → they keep 100%
-    if (merchant.paystack_secret_key || merchant.flutterwave_secret_key) {
+    const useOwnKeys = () => {
       secretKey = merchant.preferred_gateway === 'flutterwave' && merchant.flutterwave_secret_key
         ? merchant.flutterwave_secret_key
-        : merchant.paystack_secret_key || merchant.flutterwave_secret_key;
+        : (merchant.paystack_secret_key || merchant.flutterwave_secret_key);
       splitCode = null;
-    }
-    // PRIORITY 2: OrizzonCart Pay (bank account) → 5% platform split
-    else {
-      const orizzonKey = process.env.ORIZZONCART_PAY_SECRET_KEY || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
-      if (orizzonKey && merchant.bank_name && merchant.account_number) {
-        const enriched = await ensureOrizzonPay(merchant);
-        if (enriched.split_code_platform) {
-          secretKey = orizzonKey;
-          splitCode = enriched.split_code_platform;
-        }
-      }
-    }
+    };
 
-    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured.' }, { status: 500 });
+    const useOrizzonPay = async () => {
+      if (!orizzonKey || !hasBank) return;
+      const enriched = await ensureOrizzonPay(merchant);
+      secretKey = orizzonKey;
+      // Test-mode safety: if split creation failed, still initialize (fee waived this time)
+      splitCode = enriched.split_code_platform || null;
+    };
+
+    if (method === 'own_keys' && hasOwn) useOwnKeys();
+    else if (method === 'orizzonpay' && hasBank) await useOrizzonPay();
+    else if (hasOwn) useOwnKeys();
+    else if (hasBank) await useOrizzonPay();
+
+    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured. Please set up a payout method in Settings → Payment.' }, { status: 500 });
 
     const paystackBody: any = {
       email: customer.email,
