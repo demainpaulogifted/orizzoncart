@@ -22,47 +22,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This store is currently not accepting orders.' }, { status: 403 });
     }
 
-    const productIds = items.map((i: any) => i.product_id);
+    const productIds = (items || []).map((i: any) => i.product_id);
     const { data: products } = await supabase
       .from('products')
       .select('id, name, price, is_active, is_digital')
       .in('id', productIds)
       .eq('merchant_id', merchant.id);
 
-    if (!products || products.length === 0) return NextResponse.json({ error: 'Invalid products in cart' }, { status: 400 });
+    const validProducts = (products || []).filter((p: any) => p.is_active);
+    if (validProducts.length === 0) {
+      return NextResponse.json({ error: 'No available products in your cart. Please go back, remove unavailable items and try again.' }, { status: 400 });
+    }
 
     let subtotal = 0;
-    const orderItems = items.map((item: any) => {
-      const product = products.find((p: any) => p.id === item.product_id);
-      if (!product || !product.is_active) throw new Error('Product unavailable');
+    const orderItems: any[] = [];
+    for (const item of items || []) {
+      const product = validProducts.find((p: any) => p.id === item.product_id);
+      if (!product) continue; // skip unavailable/hidden/foreign items
       subtotal += product.price * item.quantity;
-      return {
+      orderItems.push({
         product_id: product.id,
         product_name: product.name,
         quantity: item.quantity,
         unit_price: product.price,
         total_price: product.price * item.quantity,
-      };
-    });
+      });
+    }
 
     const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
     const totalAmount = subtotal + finalShippingCost;
 
     const shippingAddress =
-      shipping_mode === 'PICKUP' || !customer.address_line1
+      shipping_mode === 'PICKUP' || !customer?.address_line1
         ? {
             address_line1: shipping_mode === 'PICKUP' ? 'Store pickup' : 'Digital delivery — no shipping required',
-            city: customer.city || 'N/A',
-            state: customer.state || 'N/A',
+            city: customer?.city || 'N/A',
+            state: customer?.state || 'N/A',
           }
         : { address_line1: customer.address_line1, city: customer.city, state: customer.state };
 
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       order_number: generateOrderNumber(),
       merchant_id: merchant.id,
-      customer_name: customer.name,
-      customer_email: customer.email,
-      customer_phone: customer.phone,
+      customer_name: customer?.name || 'Customer',
+      customer_email: customer?.email || '',
+      customer_phone: customer?.phone || '',
       subtotal,
       shipping_cost: finalShippingCost,
       total_amount: totalAmount,
@@ -101,7 +105,6 @@ export async function POST(request: NextRequest) {
       if (!orizzonKey || !hasBank) return;
       const enriched = await ensureOrizzonPay(merchant);
       secretKey = orizzonKey;
-      // Test-mode safety: if split creation failed, still initialize (fee waived this time)
       splitCode = enriched.split_code_platform || null;
     };
 
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
     if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured. Please set up a payout method in Settings → Payment.' }, { status: 500 });
 
     const paystackBody: any = {
-      email: customer.email,
+      email: customer?.email || 'customer@orizzoncart.name.ng',
       amount: totalAmount * 100,
       reference,
       callback_url: `${appUrl}/payment/verify?reference=${reference}`,
