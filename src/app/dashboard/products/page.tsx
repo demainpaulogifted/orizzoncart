@@ -88,8 +88,8 @@ export default function ProductsPage() {
     setArchiving(null);
   };
 
-  // Correct product link – uses the store subdomain
-  const getProductViewUrl = (productId: string) => {
+  // Clean subdomain product URL (SEO friendly)
+  const getProductUrl = (productId: string) => {
     if (!storeSlug) return '#';
     return `https://\( {storeSlug}.orizzoncart.name.ng/p/ \){productId}`;
   };
@@ -102,7 +102,6 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
@@ -129,7 +128,6 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Empty State */}
       {products.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed p-16 text-center">
           <p className="text-5xl mb-4">📦</p>
@@ -149,7 +147,6 @@ export default function ProductsPage() {
           )}
         </div>
       ) : (
-        /* Products Table */
         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -191,9 +188,9 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 flex-wrap">
-                        {/* VIEW → Store subdomain product page */}
+                        {/* VIEW → clean subdomain product page */}
                         <a
-                          href={getProductViewUrl(p.id)}
+                          href={getProductUrl(p.id)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
