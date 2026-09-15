@@ -15,10 +15,7 @@ export default function ProductsPage() {
   const load = async () => {
     setLoading(true);
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setLoading(false);
       return;
@@ -63,17 +60,12 @@ export default function ProductsPage() {
     load();
   }, [showArchived]);
 
-  const archiveProduct = async (
-    id: string,
-    name: string,
-    currentlyActive: boolean
-  ) => {
+  const archiveProduct = async (id: string, name: string, currentlyActive: boolean) => {
     const action = currentlyActive ? 'Archive' : 'Restore';
     if (!confirm(`\( {action} " \){name}"?`)) return;
 
     setArchiving(id);
     const supabase = createClient();
-
     const { error } = await supabase
       .from('products')
       .update({ is_active: !currentlyActive })
@@ -88,16 +80,13 @@ export default function ProductsPage() {
     setArchiving(null);
   };
 
-  // Clean subdomain product URL (SEO friendly)
   const getProductUrl = (productId: string) => {
     if (!storeSlug) return '#';
     return `https://\( {storeSlug}.orizzoncart.name.ng/p/ \){productId}`;
   };
 
   if (loading) {
-    return (
-      <div className="p-10 text-center text-gray-500">Loading products...</div>
-    );
+    return <div className="p-10 text-center text-gray-500">Loading products...</div>;
   }
 
   return (
@@ -188,7 +177,6 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 flex-wrap">
-                        {/* VIEW → clean subdomain product page */}
                         <a
                           href={getProductUrl(p.id)}
                           target="_blank"
@@ -198,7 +186,6 @@ export default function ProductsPage() {
                           View
                         </a>
 
-                        {/* EDIT */}
                         <Link
                           href={`/dashboard/products/${p.id}/edit`}
                           className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100"
@@ -206,11 +193,8 @@ export default function ProductsPage() {
                           Edit
                         </Link>
 
-                        {/* ARCHIVE / RESTORE */}
                         <button
-                          onClick={() =>
-                            archiveProduct(p.id, p.name, p.is_active)
-                          }
+                          onClick={() => archiveProduct(p.id, p.name, p.is_active)}
                           disabled={archiving === p.id}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${
                             p.is_active
