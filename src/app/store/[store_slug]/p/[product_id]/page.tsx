@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
-import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
+import { ProductGallery } from '@/components/storefront/ProductGallery';
 
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { store_slug, product_id } = await params;
@@ -19,9 +19,18 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   return {
     title,
     description,
-    openGraph: { title, description, images: [image] },
+    openGraph: { title, description, images: product.images?.map((i: any) => i.url).filter(Boolean) || [image] },
     twitter: { card: 'summary_large_image', title, description },
   };
+}
+
+function TrustRow({ icon, text }: { icon: string; text: string }) {
+  return (
+    <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+      <span className="text-lg">{icon}</span>
+      <p className="text-xs font-bold text-gray-700">{text}</p>
+    </div>
+  );
 }
 
 export default async function ProductDetailPage({ params }: any) {
@@ -47,65 +56,87 @@ export default async function ProductDetailPage({ params }: any) {
 
   let catalog: any = null;
   if (product.is_digital && product.catalog_id) {
-    const { data: c } = await admin
-      .from('digital_catalog')
-      .select('cover_color, category')
-      .eq('id', product.catalog_id)
-      .maybeSingle();
+    const { data: c } = await admin.from('digital_catalog').select('cover_color, category').eq('id', product.catalog_id).maybeSingle();
     catalog = c;
   }
 
+  const images = (product.images || []).map((i: any) => (typeof i === 'string' ? i : i.url)).filter(Boolean);
+  const paragraphs = (product.description || '').split(/\n+/).filter(Boolean);
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
-      <div className="relative aspect-[4/5] w-full max-w-4xl mx-auto bg-white overflow-hidden">
-        {product.is_digital ? (
-          <FlyerCover
-            title={product.name}
-            category={catalog?.category || 'Digital'}
-            colorKey={catalog?.cover_color || flyerColorKey(product.name)}
-            className="w-full h-full"
+    <div className="min-h-screen bg-gray-50 pb-28 md:pb-12">
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <nav className="text-xs text-gray-500 mb-4 flex gap-1 items-center">
+          <Link href={`/store/${store_slug}`} className="hover:text-purple-600 font-bold">{merchant.store_name}</Link>
+          <span>/</span>
+          <span className="truncate max-w-[200px]">{product.name}</span>
+        </nav>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          <ProductGallery
+            images={product.images}
+            name={product.name}
+            isDigital={product.is_digital}
+            category={catalog?.category || product.category}
+            coverColor={catalog?.cover_color}
           />
-        ) : product.images?.[0]?.url ? (
-          <Image src={product.images[0].url} alt={product.name} fill className="object-cover" priority />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center text-6xl">🛍️</div>
-        )}
 
-        <Link
-          href={`/store/${store_slug}`}
-          className="absolute top-4 left-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg text-gray-900 font-bold hover:bg-white transition-colors"
-        >
-          ←
-        </Link>
-      </div>
+          <div className="space-y-4">
+            {product.is_digital && (
+              <span className="inline-block bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full">⚡ INSTANT DIGITAL DELIVERY</span>
+            )}
+            {!product.is_digital && product.category && (
+              <span className="inline-block bg-purple-100 text-purple-700 text-xs font-extrabold px-3 py-1 rounded-full uppercase">{product.category}</span>
+            )}
 
-      <div className="max-w-4xl mx-auto px-5 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">{product.name}</h1>
-          <p className="mt-3 text-3xl sm:text-4xl font-black text-purple-700">₦{Number(product.price).toLocaleString()}</p>
-        </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">{product.name}</h1>
+            <p className="text-3xl font-black text-purple-700">₦{Number(product.price).toLocaleString()}</p>
 
-        {product.is_digital && (
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-            <span className="text-2xl mt-0.5">⚡</span>
-            <div>
-              <p className="font-bold text-blue-900 text-sm">Instant Digital Delivery</p>
-              <p className="text-xs text-blue-700 mt-0.5">You will receive access immediately after payment.</p>
+            {paragraphs[0] && <p className="text-gray-600 leading-relaxed text-sm">{paragraphs[0]}</p>}
+
+            <div className="space-y-2 pt-2">
+              <TrustRow icon="🔒" text="Secure checkout — card, transfer, USSD" />
+              <TrustRow icon={product.is_digital ? '⚡' : '🚚'} text={product.is_digital ? 'Download delivered instantly after payment' : 'Fast delivery nationwide'} />
+              <TrustRow icon="💬" text="WhatsApp support from the seller" />
             </div>
-          </div>
-        )}
 
-        <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
-          <p>{product.description || 'No description provided.'}</p>
+            <Link
+              href={`/store/${store_slug}?add=${product.id}`}
+              className="hidden md:block w-full bg-purple-600 text-white text-center py-4 rounded-xl font-extrabold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-colors"
+            >
+              Add to Cart 🛒
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-10 bg-white rounded-2xl border p-6 space-y-4">
+          <h2 className="text-lg font-extrabold text-gray-900">Description</h2>
+          {paragraphs.length === 0 && <p className="text-sm text-gray-500">No description provided.</p>}
+          {paragraphs.slice(1).map((p: string, i: number) => (
+            <p key={i} className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{p}</p>
+          ))}
+
+          {images.length > 1 && (
+            <>
+              <h3 className="text-sm font-extrabold text-gray-900 pt-2">More views</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {images.slice(1).map((u: string, i: number) => (
+                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden border">
+                    <Image src={u} alt={`${product.name} view ${i + 2}`} fill sizes="(max-width: 640px) 50vw, 33vw" loading="lazy" className="object-cover" />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex gap-3 items-center z-50">
+      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t p-3 z-40 md:hidden">
         <Link
           href={`/store/${store_slug}?add=${product.id}`}
-          className="flex-1 bg-purple-600 text-white font-bold py-3.5 rounded-xl text-center hover:bg-purple-700 transition-colors shadow-lg"
+          className="block w-full bg-purple-600 text-white text-center py-3.5 rounded-xl font-extrabold"
         >
-          Add to Cart
+          Add to Cart — ₦{Number(product.price).toLocaleString()}
         </Link>
       </div>
     </div>
