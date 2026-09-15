@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateOrderNumber } from '@/lib/utils';
-import { sendOrderAlert } from '@/lib/notify';
 import { ensureOrizzonPay } from '@/lib/paystack-engine';
 
 export async function POST(request: NextRequest) {
@@ -81,26 +80,28 @@ export async function POST(request: NextRequest) {
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
     await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
-
-    const platformKey = process.env.PLATFORM_PAYSTACK_SECRET_KEY;
-    let enrichedMerchant = merchant;
-    if (platformKey && merchant.bank_name && merchant.account_number && !merchant.paystack_secret_key && !merchant.flutterwave_secret_key) {
-      enrichedMerchant = await ensureOrizzonPay(merchant);
-    }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
 
     let secretKey: string | null = null;
     let splitCode: string | null = null;
 
-    // Priority 1: Merchant has own payment keys (they keep 100%)
+    // PRIORITY 1: Merchant's own keys → they keep 100%
     if (merchant.paystack_secret_key || merchant.flutterwave_secret_key) {
-      secretKey = merchant.preferred_gateway === 'paystack' ? merchant.paystack_secret_key : merchant.flutterwave_secret_key;
-      splitCode = null; // No platform fee
+      secretKey = merchant.preferred_gateway === 'flutterwave' && merchant.flutterwave_secret_key
+        ? merchant.flutterwave_secret_key
+        : merchant.paystack_secret_key || merchant.flutterwave_secret_key;
+      splitCode = null;
     }
-    // Priority 2: OrizzonPay with platform keys (5% platform fee)
-    else if (platformKey && enrichedMerchant.split_code_platform) {
-      secretKey = platformKey;
-      splitCode = enrichedMerchant.split_code_platform;
+    // PRIORITY 2: OrizzonCart Pay (bank account) → 5% platform split
+    else {
+      const orizzonKey = process.env.ORIZZONCART_PAY_SECRET_KEY || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+      if (orizzonKey && merchant.bank_name && merchant.account_number) {
+        const enriched = await ensureOrizzonPay(merchant);
+        if (enriched.split_code_platform) {
+          secretKey = orizzonKey;
+          splitCode = enriched.split_code_platform;
+        }
+      }
     }
 
     if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured.' }, { status: 500 });
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
       email: customer.email,
       amount: totalAmount * 100,
       reference,
-      callback_url: `${appUrl}/checkout/success?order=${order.id}&reference=${reference}`,
+      callback_url: `${appUrl}/payment/verify?reference=${reference}`,
       metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
     };
 
@@ -123,10 +124,11 @@ export async function POST(request: NextRequest) {
     const paystackData = await paystackRes.json();
     if (!paystackData.status) throw new Error(paystackData.message);
 
-    // Fire WhatsApp alert (non-blocking)
-    sendOrderAlert(merchant.id, order, orderItems.map((i: any) => `${i.product_name} x${i.quantity}`).join(', ')).catch(() => {});
-
-    return NextResponse.json({ authorization_url: paystackData.data.authorization_url, order_id: order.id });
+    return NextResponse.json({
+      authorization_url: paystackData.data.authorization_url,
+      order_id: order.id,
+      reference,
+    });
   } catch (error: any) {
     console.error('Checkout error:', error);
     return NextResponse.json({ error: error.message || 'Checkout failed' }, { status: 500 });
