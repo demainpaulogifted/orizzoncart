@@ -16,48 +16,36 @@ export default function AddProductPage() {
     category: '' 
   });
   const [images, setImages] = useState<string[]>([]);
+  const [digitalFile, setDigitalFile] = useState<File | null>(null);
+  const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
-  const [storeType, setStoreType] = useState<'CUSTOM' | 'PLATFORM' | null>(null);
-  const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
+    const loadCategories = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
       const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
-      const { data: merchants } = await supabase.from('merchants').select('id, store_type').eq('user_id', user.id);
-      const active = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
+      const { data: merchants } = await supabase.from('merchants').select('id').eq('user_id', user.id);
+      const merchant = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
       
-      if (active) {
-        // Check if store has sourced products
-        const { count } = await supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true })
-          .eq('merchant_id', active.id)
-          .not('catalog_id', 'is', null);
-        
-        setStoreType((count || 0) > 0 ? 'PLATFORM' : 'CUSTOM');
-      }
-
-      // Load categories for autocomplete
-      if (active) {
+      if (merchant) {
         const { data: products } = await supabase
           .from('products')
           .select('category')
-          .eq('merchant_id', active.id)
+          .eq('merchant_id', merchant.id)
           .not('category', 'is', null);
         const cats = Array.from(new Set((products || []).map(p => p.category).filter(Boolean)));
         setExistingCategories(cats);
       }
     };
-    load();
+    loadCategories();
   }, []);
 
-  const handleUpload = async (files: FileList | null) => {
+  const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
     const supabase = createClient();
@@ -78,12 +66,33 @@ export default function AddProductPage() {
     if (urls.length > 0) toast.success(`${urls.length} photo(s) uploaded!`);
   };
 
+  const handleDigitalFileUpload = async (file: File | null) => {
+    if (!file) return;
+    setUploading(true);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const path = `${user?.id}/digital/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    const { error } = await supabase.storage.from('digital-products').upload(path, file, { upsert: false });
+    
+    if (error) {
+      toast.error('File upload failed: ' + error.message);
+      setUploading(false);
+      return;
+    }
+    
+    const { data } = supabase.storage.from('digital-products').getPublicUrl(path);
+    setDigitalFileUrl(data.publicUrl);
+    setDigitalFile(file);
+    setUploading(false);
+    toast.success('Digital file uploaded!');
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ENFORCE STORE TYPE RULE
-    if (storeType === 'PLATFORM') {
-      setShowWarning(true);
+    if (form.is_digital && !digitalFileUrl) {
+      toast.error('Please upload a digital file for delivery');
       return;
     }
     
@@ -111,6 +120,8 @@ export default function AddProductPage() {
       category: form.category || null,
       is_active: true,
       images: images.map((url) => ({ url })),
+      digital_file_url: form.is_digital ? digitalFileUrl : null,
+      digital_file_name: form.is_digital ? digitalFile?.name : null,
     });
 
     if (error) {
@@ -122,39 +133,80 @@ export default function AddProductPage() {
     setSaving(false);
   };
 
-  if (showWarning) {
-    return (
-      <div className="max-w-2xl mx-auto p-8 bg-white rounded-2xl shadow-xl mt-10">
-        <div className="text-center space-y-4">
-          <div className="text-6xl">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-900">Store Type Conflict</h2>
-          <p className="text-gray-600 leading-relaxed">
-            Your current store <strong>only accepts platform-sourced products</strong> (digital products from OrizzonCart catalog). 
-            To add your own custom products, you need to create a separate store.
-          </p>
-          <div className="flex gap-3 pt-4">
-            <button 
-              onClick={() => router.push('/onboarding')}
-              className="flex-1 bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700"
-            >
-              Create New Store
-            </button>
-            <button 
-              onClick={() => router.push('/dashboard/source-digital')}
-              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200"
-            >
-              Source Platform Products
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
       <form onSubmit={handleSave} className="bg-white rounded-2xl shadow-sm border p-6 space-y-5">
         <h1 className="text-xl font-bold">Add Product</h1>
+
+        <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+          <input type="checkbox" checked={form.is_digital} onChange={(e) => setForm({ ...form, is_digital: e.target.checked })} className="w-4 h-4 accent-purple-600" />
+          This is a digital product (no shipping)
+        </label>
+
+        {/* Digital File Upload */}
+        {form.is_digital && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Digital File (PDF, ZIP, etc.) *</label>
+            {digitalFileUrl ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-green-900">{digitalFile?.name}</p>
+                  <p className="text-xs text-green-700">File uploaded successfully</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setDigitalFileUrl(''); setDigitalFile(null); }}
+                  className="text-red-600 text-xs font-bold hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer hover:border-purple-400 ${uploading ? 'opacity-50' : 'bg-gray-50'}`}>
+                <span className="text-3xl">📄</span>
+                <span className="text-sm font-bold text-gray-700">{uploading ? 'Uploading...' : 'Click to upload digital file'}</span>
+                <span className="text-xs text-gray-500">PDF, ZIP, DOC, etc.</span>
+                <input
+                  type="file"
+                  accept=".pdf,.zip,.doc,.docx,.epub"
+                  className="hidden"
+                  onChange={(e) => handleDigitalFileUpload(e.target.files?.[0] || null)}
+                  disabled={uploading}
+                />
+              </label>
+            )}
+          </div>
+        )}
+
+        {/* Image Upload (only for physical or digital preview) */}
+        {!form.is_digital && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Product Photos *</label>
+            
+            {images.length > 0 && (
+              <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+                {images.map((url, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0">
+                    <Image src={url} alt="" fill className="object-cover" />
+                    <button 
+                      type="button" 
+                      onClick={() => setImages(images.filter((_, x) => x !== i))} 
+                      className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer hover:border-purple-400 ${uploading ? 'opacity-50' : 'bg-gray-50'}`}>
+              <span className="text-3xl">📸</span>
+              <span className="text-sm font-bold text-gray-700">{uploading ? 'Uploading...' : 'Tap to add photos'}</span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleImageUpload(e.target.files)} disabled={uploading} />
+            </label>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Category (Optional)</label>
@@ -162,64 +214,31 @@ export default function AddProductPage() {
             list="categories"
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            placeholder="e.g., Summer Sale, VIP, Electronics..."
+            placeholder="e.g., Summer Sale, VIP..."
             className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
           />
           <datalist id="categories">
             {existingCategories.map(cat => <option key={cat} value={cat} />)}
           </datalist>
-          <p className="text-xs text-gray-500 mt-1">Create new or select existing. Helps customers discover products.</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Product Photos *</label>
-          
-          {images.length > 0 && (
-            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-              {images.map((url, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0">
-                  <Image src={url} alt="" fill className="object-cover" />
-                  <button 
-                    type="button" 
-                    onClick={() => setImages(images.filter((_, x) => x !== i))} 
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer hover:border-purple-400 transition-colors ${uploading ? 'opacity-50' : 'bg-gray-50'}`}>
-            <span className="text-3xl">📸</span>
-            <span className="text-sm font-bold text-gray-700">{uploading ? 'Uploading...' : 'Tap to add photos'}</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} disabled={uploading} />
-          </label>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" placeholder="Linen Summer Dress" />
+          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Price (₦) *</label>
-          <input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" placeholder="25000" />
+          <input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" placeholder="Fabric, size, color..." />
+          <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
         </div>
 
-        <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
-          <input type="checkbox" checked={form.is_digital} onChange={(e) => setForm({ ...form, is_digital: e.target.checked })} className="w-4 h-4 accent-purple-600" />
-          This is a digital product (no shipping)
-        </label>
-
-        <button type="submit" disabled={saving || uploading || images.length === 0} className="w-full bg-purple-600 text-white py-3.5 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
-          {saving ? 'Publishing...' : images.length === 0 ? 'Add at least 1 photo to publish' : 'Publish Product 🚀'}
+        <button type="submit" disabled={saving || uploading} className="w-full bg-purple-600 text-white py-3.5 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
+          {saving ? 'Publishing...' : 'Publish Product 🚀'}
         </button>
       </form>
 
@@ -230,13 +249,16 @@ export default function AddProductPage() {
             {images[0] ? (
               <Image src={images[0]} alt="" fill className="object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">📸</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">
+                {form.is_digital ? '📄' : '📸'}
+              </div>
             )}
           </div>
           <div className="mt-4 text-center">
             {form.category && <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full mb-2">{form.category}</span>}
             <h3 className="text-lg font-medium text-gray-900">{form.name || 'Product name'}</h3>
             <p className="mt-1 text-xl font-bold text-purple-600">₦{Number(form.price || 0).toLocaleString()}</p>
+            {form.is_digital && <p className="text-xs text-blue-600 mt-1">⚡ Instant Digital Download</p>}
           </div>
         </div>
       </div>
