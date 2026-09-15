@@ -2,57 +2,48 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
-interface ProductCardProps {
-  product: any;
-  isShowcaseMode: boolean;
-  onClick: () => void;
-}
-
-export function ProductCard({ product, isShowcaseMode, onClick }: ProductCardProps) {
+export function ProductCard({ product, isShowcaseMode, onClick }: { product: any; isShowcaseMode: boolean; onClick?: () => void }) {
   const imageUrl = product.images?.[0]?.url;
   const slug = product.store_slug || '';
-  const id = product.id || '';
-
-  // Build clean link - works on both subdomain and main domain
-  const productLink = slug && id ? `/store/${slug}/p/${id}` : '#';
+  const href = slug && product.id ? `/store/${slug}/p/${product.id}` : '#';
 
   return (
-    <Link href={productLink} className="group block cursor-pointer" onClick={(e) => { e.preventDefault(); onClick(); }}>
-      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gray-100 shadow-md group-hover:shadow-2xl transition-shadow duration-300">
-        {product.is_digital ? (
-          <div className="absolute inset-0">
-            <FlyerCover
-              title={product.name}
-              category="Digital Product"
-              colorKey={flyerColorKey(product.name)}
-              className="w-full h-full"
-            />
-          </div>
-        ) : imageUrl ? (
+    <Link href={href} className="group block">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-white shadow-md group-hover:shadow-2xl transition-all duration-300">
+        {imageUrl ? (
           <Image
             src={imageUrl}
             alt={product.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            quality={75}
+            sizes="(max-width: 640px) 50vw, 33vw"
+            quality={80}
             loading="lazy"
             className="object-cover group-hover:scale-105 transition-transform duration-700"
           />
+        ) : product.is_digital ? (
+          <FlyerCover
+            title={product.name}
+            category={product.category || 'Digital'}
+            colorKey={flyerColorKey(product.name)}
+            className="absolute inset-0"
+          />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
             <span className="text-4xl opacity-40">🛍️</span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <span className="px-4 py-1.5 rounded-full bg-white/95 text-gray-900 text-xs font-bold whitespace-nowrap shadow-lg">
-            👁 View Product
-          </span>
-        </div>
+
+        {product.is_digital && (
+          <span className="absolute top-2 left-2 bg-blue-600/90 text-white text-[9px] font-extrabold px-2 py-1 rounded-full">⚡ DIGITAL</span>
+        )}
+        {!product.is_digital && product.category && (
+          <span className="absolute top-2 left-2 bg-white/90 text-gray-800 text-[9px] font-extrabold px-2 py-1 rounded-full uppercase">{product.category}</span>
+        )}
       </div>
-      <div className="mt-4 text-center px-2">
-        <h3 className="text-lg font-medium text-gray-900 leading-snug">{product.name}</h3>
-        <p className="mt-1 text-xl font-bold text-purple-700">₦{Number(product.price).toLocaleString()}</p>
+
+      <div className="mt-3 px-1 text-center">
+        <h3 className="text-sm sm:text-base font-semibold text-gray-900 leading-snug line-clamp-2">{product.name}</h3>
+        <p className="mt-1 text-lg font-extrabold text-purple-700">₦{Number(product.price).toLocaleString()}</p>
       </div>
     </Link>
   );
