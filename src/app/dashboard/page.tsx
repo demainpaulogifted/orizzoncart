@@ -1,113 +1,112 @@
-import { createClient } from '@/lib/supabase/server';
-import { formatCurrency } from '@/lib/utils';
+'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/client';
+import { formatCurrency } from '@/lib/utils';
 
-export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export default function DashboardHome() {
+  const [merchant, setMerchant] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [counts, setCounts] = useState({ products: 0, pages: 0, orders: 0 });
 
-  const cookieStore = await cookies();
-  const activeId = cookieStore.get('active_merchant_id')?.value;
+  useEffect(() => {
+    const load = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const cookieId = document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('active_merchant_id='))?.split('=')[1];
+      const { data: merchants } = await supabase.from('merchants').select('*').eq('user_id', user.id);
+      const active = (merchants || []).find((m: any) => m.id === cookieId) || (merchants || [])[0];
+      if (!active) return;
+      setMerchant(active);
 
-  const { data: merchants } = await supabase.from('merchants').select('*').eq('user_id', user?.id);
-  const merchant = (merchants || []).find((m: any) => m.id === activeId) || (merchants || [])[0] || null;
+      const [{ count: products }, { count: pages }, { count: orders }] = await Promise.all([
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('merchant_id', active.id),
+        supabase.from('store_pages').select('*', { count: 'exact', head: true }).eq('merchant_id', active.id),
+        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('merchant_id', active.id),
+      ]);
+      setCounts({ products: products || 0, pages: pages || 0, orders: orders || 0 });
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+      fetch('/api/analytics').then((r) => r.json()).then(setStats).catch(() => {});
+    };
+    load();
+  }, []);
 
-  const { data: orders } = merchant
-    ? await supabase.from('orders').select('total_amount, payment_status, created_at').eq('merchant_id', merchant.id)
-    : { data: [] };
+  if (!merchant) return <div className="p-10 text-center text-gray-500">Loading dashboard...</div>;
 
-  const { count: visitors } = merchant
-    ? await supabase.from('analytics_events').select('*', { count: 'exact', head: true }).eq('merchant_id', merchant.id)
-    : { count: 0 };
-
-  const paid = (orders || []).filter((o: any) => o.payment_status === 'paid');
-  const todayOrders = paid.filter((o: any) => new Date(o.created_at) >= startOfToday);
-  const todaySales = todayOrders.reduce((acc: number, o: any) => acc + o.total_amount, 0);
-  const conversion = visitors ? ((paid.length / visitors) * 100).toFixed(1) : '0.0';
-
-  const status = merchant?.payment_receiving_status;
-
-  const cards = [
-    { label: "Visitors", value: (visitors || 0).toString(), grad: 'from-blue-500 to-indigo-600' },
-    { label: "Orders", value: todayOrders.length.toString(), grad: 'from-emerald-500 to-teal-600' },
-    { label: "Sales", value: formatCurrency(todaySales), grad: 'from-purple-500 to-violet-600' },
-    { label: "Conv.", value: `${conversion}%`, grad: 'from-orange-400 to-amber-500' },
+  const hasPayout = !!(merchant.payout_method || merchant.bank_name || merchant.paystack_secret_key || merchant.flutterwave_secret_key);
+  const steps = [
+    { done: true, title: 'Create your store', tip: 'Done! Your store is live on OrizzonCart.', href: `/store/${merchant.store_slug}`, cta: 'View Store' },
+    { done: counts.products > 0, title: 'Add your first product', tip: 'Stores with 3+ products and real photos sell 4x more.', href: '/dashboard/products/add', cta: 'Add Product' },
+    { done: !!merchant.shipping_mode, title: 'Set shipping or pickup', tip: 'Digital products skip shipping automatically — set this for physical items.', href: '/dashboard/settings/shipping', cta: 'Set Shipping' },
+    { done: counts.pages > 0, title: 'Add a trust page', tip: 'A Refund Policy or About page can lift conversion by up to 30%.', href: '/dashboard/pages', cta: 'Create Page' },
+    { done: merchant.payment_receiving_status === 'ACTIVE', title: 'Activate payments', tip: 'Pay the one-time activation fee, then choose: your own keys (0% fee) or OrizzonPay (5% fee).', href: '/dashboard/settings/payment', cta: 'Activate' },
+    { done: hasPayout, title: 'Connect your payout method', tip: 'Own keys = money lands in your Paystack directly. OrizzonPay = we route sales to your bank.', href: '/dashboard/settings/payment', cta: 'Connect' },
   ];
+  const doneCount = steps.filter((s) => s.done).length;
+  const progress = Math.round((doneCount / steps.length) * 100);
 
   return (
-    <div className="space-y-5">
-      {/* Status Banners */}
-      {(status === 'SUSPENDED' || status === 'HELD') && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center shadow-sm">
-          <p className="font-bold text-red-800 text-sm">🛑 Payments suspended</p>
-          <Link href="/dashboard/settings/plans" className="text-xs font-bold text-red-700 underline">Renew now</Link>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {merchant.payment_receiving_status !== 'ACTIVE' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
+          <p className="font-bold text-yellow-900">⚠️ Showcase Mode — activate to start selling</p>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-3 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">Activate Store</Link>
         </div>
       )}
 
-      {status === 'PENDING_KEYS' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-center shadow-sm">
-          <p className="font-bold text-blue-800 text-sm">🏦 Add bank account to go live</p>
-          <Link href="/dashboard/settings/payment" className="inline-block mt-1 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
-            Add Bank Account
-          </Link>
+      {/* SETUP CHECKLIST */}
+      <div className="bg-white rounded-2xl border p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-extrabold text-gray-900">🚀 Store Setup</h2>
+          <span className="text-sm font-bold text-purple-600">{progress}% complete</span>
         </div>
-      )}
-
-      {status !== 'ACTIVE' && status !== 'PENDING_KEYS' && status !== 'SUSPENDED' && status !== 'HELD' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-center shadow-sm">
-          <p className="font-bold text-gray-900 text-sm">⚠️ Showcase Mode — activate to sell</p>
-          <Link href="/dashboard/settings/payment" className="inline-block mt-1 px-4 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">
-            Activate Store
-          </Link>
+        <div className="w-full bg-gray-100 rounded-full h-2.5 mb-5">
+          <div className="bg-purple-600 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
-      )}
-
-      <h1 className="text-xl font-extrabold text-gray-900 truncate">
-        Welcome back, {merchant?.store_name?.split(' ')[0] || 'Merchant'}!
-      </h1>
-
-      {/* Compact Stats Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {cards.map((c) => (
-          <div
-            key={c.label}
-            className={`bg-gradient-to-br ${c.grad} rounded-2xl p-4 flex flex-col justify-center text-white shadow-md min-h-[90px]`}
-          >
-            <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wide">{c.label}</p>
-            <p className="text-2xl font-extrabold mt-1 leading-none">{c.value}</p>
-          </div>
-        ))}
+        <div className="space-y-3">
+          {steps.map((s, i) => (
+            <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${s.done ? 'bg-green-50' : 'bg-gray-50'}`}>
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${s.done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                {s.done ? '✓' : i + 1}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold ${s.done ? 'text-green-800' : 'text-gray-800'}`}>{s.title}</p>
+                {!s.done && <p className="text-xs text-gray-500 mt-0.5">💡 {s.tip}</p>}
+              </div>
+              {!s.done && (
+                <Link href={s.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">{s.cta}</Link>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Tight Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Link href="/dashboard/products/add" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-400 hover:shadow-md transition-all flex items-start gap-3">
-          <span className="text-xl mt-0.5">➕</span>
-          <div>
-            <p className="font-bold text-sm text-gray-900">Add Product</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Name, price, photo.</p>
-          </div>
-        </Link>
-        
-        <Link href="/dashboard/settings/payment" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-400 hover:shadow-md transition-all flex items-start gap-3">
-          <span className="text-xl mt-0.5">🏦</span>
-          <div>
-            <p className="font-bold text-sm text-gray-900">{status === 'ACTIVE' ? 'Payouts' : 'Activate'}</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">{status === 'ACTIVE' ? 'Manage bank account' : 'Pay fee & add bank'}</p>
-          </div>
-        </Link>
+      {/* STATS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-4 text-white">
+          <p className="text-white/80 text-[11px] font-bold uppercase">Visitors</p>
+          <p className="text-2xl font-extrabold mt-1">{stats?.visitors || 0}</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 text-white">
+          <p className="text-white/80 text-[11px] font-bold uppercase">Orders</p>
+          <p className="text-2xl font-extrabold mt-1">{counts.orders}</p>
+        </div>
+        <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-4 text-white">
+          <p className="text-white/80 text-[11px] font-bold uppercase">Sales</p>
+          <p className="text-2xl font-extrabold mt-1">{formatCurrency(stats?.revenue || 0)}</p>
+        </div>
+        <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl p-4 text-white">
+          <p className="text-white/80 text-[11px] font-bold uppercase">Conv.</p>
+          <p className="text-2xl font-extrabold mt-1">{stats?.visitors ? ((stats.orders / stats.visitors) * 100).toFixed(1) : '0.0'}%</p>
+        </div>
+      </div>
 
-        <Link href="/dashboard/settings/theme" className="bg-white rounded-xl border border-gray-200 p-4 hover:border-purple-400 hover:shadow-md transition-all flex items-start gap-3">
-          <span className="text-xl mt-0.5">🎨</span>
-          <div>
-            <p className="font-bold text-sm text-gray-900">Theme</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Change storefront look</p>
-          </div>
-        </Link>
+      {/* QUICK ACTIONS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Link href="/dashboard/products/add" className="bg-white rounded-xl border p-4 hover:border-purple-400 font-bold text-sm">➕ Add Product</Link>
+        <Link href="/dashboard/pages" className="bg-white rounded-xl border p-4 hover:border-purple-400 font-bold text-sm">📄 Add Trust Page</Link>
+        <Link href={`/store/${merchant.store_slug}`} target="_blank" className="bg-white rounded-xl border p-4 hover:border-purple-400 font-bold text-sm">👀 View My Store</Link>
       </div>
     </div>
   );
