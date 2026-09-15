@@ -10,6 +10,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
   const [cartOpen, setCartOpen] = useState(false);
   const [count, setCount] = useState(0);
 
+  // Sync cart count from localStorage
   useEffect(() => {
     const read = () => {
       try {
@@ -26,6 +27,13 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
     };
   }, [slug]);
 
+  // Listen for cart-open-request from MerchantHeader or any other cart button
+  useEffect(() => {
+    const open = () => setCartOpen(true);
+    window.addEventListener('cart-open-request', open);
+    return () => window.removeEventListener('cart-open-request', open);
+  }, []);
+
   const storeUrl = typeof window !== 'undefined' ? window.location.href : '';
   const share = {
     copy: () => { navigator.clipboard.writeText(storeUrl); toast.success('Store link copied!'); },
@@ -36,6 +44,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
 
   return (
     <div style={styleVars} className="min-h-screen bg-[var(--color-surface,#f8fafc)] text-[var(--color-text,#111827)]">
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 text-white flex items-center justify-center font-extrabold text-lg shrink-0">
@@ -65,6 +74,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
           </div>
         </div>
 
+        {/* Mobile track row */}
         <div className="sm:hidden px-4 pb-2">
           <Link href="/track-order" className="flex items-center justify-center gap-1.5 py-2 rounded-lg border-2 border-gray-900 text-gray-900 text-xs font-extrabold">
             📦 Track My Order
@@ -72,6 +82,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
         </div>
       </header>
 
+      {/* SHARE ROW */}
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-gray-500">Share store:</span>
@@ -82,6 +93,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
         </div>
       </div>
 
+      {/* HERO */}
       <section className="bg-gradient-to-b from-white to-transparent">
         <div className="max-w-6xl mx-auto px-4 py-12 text-center">
           <p className="text-xs font-extrabold tracking-[0.3em] text-gray-400 uppercase">Premium Collection</p>
@@ -95,6 +107,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
         </div>
       </section>
 
+      {/* TRUST PAGES TABS */}
       {pages?.length > 0 && (
         <div className="max-w-6xl mx-auto px-4 pb-3">
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -111,6 +124,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
         </div>
       )}
 
+      {/* SHOP */}
       <main className="max-w-6xl mx-auto px-4 py-6">
         {isShowcaseMode && (
           <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center text-sm font-bold text-yellow-800">
@@ -120,6 +134,7 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
         <StoreShop products={products} merchant={merchant} isShowcaseMode={isShowcaseMode} />
       </main>
 
+      {/* STICKY CART BAR — impossible to miss */}
       {count > 0 && (
         <div className="fixed bottom-0 inset-x-0 z-40 p-3 bg-gradient-to-t from-black/30 to-transparent pointer-events-none">
           <button
