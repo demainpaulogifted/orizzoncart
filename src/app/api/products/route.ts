@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: merchant } = await admin
     .from('merchants')
-    .select('id, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at, shipping_mode, shipping_flat_fee, shipping_pickup_address')
+    .select('id, store_slug, tagline, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at, shipping_mode, shipping_flat_fee, shipping_pickup_address')
     .eq('store_slug', slug)
     .single();
 
@@ -19,13 +19,14 @@ export async function GET(request: NextRequest) {
 
   const { data: products } = await admin
     .from('products')
-    .select('id, name, price, description, images, is_digital')
+    .select('id, name, price, description, images, is_digital, category')
     .eq('merchant_id', merchant.id)
     .eq('is_active', true);
 
   return NextResponse.json({
     products: products || [],
     showcase,
+    merchant: { store_name: merchant.store_name, tagline: merchant.tagline },
     shipping: {
       mode: merchant.shipping_mode || 'FLAT',
       flat_fee: merchant.shipping_flat_fee ?? 2500,
