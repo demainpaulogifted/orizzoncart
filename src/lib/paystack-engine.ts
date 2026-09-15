@@ -21,23 +21,16 @@ const BANK_CODES: Record<string, string> = {
 };
 
 /**
- * OrizzonPay engine: creates subaccount + 5% platform split
- * If merchant has own keys, they keep 100% (no split code created)
+ * OrizzonPay engine — runs on the OrizzonCart Pay account.
+ * Creates the merchant subaccount + 5% platform split.
+ * Merchants with their own keys never reach here (they keep 100%).
  */
 export async function ensureOrizzonPay(merchant: any): Promise<any> {
   if (!merchant?.bank_name || !merchant?.account_number) return merchant;
-  
-  // If merchant already has subaccount and split, return early
-  if (merchant.paystack_subaccount_code && merchant.split_code_platform) {
-    return merchant;
-  }
+  if (merchant.paystack_subaccount_code && merchant.split_code_platform) return merchant;
+  if (merchant.paystack_secret_key || merchant.flutterwave_secret_key) return merchant;
 
-  // If merchant has own payment keys, they keep 100% - no platform split
-  if (merchant.paystack_secret_key || merchant.flutterwave_secret_key) {
-    return merchant;
-  }
-
-  const secretKey = process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+  const secretKey = process.env.ORIZZONCART_PAY_SECRET_KEY || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
   if (!secretKey) return merchant;
 
   const headers = { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' };
@@ -47,7 +40,6 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
   let splitPlatform = merchant.split_code_platform || null;
 
   try {
-    // 1. Create subaccount (merchant's bank account)
     if (!subaccountCode) {
       const res = await fetch('https://api.paystack.co/subaccount', {
         method: 'POST',
@@ -57,9 +49,9 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
           settlement_bank: BANK_CODES[merchant.bank_name] || '044',
           account_number: merchant.account_number,
           percentage_charge: 0,
-          primary_contact_email: merchant.contact_email || 'support@orizzoncart.name.ng',
+          primary_contact_email: 'support@orizzoncart.name.ng',
           primary_contact_name: merchant.account_name || merchant.store_name,
-          primary_contact_phone: merchant.whatsapp_number || '08000000000',
+          primary_contact_phone: '08000000000',
         }),
       });
       const data = await res.json();
@@ -67,7 +59,6 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
       subaccountCode = data.data.subaccount_code;
     }
 
-    // 2. Create 5% platform split (merchant keeps 95%, platform takes 5%)
     if (!splitPlatform) {
       const res = await fetch('https://api.paystack.co/split', {
         method: 'POST',
@@ -85,20 +76,12 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
       if (data.status) splitPlatform = data.data.split_code;
     }
 
-    // 3. Save to database
     await admin
       .from('merchants')
-      .update({
-        paystack_subaccount_code: subaccountCode,
-        split_code_platform: splitPlatform,
-      })
+      .update({ paystack_subaccount_code: subaccountCode, split_code_platform: splitPlatform })
       .eq('id', merchant.id);
 
-    return {
-      ...merchant,
-      paystack_subaccount_code: subaccountCode,
-      split_code_platform: splitPlatform,
-    };
+    return { ...merchant, paystack_subaccount_code: subaccountCode, split_code_platform: splitPlatform };
   } catch {
     return merchant;
   }
