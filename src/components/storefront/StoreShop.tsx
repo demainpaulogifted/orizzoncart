@@ -15,17 +15,19 @@ export function StoreShop({ products, merchant, isShowcaseMode }: StoreShopProps
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
 
-  // Dynamically extract unique categories from current store products
+  const storeSlug = merchant?.store_slug || '';
+
+  // Dynamically extract categories from products
   const categories = ['All', ...Array.from(new Set(products.map((p: any) => p.category).filter(Boolean)))];
 
-  // Filter logic combining search and category
+  // Filter logic
   const filteredProducts = products.filter((p: any) => {
     const matchesCategory = category === 'All' || p.category === category;
     const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  // Handle URL params for direct product view (e.g., ?add=product-id)
+  // Handle URL params for direct add-to-cart
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const productId = params.get('add');
@@ -48,7 +50,6 @@ export function StoreShop({ products, merchant, isShowcaseMode }: StoreShopProps
     <div className="space-y-6">
       {/* Sticky Search & Category Filter Bar */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md py-3 -mx-4 px-4 border-b shadow-sm space-y-3">
-        {/* Search Input */}
         <div className="relative">
           <input
             type="text"
@@ -61,8 +62,7 @@ export function StoreShop({ products, merchant, isShowcaseMode }: StoreShopProps
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </div>
-        
-        {/* Horizontal Scrollable Category Pills */}
+
         {categories.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
             {categories.map((cat) => (
@@ -70,8 +70,8 @@ export function StoreShop({ products, merchant, isShowcaseMode }: StoreShopProps
                 key={cat}
                 onClick={() => setCategory(cat)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors ${
-                  category === cat 
-                    ? 'bg-purple-600 text-white shadow-sm' 
+                  category === cat
+                    ? 'bg-purple-600 text-white shadow-sm'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -85,22 +85,21 @@ export function StoreShop({ products, merchant, isShowcaseMode }: StoreShopProps
       {/* Products Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredProducts.map((product: any) => (
-          <div key={product.id} onClick={() => handleProductClick(product)}>
-            <ProductCard 
-              product={{ ...product, store_slug: merchant?.store_slug }} 
-              isShowcaseMode={isShowcaseMode} 
-              onClick={() => handleProductClick(product)}
-            />
-          </div>
+          <ProductCard
+            key={product.id}
+            product={{ ...product, store_slug: storeSlug }}
+            isShowcaseMode={isShowcaseMode}
+            onClick={() => handleProductClick(product)}
+          />
         ))}
       </div>
 
       {/* Empty State */}
-      {filteredProducts.length === 0 && (
+      {filteredProducts.length === 0 && products.length > 0 && (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed">
           <p className="text-gray-500 font-medium">No products match your search.</p>
-          <button 
-            onClick={() => {setSearch(''); setCategory('All');}} 
+          <button
+            onClick={() => { setSearch(''); setCategory('All'); }}
             className="mt-2 text-sm text-purple-600 font-bold hover:underline"
           >
             Clear filters
@@ -108,12 +107,19 @@ export function StoreShop({ products, merchant, isShowcaseMode }: StoreShopProps
         </div>
       )}
 
+      {/* No Products at All */}
+      {products.length === 0 && (
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed">
+          <p className="text-gray-500 font-medium">No products available yet.</p>
+        </div>
+      )}
+
       {/* Product Modal */}
-      <ProductModal 
-        product={selectedProduct} 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        storeSlug={merchant?.store_slug || ''}
+      <ProductModal
+        product={selectedProduct}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        storeSlug={storeSlug}
       />
     </div>
   );
