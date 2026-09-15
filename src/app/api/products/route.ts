@@ -8,25 +8,29 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: merchant } = await admin
     .from('merchants')
-    .select('id, store_slug, tagline, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at, shipping_mode, shipping_flat_fee, shipping_pickup_address')
+    .select('id, store_slug, cart_status, checkout_status, payment_receiving_status, maintenance_expires_at, shipping_mode, shipping_flat_fee, shipping_pickup_address')
     .eq('store_slug', slug)
     .single();
 
   if (!merchant) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
 
   const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
-  const showcase = merchant.cart_status === 'LOCKED' || merchant.checkout_status !== 'ENABLED' || merchant.payment_receiving_status !== 'ACTIVE' || !!expired;
+  const showcase =
+    merchant.cart_status === 'LOCKED' ||
+    merchant.checkout_status !== 'ENABLED' ||
+    merchant.payment_receiving_status !== 'ACTIVE' ||
+    !!expired;
 
   const { data: products } = await admin
     .from('products')
     .select('id, name, price, description, images, is_digital, category')
     .eq('merchant_id', merchant.id)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
 
   return NextResponse.json({
     products: products || [],
     showcase,
-    merchant: { store_name: merchant.store_name, tagline: merchant.tagline },
     shipping: {
       mode: merchant.shipping_mode || 'FLAT',
       flat_fee: merchant.shipping_flat_fee ?? 2500,
