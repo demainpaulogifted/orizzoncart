@@ -22,9 +22,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .filter((i: any) => i.products?.is_digital && i.products?.digital_file_url)
     .map((i: any) => ({ name: i.products.digital_file_name || i.product_name, url: i.products.digital_file_url }));
 
+  // Fix: merchants might be an array from the join
+  const merchantData = Array.isArray(order.merchants) ? order.merchants[0] : order.merchants;
+
   return NextResponse.json({
     order_number: order.order_number,
-    store_name: order.merchants?.store_name || '',
+    store_name: merchantData?.store_name || '',
     customer_name: order.customer_name,
     total_amount: order.total_amount,
     tracking_number: order.tracking_number,
