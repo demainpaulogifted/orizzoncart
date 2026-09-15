@@ -12,11 +12,32 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { store_slug, product_id } = await params;
   const admin = createAdminClient();
-  const { data: product } = await admin
+  
+  // Try slug first, then ID
+  const { data: merchant } = await admin
+    .from('merchants')
+    .select('id')
+    .eq('store_slug', store_slug)
+    .maybeSingle();
+    
+  if (!merchant) return {};
+
+  let { data: product } = await admin
     .from('products')
     .select('name, description, images')
-    .eq('id', product_id)
+    .eq('merchant_id', merchant.id)
+    .eq('slug', product_id)
     .maybeSingle();
+
+  if (!product) {
+    const { data } = await admin
+      .from('products')
+      .select('name, description, images')
+      .eq('merchant_id', merchant.id)
+      .eq('id', product_id)
+      .maybeSingle();
+    product = data;
+  }
 
   if (!product) return {};
 
@@ -59,12 +80,23 @@ export default async function ProductDetailPage({ params }: any) {
 
   if (!merchant) notFound();
 
-  const { data: product } = await admin
+  // Try slug first, then ID for backward compatibility
+  let { data: product } = await admin
     .from('products')
     .select('*')
-    .eq('id', product_id)
     .eq('merchant_id', merchant.id)
+    .eq('slug', product_id)
     .maybeSingle();
+
+  if (!product) {
+    const { data } = await admin
+      .from('products')
+      .select('*')
+      .eq('merchant_id', merchant.id)
+      .eq('id', product_id)
+      .maybeSingle();
+    product = data;
+  }
 
   if (!product) notFound();
 
@@ -83,7 +115,8 @@ export default async function ProductDetailPage({ params }: any) {
     .filter(Boolean);
 
   const paragraphs = (product.description || '').split(/\n+/).filter(Boolean);
-  const productUrl = `\( {getStoreUrl(store_slug)}/p/ \){product.id}`;
+  const identifier = product.slug || product.id;
+  const productUrl = `${getStoreUrl(store_slug)}/p/${identifier}`;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28 md:pb-12">
@@ -128,7 +161,6 @@ export default async function ProductDetailPage({ params }: any) {
               <p className="text-gray-600 leading-relaxed text-sm">{paragraphs[0]}</p>
             )}
 
-            {/* SHARE BUTTONS */}
             <div className="pt-2">
               <ShareButtons url={productUrl} title={product.name} />
             </div>
@@ -147,7 +179,7 @@ export default async function ProductDetailPage({ params }: any) {
             </div>
 
             <Link
-              href={`/store/\( {store_slug}?add= \){product.id}`}
+              href={`/store/${store_slug}?add=${product.id}`}
               className="hidden md:block w-full bg-purple-600 text-white text-center py-4 rounded-xl font-extrabold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-colors"
             >
               Add to Cart 🛒
@@ -190,7 +222,7 @@ export default async function ProductDetailPage({ params }: any) {
 
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t p-3 z-40 md:hidden">
         <Link
-          href={`/store/\( {store_slug}?add= \){product.id}`}
+          href={`/store/${store_slug}?add=${product.id}`}
           className="block w-full bg-purple-600 text-white text-center py-3.5 rounded-xl font-extrabold"
         >
           Add to Cart — ₦{Number(product.price).toLocaleString()}
