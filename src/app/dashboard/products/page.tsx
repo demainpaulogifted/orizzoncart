@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
-import { getStoreUrl } from '@/lib/store-url';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -109,7 +108,8 @@ export default function ProductsPage() {
           </Link>
         </div>
       </div>
-{products.length === 0 ? (
+
+      {products.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed p-16 text-center">
           <p className="text-5xl mb-4">📦</p>
           <h2 className="text-xl font-bold mb-2">
@@ -169,9 +169,9 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 flex-wrap">
-                        {/* VIEW */}
+                        {/* VIEW - safe path that always works */}
                         <a
-                          href={`\( {getStoreUrl(storeSlug)}/p/ \){p.id}`}
+                          href={`/store/\( {storeSlug}/p/ \){p.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
