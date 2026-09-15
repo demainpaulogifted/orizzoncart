@@ -88,7 +88,6 @@ export default async function ProductDetailPage({ params }: any) {
   return (
     <div className="min-h-screen bg-gray-50 pb-28 md:pb-12">
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Breadcrumb */}
         <nav className="text-xs text-gray-500 mb-4 flex gap-1 items-center">
           <Link href={`/store/${store_slug}`} className="hover:text-purple-600 font-bold">
             {merchant.store_name}
@@ -129,7 +128,7 @@ export default async function ProductDetailPage({ params }: any) {
               <p className="text-gray-600 leading-relaxed text-sm">{paragraphs[0]}</p>
             )}
 
-            {/* SHARE BUTTONS – Shopify style */}
+            {/* SHARE BUTTONS */}
             <div className="pt-2">
               <ShareButtons url={productUrl} title={product.name} />
             </div>
@@ -156,7 +155,6 @@ export default async function ProductDetailPage({ params }: any) {
           </div>
         </div>
 
-        {/* Description */}
         <div className="mt-10 bg-white rounded-2xl border p-6 space-y-4">
           <h2 className="text-lg font-extrabold text-gray-900">Description</h2>
           {paragraphs.length === 0 && (
@@ -190,7 +188,6 @@ export default async function ProductDetailPage({ params }: any) {
         </div>
       </div>
 
-      {/* Mobile sticky CTA */}
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t p-3 z-40 md:hidden">
         <Link
           href={`/store/\( {store_slug}?add= \){product.id}`}
