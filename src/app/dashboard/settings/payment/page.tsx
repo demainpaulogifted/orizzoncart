@@ -103,7 +103,8 @@ export default function PaymentSettingsPage() {
 
   const resolveBank = async () => {
     if (accountNumber.length !== 10) { toast.error('Account number must be 10 digits'); return; }
-    setResolving(true); setAccountName('');
+    setResolving(true);
+    setAccountName('');
     try {
       const res = await fetch('/api/merchants/resolve-bank', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account_number: accountNumber, bank_code: bankCode }) });
       const data = await res.json();
@@ -127,10 +128,21 @@ export default function PaymentSettingsPage() {
     };
     if (isPending) { payload.payment_receiving_status = 'ACTIVE'; payload.cart_status = 'ENABLED'; payload.checkout_status = 'ENABLED'; }
     const { error } = await supabase.from('merchants').update(payload).eq('id', merchant.id);
+    if (error) {
+      setSavingBank(false);
+      toast.error('Failed: ' + error.message);
+      return;
+    }
+
+    // Create subaccount + 95/5 split RIGHT NOW so it's visible & guaranteed
+    const setup = await fetch('/api/merchants/orizzonpay-setup', { method: 'POST' }).then((r) => r.json()).catch(() => null);
+
     setSavingBank(false);
-    if (error) { toast.error('Failed: ' + error.message); return; }
-    toast.success('🏦 Bank saved — OrizzonPay ready (5% fee)!');
-    setMerchant({ ...merchant, ...payload, payment_receiving_status: payload.payment_receiving_status || merchant.payment_receiving_status });
+    toast.success('🏦 Bank saved — OrizzonPay active (5% fee)!');
+    if (setup?.ok) toast.success('✅ 95/5 split created — merchant protected!');
+    else toast.info('Bank saved. Split will finalize automatically at first sale.');
+
+    setMerchant({ ...merchant, ...payload, split_code_platform: setup?.split_code || null, paystack_subaccount_code: setup?.subaccount || null, payment_receiving_status: payload.payment_receiving_status || merchant.payment_receiving_status });
     setShowBankForm(false);
     setAccountName(''); setAccountNumber(''); setBankCode(''); setBankQuery('');
   };
@@ -149,14 +161,13 @@ export default function PaymentSettingsPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">💳 Payment Settings</h1>
-        <p className="text-gray-600 text-sm">Choose how you receive money. Set up one method to start selling — you can save both, but only ONE receives payments at a time.</p>
+        <p className="text-gray-600 text-sm">Set up one method to start selling. You can save both — only ONE receives payments at a time.</p>
       </div>
 
       {!feePaid && (
         <div className="bg-white border rounded-2xl p-6 space-y-4">
           <span className="text-xs font-bold text-purple-600 uppercase">Step 1 — One-time</span>
           <h2 className="font-bold text-lg">Pay Activation Fee</h2>
-          <p className="text-sm text-gray-600">Unlocks selling on {merchant.store_name}. After this, set up your payout method below.</p>
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center justify-between">
             <span className="text-sm font-bold text-purple-800">Activation Fee</span>
             <span className="text-2xl font-extrabold text-purple-700">₦{Number(feeInfo?.final_amount ?? 5000).toLocaleString()}</span>
@@ -171,8 +182,8 @@ export default function PaymentSettingsPage() {
         <>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
             <p className="font-bold mb-1">Currently receiving payments via:</p>
-            {method === 'own_keys' && <p>🔑 Your own payment keys — <strong>0% platform fee</strong> (OrizzonPay bank is locked)</p>}
-            {method === 'orizzonpay' && <p>🏦 OrizzonPay bank account — <strong>5% platform fee</strong> (your keys are locked)</p>}
+            {method === 'own_keys' && <p>🔑 Your own payment keys — <strong>0% platform fee</strong> (OrizzonPay locked)</p>}
+            {method === 'orizzonpay' && <p>🏦 OrizzonPay bank account — <strong>5% platform fee</strong> (your keys locked)</p>}
             {!method && <p>⚠️ Nothing yet — set up one method below to start selling.</p>}
           </div>
 
@@ -181,7 +192,7 @@ export default function PaymentSettingsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-bold text-lg">🔑 Option A — My Own Payment Keys</h2>
-                <p className="text-xs text-gray-500 mt-1">Connect your Paystack/Flutterwave account. Money lands directly with you.</p>
+                <p className="text-xs text-gray-500 mt-1">Connect your Paystack/Flutterwave. Money lands directly with you.</p>
               </div>
               <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full shrink-0">0% fee</span>
             </div>
@@ -189,17 +200,15 @@ export default function PaymentSettingsPage() {
             {hasOwnKeys ? (
               <div className="space-y-3">
                 <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-                  {merchant.paystack_secret_key && <p className="text-sm font-mono">Paystack: {mask(merchant.paystack_secret_key)}</p>}
-                  {merchant.flutterwave_secret_key && <p className="text-sm font-mono">Flutterwave: {mask(merchant.flutterwave_secret_key)}</p>}
+                  {merchant.paystack_secret_key && <p className="text-sm font-mono break-all">Paystack: {mask(merchant.paystack_secret_key)}</p>}
+                  {merchant.flutterwave_secret_key && <p className="text-sm font-mono break-all">Flutterwave: {mask(merchant.flutterwave_secret_key)}</p>}
                 </div>
                 {method === 'own_keys' ? (
                   <p className="text-xs font-bold text-green-700 bg-green-50 rounded-lg px-3 py-2">✅ ACTIVE — receiving payments here</p>
                 ) : (
                   <>
-                    <p className="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg px-3 py-2">🔒 Saved but LOCKED — not receiving payments</p>
-                    <button onClick={() => switchMethod('own_keys')} className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700">
-                      Switch to this method (activate)
-                    </button>
+                    <p className="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg px-3 py-2">🔒 Saved but LOCKED — not receiving</p>
+                    <button onClick={() => switchMethod('own_keys')} className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700">Switch to this method</button>
                   </>
                 )}
                 <button onClick={() => setShowKeysForm(!showKeysForm)} className="w-full py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200">
@@ -214,17 +223,14 @@ export default function PaymentSettingsPage() {
 
             {showKeysForm && (
               <div className="space-y-3 pt-2 border-t">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Preferred Gateway</label>
-                  <select value={keysForm.gateway} onChange={(e) => setKeysForm({ ...keysForm, gateway: e.target.value })} className="w-full px-4 py-3 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="paystack">Paystack</option>
-                    <option value="flutterwave">Flutterwave</option>
-                  </select>
-                </div>
-                <input type="password" value={keysForm.ps_secret} onChange={(e) => setKeysForm({ ...keysForm, ps_secret: e.target.value })} placeholder="Paystack Secret Key (sk_test_...)" className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
-                <input value={keysForm.ps_public} onChange={(e) => setKeysForm({ ...keysForm, ps_public: e.target.value })} placeholder="Paystack Public Key (pk_test_...)" className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
-                <input type="password" value={keysForm.fw_secret} onChange={(e) => setKeysForm({ ...keysForm, fw_secret: e.target.value })} placeholder="Flutterwave Secret Key (optional)" className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
-                <input value={keysForm.fw_public} onChange={(e) => setKeysForm({ ...keysForm, fw_public: e.target.value })} placeholder="Flutterwave Public Key (optional)" className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
+                <select value={keysForm.gateway} onChange={(e) => setKeysForm({ ...keysForm, gateway: e.target.value })} className="w-full px-4 py-3 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-purple-500">
+                  <option value="paystack">Preferred: Paystack</option>
+                  <option value="flutterwave">Preferred: Flutterwave</option>
+                </select>
+                <input type="password" value={keysForm.ps_secret} onChange={(e) => setKeysForm({ ...keysForm, ps_secret: e.target.value })} placeholder="Paystack Secret Key (sk_test_...)" className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
+                <input value={keysForm.ps_public} onChange={(e) => setKeysForm({ ...keysForm, ps_public: e.target.value })} placeholder="Paystack Public Key (pk_test_...)" className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
+                <input type="password" value={keysForm.fw_secret} onChange={(e) => setKeysForm({ ...keysForm, fw_secret: e.target.value })} placeholder="Flutterwave Secret Key (optional)" className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
+                <input value={keysForm.fw_public} onChange={(e) => setKeysForm({ ...keysForm, fw_public: e.target.value })} placeholder="Flutterwave Public Key (optional)" className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm" />
                 <button onClick={saveKeys} disabled={savingKeys || (!keysForm.ps_secret && !keysForm.fw_secret && !hasOwnKeys)} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
                   {savingKeys ? 'Saving...' : 'Save Keys'}
                 </button>
@@ -237,7 +243,7 @@ export default function PaymentSettingsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-bold text-lg">🏦 Option B — OrizzonPay (Bank Account)</h2>
-                <p className="text-xs text-gray-500 mt-1">No payment account needed. We route money straight to your bank after each sale.</p>
+                <p className="text-xs text-gray-500 mt-1">No payment account needed. Money routes straight to your bank.</p>
               </div>
               <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full shrink-0">5% fee</span>
             </div>
@@ -247,15 +253,14 @@ export default function PaymentSettingsPage() {
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="font-extrabold text-gray-900">{merchant.account_name}</p>
                   <p className="text-sm text-gray-600">{merchant.bank_name} • •••• {String(merchant.account_number).slice(-4)}</p>
+                  {merchant.split_code_platform && <p className="text-[10px] font-mono text-green-600 mt-1">Split active: {merchant.split_code_platform}</p>}
                 </div>
                 {method === 'orizzonpay' ? (
-                  <p className="text-xs font-bold text-green-700 bg-green-50 rounded-lg px-3 py-2">✅ ACTIVE — receiving payments here</p>
+                  <p className="text-xs font-bold text-green-700 bg-green-50 rounded-lg px-3 py-2">✅ ACTIVE — receiving payments here (you keep 95%)</p>
                 ) : (
                   <>
-                    <p className="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg px-3 py-2">🔒 Saved but LOCKED — not receiving payments</p>
-                    <button onClick={() => switchMethod('orizzonpay')} className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700">
-                      Switch to this method (activate)
-                    </button>
+                    <p className="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg px-3 py-2">🔒 Saved but LOCKED — not receiving</p>
+                    <button onClick={() => switchMethod('orizzonpay')} className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700">Switch to this method</button>
                   </>
                 )}
                 <button onClick={() => setShowBankForm(!showBankForm)} className="w-full py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200">
@@ -270,23 +275,41 @@ export default function PaymentSettingsPage() {
 
             {showBankForm && (
               <div className="space-y-3 pt-2 border-t">
-                <input type="text" value={bankQuery} onChange={(e) => setBankQuery(e.target.value)} placeholder="Search bank name..." className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
-                <select value={bankCode} onChange={(e) => setBankCode(e.target.value)} className="w-full px-4 py-3 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-purple-500">
+                <input type="text" value={bankQuery} onChange={(e) => setBankQuery(e.target.value)} placeholder="Search bank name..." className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
+                <select value={bankCode} onChange={(e) => setBankCode(e.target.value)} className="w-full min-w-0 px-4 py-3 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-purple-500">
                   <option value="">Select bank...</option>
                   {options.map((b: any) => <option key={b.code} value={b.code}>{b.name}</option>)}
                 </select>
-                <div className="flex gap-2">
-                  <input type="text" maxLength={10} value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))} placeholder="10-digit account number" className="flex-1 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500" />
-                  <button onClick={resolveBank} disabled={!bankCode || accountNumber.length !== 10 || resolving} className="px-5 bg-gray-900 text-white rounded-xl font-bold text-sm disabled:opacity-50">
-                    {resolving ? '...' : 'Verify'}
-                  </button>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Account Number (10 digits)</label>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={accountNumber}
+                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="0123456789"
+                      className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <button
+                      onClick={resolveBank}
+                      disabled={!bankCode || accountNumber.length !== 10 || resolving}
+                      className="px-4 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {resolving ? '...' : 'Verify'}
+                    </button>
+                  </div>
                 </div>
+
                 {accountName && (
                   <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
                     <p className="text-xs text-purple-800 font-bold uppercase">Verified Name</p>
                     <p className="font-extrabold text-gray-900">{accountName}</p>
                   </div>
                 )}
+
                 <button onClick={saveBank} disabled={!accountName || savingBank} className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
                   {savingBank ? 'Saving...' : 'Save Bank Account'}
                 </button>
