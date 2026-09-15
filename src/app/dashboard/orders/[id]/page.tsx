@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { downloadReceipt } from '@/lib/receipt';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 const NEXT_ACTION: Record<string, { label: string; next: string }> = {
   pending: { label: '▶️ Start Processing', next: 'processing' },
@@ -25,7 +26,7 @@ export default function OrderDetailPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('orders')
-        .select('*, order_items(*), merchants(store_name)')
+        .select('*, order_items(*, products(is_digital, digital_file_url, digital_file_name)), merchants(store_name)')
         .eq('id', id)
         .single();
       setOrder(data);
@@ -46,13 +47,30 @@ export default function OrderDetailPage() {
       .select();
 
     if (error) {
-      alert('Failed to update: ' + error.message);
+      toast.error('Failed to update: ' + error.message);
     } else if (!data || data.length === 0) {
-      alert('⚠️ Status did NOT save (permission problem). Run the orders RLS SQL in Supabase.');
+      toast.error('⚠️ Status did NOT save (permission problem). Run the orders RLS SQL in Supabase.');
     } else {
       setOrder({ ...order, status: data[0].status });
+      toast.success('Status updated!');
     }
     setUpdating(false);
+  };
+
+  const copyLink = () => {
+    const url = `${window.location.origin}/track-order?order=${order.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Order link copied!');
+  };
+
+  const shareOrder = async () => {
+    const url = `${window.location.origin}/track-order?order=${order.id}`;
+    const text = `Order ${order.order_number} — ${formatCurrency(order.total_amount)} — ${order.customer_name}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: `Order ${order.order_number}`, text, url }); } catch {}
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank');
+    }
   };
 
   if (loading) return <div className="p-10 text-center text-gray-500">Loading order...</div>;
@@ -62,6 +80,10 @@ export default function OrderDetailPage() {
   const waLink = `https://wa.me/${(order.customer_phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
     `Hello ${order.customer_name}! 😊 Your order ${order.order_number} (₦${Number(order.total_amount).toLocaleString()}) is confirmed and being processed. Tracking: ${order.tracking_number}. We will update you when it's out for delivery. — ${order.merchants?.store_name || 'Our store'}`
   )}`;
+
+  const digitalFiles = (order.order_items || [])
+    .filter((i: any) => i.products?.is_digital && i.products?.digital_file_url)
+    .map((i: any) => ({ name: i.products.digital_file_name || i.product_name, url: i.products.digital_file_url }));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -78,12 +100,22 @@ export default function OrderDetailPage() {
             </button>
           )}
           <a href={waLink} target="_blank" rel="noopener" className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700">
-            💬 Process via WhatsApp
+            💬 WhatsApp
           </a>
           <button onClick={() => downloadReceipt(order)} className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800">
-            📥 Download Receipt
+            📥 Receipt
           </button>
         </div>
+      </div>
+
+      {/* Share Row */}
+      <div className="flex gap-2 flex-wrap">
+        <button onClick={copyLink} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-bold hover:bg-purple-200">
+          🔗 Copy Order Link
+        </button>
+        <button onClick={shareOrder} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-200">
+          📤 Share Order
+        </button>
       </div>
 
       <div className={`rounded-xl p-4 text-sm font-bold text-center ${
@@ -96,6 +128,19 @@ export default function OrderDetailPage() {
         {order.status === 'shipped' && '🚚 Ready for delivery — customer sees "Processed, ready for delivery"'}
         {order.status === 'delivered' && '✅ Delivered — customer sees "Delivered"'}
       </div>
+
+      {/* Digital Files Section */}
+      {digitalFiles.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-3">
+          <h2 className="font-bold text-blue-900">⚡ Digital Files (auto-delivered to customer)</h2>
+          {digitalFiles.map((f: any, i: number) => (
+            <a key={i} href={f.url} target="_blank" rel="noopener" className="flex items-center justify-between bg-white border border-blue-200 rounded-xl px-4 py-3 hover:bg-blue-50">
+              <span className="text-sm font-bold text-gray-900 truncate">📄 {f.name}</span>
+              <span className="text-xs font-bold text-blue-600 shrink-0 ml-2">Download</span>
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border p-6 space-y-2">
