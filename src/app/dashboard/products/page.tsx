@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
+import { getStoreUrl } from '@/lib/store-url';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -83,7 +84,6 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
@@ -109,9 +109,7 @@ export default function ProductsPage() {
           </Link>
         </div>
       </div>
-
-      {/* Empty state */}
-      {products.length === 0 ? (
+{products.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed p-16 text-center">
           <p className="text-5xl mb-4">📦</p>
           <h2 className="text-xl font-bold mb-2">
@@ -130,7 +128,6 @@ export default function ProductsPage() {
           )}
         </div>
       ) : (
-        /* Products table */
         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -172,16 +169,17 @@ export default function ProductsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2 flex-wrap">
-                        {/* View */}
-                        <Link
-                          href={`/store/\( {storeSlug}/p/ \){p.id}`}
+                        {/* VIEW */}
+                        <a
+                          href={`\( {getStoreUrl(storeSlug)}/p/ \){p.id}`}
                           target="_blank"
+                          rel="noopener noreferrer"
                           className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
                         >
                           View
-                        </Link>
+                        </a>
 
-                        {/* Edit */}
+                        {/* EDIT */}
                         <Link
                           href={`/dashboard/products/${p.id}/edit`}
                           className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100"
@@ -189,11 +187,9 @@ export default function ProductsPage() {
                           Edit
                         </Link>
 
-                        {/* Archive / Restore */}
+                        {/* ARCHIVE / RESTORE */}
                         <button
-                          onClick={() =>
-                            archiveProduct(p.id, p.name, p.is_active)
-                          }
+                          onClick={() => archiveProduct(p.id, p.name, p.is_active)}
                           disabled={archiving === p.id}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${
                             p.is_active
