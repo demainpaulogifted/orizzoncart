@@ -31,14 +31,14 @@ export async function POST(request: NextRequest) {
 
     const validProducts = (products || []).filter((p: any) => p.is_active);
     if (validProducts.length === 0) {
-      return NextResponse.json({ error: 'No available products in your cart. Please go back, remove unavailable items and try again.' }, { status: 400 });
+      return NextResponse.json({ error: 'No available products in your cart.' }, { status: 400 });
     }
 
     let subtotal = 0;
     const orderItems: any[] = [];
     for (const item of items || []) {
       const product = validProducts.find((p: any) => p.id === item.product_id);
-      if (!product) continue; // skip unavailable/hidden/foreign items
+      if (!product) continue;
       subtotal += product.price * item.quantity;
       orderItems.push({
         product_id: product.id,
@@ -94,43 +94,54 @@ export async function POST(request: NextRequest) {
     let secretKey: string | null = null;
     let splitCode: string | null = null;
 
-    const useOwnKeys = () => {
+    if (method === 'own_keys' && hasOwn) {
       secretKey = merchant.preferred_gateway === 'flutterwave' && merchant.flutterwave_secret_key
         ? merchant.flutterwave_secret_key
         : (merchant.paystack_secret_key || merchant.flutterwave_secret_key);
       splitCode = null;
-    };
-
-    const useOrizzonPay = async () => {
-      if (!orizzonKey || !hasBank) return;
+    } else if (hasBank && orizzonKey) {
       const enriched = await ensureOrizzonPay(merchant);
       secretKey = orizzonKey;
       splitCode = enriched.split_code_platform || null;
+    } else if (hasOwn) {
+      secretKey = merchant.paystack_secret_key || merchant.flutterwave_secret_key;
+      splitCode = null;
+    }
+
+    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured.' }, { status: 500 });
+
+    const buildBody = (split: string | null) => {
+      const b: any = {
+        email: customer?.email || 'customer@orizzoncart.name.ng',
+        amount: totalAmount * 100,
+        reference,
+        callback_url: `${appUrl}/payment/verify?reference=${reference}`,
+        metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
+      };
+      if (split) b.split_code = split;
+      return b;
     };
 
-    if (method === 'own_keys' && hasOwn) useOwnKeys();
-    else if (method === 'orizzonpay' && hasBank) await useOrizzonPay();
-    else if (hasOwn) useOwnKeys();
-    else if (hasBank) await useOrizzonPay();
-
-    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured. Please set up a payout method in Settings → Payment.' }, { status: 500 });
-
-    const paystackBody: any = {
-      email: customer?.email || 'customer@orizzoncart.name.ng',
-      amount: totalAmount * 100,
-      reference,
-      callback_url: `${appUrl}/payment/verify?reference=${reference}`,
-      metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
-    };
-
-    if (splitCode) paystackBody.split_code = splitCode;
-
-    const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
+    let paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(paystackBody),
+      body: JSON.stringify(buildBody(splitCode)),
     });
-    const paystackData = await paystackRes.json();
+    let paystackData = await paystackRes.json();
+
+    // SELF-HEAL: stale/invalid split code → wipe, recreate live, retry once
+    if (!paystackData.status && /split/i.test(paystackData.message || '')) {
+      await supabase.from('merchants').update({ paystack_subaccount_code: null, split_code_platform: null }).eq('id', merchant.id);
+      const fresh = await ensureOrizzonPay({ ...merchant, paystack_subaccount_code: null, split_code_platform: null });
+      splitCode = fresh.split_code_platform || null;
+      paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildBody(splitCode)),
+      });
+      paystackData = await paystackRes.json();
+    }
+
     if (!paystackData.status) throw new Error(paystackData.message);
 
     return NextResponse.json({
