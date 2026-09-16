@@ -1,64 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const host = (request.headers.get('host') || '').split(':')[0];
-  const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng')
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '');
+// Paths that belong to the PLATFORM (never rewrite on subdomains)
+const PLATFORM_PATHS = [
+  '/dashboard',
+  '/admin',
+  '/api',
+  '/login',
+  '/signup',
+  '/onboarding',
+  '/forgot-password',
+  '/reset-password',
+  '/checkout',
+  '/payment',
+  '/track-order',
+  '/about',
+  '/contact',
+  '/privacy',
+  '/terms',
+  '/d/',
+  '/icon.png',
+  '/apple-icon.png',
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/robots.txt',
+  '/sitemap.xml',
+];
 
-  // ============================================
-  // 1. REFRESH SUPABASE SESSION
-  // ============================================
-  let response = NextResponse.next({ request: { headers: request.headers } });
+export function middleware(req: NextRequest) {
+  const host = (req.headers.get('host') || '').toLowerCase();
+  const { pathname } = req.nextUrl;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value);
-          });
-        },
-      },
-    }
-  );
+  // Act ONLY on wildcard subdomains: *.orizzoncart.name.ng (not www, not apex)
+  const isWildcard = host.endsWith('.orizzoncart.name.ng') && !host.startsWith('www.');
 
-  await supabase.auth.getUser();
+  if (isWildcard) {
+    const sub = host.replace('.orizzoncart.name.ng', '');
 
-  // ============================================
-  // 2. SUBDOMAIN ROUTING (x.root → /store/x)
-  // ============================================
-  const isSubdomain =
-    host.endsWith(`.${ROOT}`) && host !== ROOT && host !== `www.${ROOT}` && !host.includes('vercel.app');
+    if (sub && sub !== '*') {
+      const isPlatformPath = PLATFORM_PATHS.some(
+        (p) => pathname === p || pathname.startsWith(p.endsWith('/') ? p : `${p}/`)
+      );
+      const alreadyStorePath = pathname === '/store' || pathname.startsWith('/store/');
 
-  if (isSubdomain) {
-    const sub = host.replace(`.${ROOT}`, '');
-
-    // Platform paths always render normally even on subdomains
-    const platformPaths = ['/login', '/signup', '/onboarding', '/dashboard', '/admin', '/checkout', '/payment', '/track-order', '/api', '/d/'];
-    const isPlatformPath = platformPaths.some((p) => pathname.startsWith(p));
-
-    // Already a /store/... path? Serve directly (no double prefix)
-    const alreadyStorePath = pathname === '/store' || pathname.startsWith('/store/');
-
-    if (!isPlatformPath && !alreadyStorePath && sub) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/store/${sub}${pathname === '/' ? '' : pathname}`;
-      return NextResponse.rewrite(url, { headers: response.headers });
+      // Rewrite store-facing paths to the store route, keep platform paths untouched
+      if (!isPlatformPath && !alreadyStorePath) {
+        const url = req.nextUrl.clone();
+        url.pathname = `/store/${sub}${pathname === '/' ? '' : pathname}`;
+        return NextResponse.rewrite(url);
+      }
     }
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?)$).*)'],
 };
