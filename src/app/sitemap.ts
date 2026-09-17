@@ -4,32 +4,45 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng').replace(/\/$/, '');
+  const app = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng').replace(/\/$/, '');
   const admin = createAdminClient();
   const now = new Date();
 
-  // Only include LIVE static pages - removed placeholders that return 404
-  const staticPages: MetadataRoute.Sitemap = [
-    { url: `${appUrl}/`, lastModified: now, changeFrequency: 'weekly', priority: 1 },
-    { url: `${appUrl}/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${appUrl}/track-order`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${appUrl}/stores`, lastModified: now, changeFrequency: 'daily', priority: 0.85 }, // New Stores Index
+  // ===== MAIN WEBSITE — indexed first, highest priority =====
+  const mainSite: MetadataRoute.Sitemap = [
+    { url: `${app}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
+    { url: `${app}/stores`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${app}/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${app}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${app}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${app}/track-order`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${app}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${app}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
   ];
+
+  // ===== FEED — stores, products, trust pages (lower priority) =====
+  const feed: MetadataRoute.Sitemap = [];
 
   try {
     const { data: merchants } = await admin
       .from('merchants')
       .select('id, store_slug, updated_at')
+      .eq('payment_receiving_status', 'ACTIVE')
       .not('store_slug', 'is', null);
 
-    if (!merchants?.length) return staticPages;
+    if (!merchants?.length) return mainSite;
 
     const merchantIds = merchants.map((m) => m.id);
-    
-    // Fetch products with images for Google Images SEO
+
     const { data: products } = await admin
       .from('products')
-      .select('id, merchant_id, updated_at, images, name')
+      .select('id, merchant_id, updated_at, images, name, slug')
+      .in('merchant_id', merchantIds)
+      .eq('is_active', true);
+
+    const { data: pages } = await admin
+      .from('store_pages')
+      .select('merchant_id, slug, updated_at')
       .in('merchant_id', merchantIds)
       .eq('is_active', true);
 
@@ -40,38 +53,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       productsByMerchant.set(p.merchant_id, list);
     }
 
-    const storeUrls: MetadataRoute.Sitemap = [];
+    const pagesByMerchant = new Map<string, any[]>();
+    for (const pg of pages || []) {
+      const list = pagesByMerchant.get(pg.merchant_id) || [];
+      list.push(pg);
+      pagesByMerchant.set(pg.merchant_id, list);
+    }
+
     for (const m of merchants) {
       if (!m.store_slug) continue;
+      const base = `https://${m.store_slug}.orizzoncart.name.ng`;
 
-      // Store Page
-      storeUrls.push({
-        url: `${appUrl}/store/${m.store_slug}`,
+      feed.push({
+        url: `${base}/`,
         lastModified: m.updated_at ? new Date(m.updated_at) : now,
         changeFrequency: 'daily',
-        priority: 0.9,
+        priority: 0.6,
       });
 
-      // Product Pages with Image Support for Google Images
-      const storeProducts = productsByMerchant.get(m.id) || [];
-      for (const p of storeProducts) {
-        const imageUrl = p.images?.[0]?.url;
-        storeUrls.push({
-          url: `${appUrl}/store/${m.store_slug}/p/${p.id}`,
+      for (const p of productsByMerchant.get(m.id) || []) {
+        const imageUrls = (p.images || []).slice(0, 3).map((i: any) => (typeof i === 'string' ? i : i.url)).filter(Boolean);
+        feed.push({
+          url: `${base}/p/${p.slug || p.id}`,
           lastModified: p.updated_at ? new Date(p.updated_at) : now,
           changeFrequency: 'weekly',
-          priority: 0.7,
-          ...(imageUrl && {
-            images: [{ url: imageUrl, title: p.name }]
-          })
+          priority: 0.5,
+          ...(imageUrls.length > 0 && { images: imageUrls.map((url: string) => ({ url, title: p.name })) }),
+        } as any);
+      }
+
+      for (const pg of pagesByMerchant.get(m.id) || []) {
+        feed.push({
+          url: `${base}/info/${pg.slug}`,
+          lastModified: pg.updated_at ? new Date(pg.updated_at) : now,
+          changeFrequency: 'monthly',
+          priority: 0.4,
         });
       }
     }
 
-    return [...staticPages, ...storeUrls];
+    return [...mainSite, ...feed];
   } catch (err) {
     console.error('sitemap error:', err);
-    // Graceful fallback: never break SEO if DB fails
-    return staticPages;
+    return mainSite;
   }
 }
