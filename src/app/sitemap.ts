@@ -8,10 +8,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const admin = createAdminClient();
   const now = new Date();
 
-  // ===== MAIN WEBSITE — indexed first, highest priority =====
   const mainSite: MetadataRoute.Sitemap = [
     { url: `${app}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
-    { url: `${app}/stores`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${app}/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${app}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${app}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
@@ -20,7 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${app}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
   ];
 
-  // ===== FEED — stores, products, trust pages (lower priority) =====
   const feed: MetadataRoute.Sitemap = [];
 
   try {
