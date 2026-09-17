@@ -1,31 +1,30 @@
 import type { MetadataRoute } from 'next';
 
-export default function robots(): MetadataRoute.Robots {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng').replace(
-    /\/$/,
-    ''
-  );
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng'
+).replace(/\/$/, '');
 
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
         disallow: [
-          '/dashboard',
-          '/admin',
-          '/api',
-          '/onboarding',
-          '/checkout',
-          '/login',
-          '/signup',
-          '/forgot-password',
-          '/reset-password',
-          '/payment',
+          '/admin/',
+          '/dashboard/',
+          '/api/',
+          '/onboarding/',
+          '/checkout/',
+          '/login/',
+          '/signup/',
+          '/forgot-password/',
+          '/reset-password/',
+          '/payment/',
         ],
       },
     ],
-    sitemap: `${appUrl}/sitemap.xml`,
-    host: appUrl,
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }
