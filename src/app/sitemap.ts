@@ -7,15 +7,68 @@ const SITE_URL = (
   process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng'
 ).replace(/\/$/, '');
 
+type MerchantRow = {
+  id: string;
+  store_slug: string | null;
+  updated_at: string | null;
+};
+
+type ProductRow = {
+  id: string;
+  merchant_id: string;
+  updated_at: string | null;
+  images: unknown;
+  slug: string | null;
+};
+
+type StorePageRow = {
+  merchant_id: string;
+  slug: string | null;
+  updated_at: string | null;
+};
+
 function absoluteUrl(base: string, path: string): string {
   return new URL(path, `${base}/`).toString();
 }
 
-function safeDate(value: string | null | undefined, fallback: Date): Date {
+function safeDate(
+  value: string | null | undefined,
+  fallback: Date
+): Date {
   if (!value) return fallback;
 
   const date = new Date(value);
+
   return Number.isNaN(date.getTime()) ? fallback : date;
+}
+
+function getImageUrls(images: unknown): string[] {
+  if (!Array.isArray(images)) {
+    return [];
+  }
+
+  return images
+    .slice(0, 3)
+    .map((image: unknown): string | null => {
+      if (typeof image === 'string' && image.trim()) {
+        return image.trim();
+      }
+
+      if (
+        image &&
+        typeof image === 'object' &&
+        'url' in image &&
+        typeof image.url === 'string' &&
+        image.url.trim()
+      ) {
+        return image.url.trim();
+      }
+
+      return null;
+    })
+    .filter(
+      (url: string | null): url is string => url !== null
+    );
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -60,122 +113,202 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const feed: MetadataRoute.Sitemap = [];
-
   try {
     const admin = createAdminClient();
 
-    const { data: merchants, error: merchantsError } = await admin
+    const {
+      data: merchantsData,
+      error: merchantsError,
+    } = await admin
       .from('merchants')
       .select('id, store_slug, updated_at')
       .eq('payment_receiving_status', 'ACTIVE')
       .not('store_slug', 'is', null);
 
     if (merchantsError) {
-      console.error('Sitemap merchants error:', merchantsError);
+      console.error(
+        'Sitemap merchants error:',
+        merchantsError
+      );
+
       return mainSite;
     }
 
-    if (!merchants?.length) {
+    const merchants =
+      (merchantsData || []) as MerchantRow[];
+
+    if (merchants.length === 0) {
       return mainSite;
     }
 
-    const merchantIds = merchants.map((merchant) => merchant.id);
+    const merchantIds = merchants.map(
+      (merchant) => merchant.id
+    );
 
-    const [{ data: products, error: productsError }, { data: pages, error: pagesError }] =
-      await Promise.all([
-        admin
-          .from('products')
-          .select('id, merchant_id, updated_at, images, slug')
-          .in('merchant_id', merchantIds)
-          .eq('is_active', true),
+    const [
+      { data: productsData, error: productsError },
+      { data: pagesData, error: pagesError },
+    ] = await Promise.all([
+      admin
+        .from('products')
+        .select(
+          'id, merchant_id, updated_at, images, slug'
+        )
+        .in('merchant_id', merchantIds)
+        .eq('is_active', true),
 
-        admin
-          .from('store_pages')
-          .select('merchant_id, slug, updated_at')
-          .in('merchant_id', merchantIds)
-          .eq('is_active', true),
-      ]);
+      admin
+        .from('store_pages')
+        .select(
+          'merchant_id, slug, updated_at'
+        )
+        .in('merchant_id', merchantIds)
+        .eq('is_active', true),
+    ]);
 
     if (productsError) {
-      console.error('Sitemap products error:', productsError);
+      console.error(
+        'Sitemap products error:',
+        productsError
+      );
     }
 
     if (pagesError) {
-      console.error('Sitemap pages error:', pagesError);
+      console.error(
+        'Sitemap pages error:',
+        pagesError
+      );
     }
 
-    const productsByMerchant = new Map<string, any[]>();
+    const products =
+      (productsData || []) as ProductRow[];
 
-    for (const product of products || []) {
-      const list = productsByMerchant.get(product.merchant_id) || [];
+    const pages =
+      (pagesData || []) as StorePageRow[];
+
+    const productsByMerchant =
+      new Map<string, ProductRow[]>();
+
+    for (const product of products) {
+      const list =
+        productsByMerchant.get(product.merchant_id) ||
+        [];
+
       list.push(product);
-      productsByMerchant.set(product.merchant_id, list);
+
+      productsByMerchant.set(
+        product.merchant_id,
+        list
+      );
     }
 
-    const pagesByMerchant = new Map<string, any[]>();
+    const pagesByMerchant =
+      new Map<string, StorePageRow[]>();
 
-    for (const page of pages || []) {
-      const list = pagesByMerchant.get(page.merchant_id) || [];
+    for (const page of pages) {
+      const list =
+        pagesByMerchant.get(page.merchant_id) ||
+        [];
+
       list.push(page);
-      pagesByMerchant.set(page.merchant_id, list);
+
+      pagesByMerchant.set(
+        page.merchant_id,
+        list
+      );
     }
+
+    const feed: MetadataRoute.Sitemap = [];
 
     for (const merchant of merchants) {
-      if (!merchant.store_slug) continue;
+      const storeSlug =
+        String(merchant.store_slug || '').trim();
 
-      const storeSlug = String(merchant.store_slug).trim();
+      if (!storeSlug) {
+        continue;
+      }
 
-      if (!storeSlug) continue;
+      const base =
+        `https://${storeSlug}.orizzoncart.name.ng`;
 
-      const base = `https://${storeSlug}.orizzoncart.name.ng`;
-
+      /*
+       * Store homepage
+       */
       feed.push({
         url: `${base}/`,
-        lastModified: safeDate(merchant.updated_at, now),
+        lastModified: safeDate(
+          merchant.updated_at,
+          now
+        ),
         changeFrequency: 'daily',
         priority: 0.6,
       });
 
-      for (const product of productsByMerchant.get(merchant.id) || []) {
-        const productSlug = String(product.slug || product.id || '').trim();
+      /*
+       * Products
+       */
+      const merchantProducts =
+        productsByMerchant.get(merchant.id) || [];
 
-        if (!productSlug) continue;
+      for (const product of merchantProducts) {
+        const productSlug =
+          String(
+            product.slug || product.id || ''
+          ).trim();
 
-        const imageUrls = (Array.isArray(product.images) ? product.images : [])
-          .slice(0, 3)
-          .map((image: unknown) => {
-            if (typeof image === 'string') return image;
-            if (
-              image &&
-              typeof image === 'object' &&
-              'url' in image &&
-              typeof image.url === 'string'
-            ) {
-              return image.url;
-            }
-            return null;
-          })
-          .filter((url): url is string => Boolean(url));
+        if (!productSlug) {
+          continue;
+        }
+
+        const imageUrls =
+          getImageUrls(product.images);
 
         feed.push({
-          url: `${base}/p/${encodeURIComponent(productSlug)}`,
-          lastModified: safeDate(product.updated_at, now),
+          url:
+            `${base}/p/` +
+            encodeURIComponent(productSlug),
+
+          lastModified: safeDate(
+            product.updated_at,
+            now
+          ),
+
           changeFrequency: 'weekly',
+
           priority: 0.5,
-          ...(imageUrls.length > 0 ? { images: imageUrls } : {}),
+
+          ...(imageUrls.length > 0
+            ? { images: imageUrls }
+            : {}),
         });
       }
 
-      for (const page of pagesByMerchant.get(merchant.id) || []) {
-        const pageSlug = String(page.slug || '').trim();
+      /*
+       * Store information pages
+       */
+      const merchantPages =
+        pagesByMerchant.get(merchant.id) || [];
 
-        if (!pageSlug) continue;
+      for (const page of merchantPages) {
+        const pageSlug =
+          String(page.slug || '').trim();
+
+        if (!pageSlug) {
+          continue;
+        }
 
         feed.push({
-          url: `${base}/info/${encodeURIComponent(pageSlug)}`,
-          lastModified: safeDate(page.updated_at, now),
+          url:
+            `${base}/info/` +
+            encodeURIComponent(pageSlug),
+
+          lastModified: safeDate(
+            page.updated_at,
+            now
+          ),
+
           changeFrequency: 'monthly',
+
           priority: 0.4,
         });
       }
@@ -183,7 +316,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [...mainSite, ...feed];
   } catch (error) {
-    console.error('Sitemap generation error:', error);
+    console.error(
+      'Sitemap generation error:',
+      error
+    );
+
     return mainSite;
   }
 }
