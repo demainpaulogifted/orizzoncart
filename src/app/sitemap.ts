@@ -69,19 +69,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
 
       for (const p of productsByMerchant.get(m.id) || []) {
-        const imageUrls = (p.images || []).slice(0, 3).map((i: any) => (typeof i === 'string' ? i : i.url)).filter(Boolean);
+        const imageUrls = (p.images || [])
+          .slice(0, 3)
+          .map((i: any) => (typeof i === 'string' ? i : i?.url))
+          .filter(Boolean);
+
         feed.push({
-          url: `${base}/p/${p.slug || p.id}`,
+          url: `\( {base}/p/ \){p.slug || p.id}`,
           lastModified: p.updated_at ? new Date(p.updated_at) : now,
           changeFrequency: 'weekly',
           priority: 0.5,
-          ...(imageUrls.length > 0 && { images: imageUrls.map((url: string) => ({ url, title: p.name })) }),
-        } as any);
+          ...(imageUrls.length > 0 && { images: imageUrls }),
+        });
       }
 
       for (const pg of pagesByMerchant.get(m.id) || []) {
         feed.push({
-          url: `${base}/info/${pg.slug}`,
+          url: `\( {base}/info/ \){pg.slug}`,
           lastModified: pg.updated_at ? new Date(pg.updated_at) : now,
           changeFrequency: 'monthly',
           priority: 0.4,
