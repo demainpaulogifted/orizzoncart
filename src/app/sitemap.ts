@@ -3,90 +3,178 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng'
+).replace(/\/$/, '');
+
+function absoluteUrl(base: string, path: string): string {
+  return new URL(path, `${base}/`).toString();
+}
+
+function safeDate(value: string | null | undefined, fallback: Date): Date {
+  if (!value) return fallback;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const app = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng').replace(/\/$/, '');
-  const admin = createAdminClient();
   const now = new Date();
 
   const mainSite: MetadataRoute.Sitemap = [
-    { url: `${app}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
-    { url: `${app}/signup`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${app}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${app}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${app}/track-order`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${app}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
-    { url: `${app}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    {
+      url: absoluteUrl(SITE_URL, '/'),
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 1,
+    },
+    {
+      url: absoluteUrl(SITE_URL, '/about'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: absoluteUrl(SITE_URL, '/contact'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: absoluteUrl(SITE_URL, '/track-order'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: absoluteUrl(SITE_URL, '/terms'),
+      lastModified: now,
+      changeFrequency: 'yearly',
+      priority: 0.5,
+    },
+    {
+      url: absoluteUrl(SITE_URL, '/privacy'),
+      lastModified: now,
+      changeFrequency: 'yearly',
+      priority: 0.5,
+    },
   ];
 
   const feed: MetadataRoute.Sitemap = [];
 
   try {
-    const { data: merchants } = await admin
+    const admin = createAdminClient();
+
+    const { data: merchants, error: merchantsError } = await admin
       .from('merchants')
       .select('id, store_slug, updated_at')
       .eq('payment_receiving_status', 'ACTIVE')
       .not('store_slug', 'is', null);
 
-    if (!merchants?.length) return mainSite;
+    if (merchantsError) {
+      console.error('Sitemap merchants error:', merchantsError);
+      return mainSite;
+    }
 
-    const merchantIds = merchants.map((m) => m.id);
+    if (!merchants?.length) {
+      return mainSite;
+    }
 
-    const { data: products } = await admin
-      .from('products')
-      .select('id, merchant_id, updated_at, images, name, slug')
-      .in('merchant_id', merchantIds)
-      .eq('is_active', true);
+    const merchantIds = merchants.map((merchant) => merchant.id);
 
-    const { data: pages } = await admin
-      .from('store_pages')
-      .select('merchant_id, slug, updated_at')
-      .in('merchant_id', merchantIds)
-      .eq('is_active', true);
+    const [{ data: products, error: productsError }, { data: pages, error: pagesError }] =
+      await Promise.all([
+        admin
+          .from('products')
+          .select('id, merchant_id, updated_at, images, slug')
+          .in('merchant_id', merchantIds)
+          .eq('is_active', true),
+
+        admin
+          .from('store_pages')
+          .select('merchant_id, slug, updated_at')
+          .in('merchant_id', merchantIds)
+          .eq('is_active', true),
+      ]);
+
+    if (productsError) {
+      console.error('Sitemap products error:', productsError);
+    }
+
+    if (pagesError) {
+      console.error('Sitemap pages error:', pagesError);
+    }
 
     const productsByMerchant = new Map<string, any[]>();
-    for (const p of products || []) {
-      const list = productsByMerchant.get(p.merchant_id) || [];
-      list.push(p);
-      productsByMerchant.set(p.merchant_id, list);
+
+    for (const product of products || []) {
+      const list = productsByMerchant.get(product.merchant_id) || [];
+      list.push(product);
+      productsByMerchant.set(product.merchant_id, list);
     }
 
     const pagesByMerchant = new Map<string, any[]>();
-    for (const pg of pages || []) {
-      const list = pagesByMerchant.get(pg.merchant_id) || [];
-      list.push(pg);
-      pagesByMerchant.set(pg.merchant_id, list);
+
+    for (const page of pages || []) {
+      const list = pagesByMerchant.get(page.merchant_id) || [];
+      list.push(page);
+      pagesByMerchant.set(page.merchant_id, list);
     }
 
-    for (const m of merchants) {
-      if (!m.store_slug) continue;
-      const base = `https://${m.store_slug}.orizzoncart.name.ng`;
+    for (const merchant of merchants) {
+      if (!merchant.store_slug) continue;
+
+      const storeSlug = String(merchant.store_slug).trim();
+
+      if (!storeSlug) continue;
+
+      const base = `https://${storeSlug}.orizzoncart.name.ng`;
 
       feed.push({
         url: `${base}/`,
-        lastModified: m.updated_at ? new Date(m.updated_at) : now,
+        lastModified: safeDate(merchant.updated_at, now),
         changeFrequency: 'daily',
         priority: 0.6,
       });
 
-      for (const p of productsByMerchant.get(m.id) || []) {
-        const imageUrls = (p.images || [])
+      for (const product of productsByMerchant.get(merchant.id) || []) {
+        const productSlug = String(product.slug || product.id || '').trim();
+
+        if (!productSlug) continue;
+
+        const imageUrls = (Array.isArray(product.images) ? product.images : [])
           .slice(0, 3)
-          .map((i: any) => (typeof i === 'string' ? i : i?.url))
-          .filter(Boolean);
+          .map((image: unknown) => {
+            if (typeof image === 'string') return image;
+            if (
+              image &&
+              typeof image === 'object' &&
+              'url' in image &&
+              typeof image.url === 'string'
+            ) {
+              return image.url;
+            }
+            return null;
+          })
+          .filter((url): url is string => Boolean(url));
 
         feed.push({
-          url: `\( {base}/p/ \){p.slug || p.id}`,
-          lastModified: p.updated_at ? new Date(p.updated_at) : now,
+          url: `${base}/p/${encodeURIComponent(productSlug)}`,
+          lastModified: safeDate(product.updated_at, now),
           changeFrequency: 'weekly',
           priority: 0.5,
-          ...(imageUrls.length > 0 && { images: imageUrls }),
+          ...(imageUrls.length > 0 ? { images: imageUrls } : {}),
         });
       }
 
-      for (const pg of pagesByMerchant.get(m.id) || []) {
+      for (const page of pagesByMerchant.get(merchant.id) || []) {
+        const pageSlug = String(page.slug || '').trim();
+
+        if (!pageSlug) continue;
+
         feed.push({
-          url: `\( {base}/info/ \){pg.slug}`,
-          lastModified: pg.updated_at ? new Date(pg.updated_at) : now,
+          url: `${base}/info/${encodeURIComponent(pageSlug)}`,
+          lastModified: safeDate(page.updated_at, now),
           changeFrequency: 'monthly',
           priority: 0.4,
         });
@@ -94,8 +182,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     return [...mainSite, ...feed];
-  } catch (err) {
-    console.error('sitemap error:', err);
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
     return mainSite;
   }
 }
