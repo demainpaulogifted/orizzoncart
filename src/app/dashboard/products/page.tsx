@@ -20,6 +20,8 @@ export default async function ProductsPage() {
     ? await supabase.from('products').select('*').eq('merchant_id', merchant.id).order('created_at', { ascending: false })
     : { data: [] };
 
+  const storeUrl = merchant?.store_slug ? `https://${merchant.store_slug}.orizzoncart.name.ng` : '#';
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -58,7 +60,7 @@ export default async function ProductsPage() {
 
               <div className="flex gap-2 pt-1 border-t">
                 <Link
-                  href={`/store/${merchant?.store_slug}/p/${p.slug || p.id}`}
+                  href={`${storeUrl}/p/${p.slug || p.id}`}
                   target="_blank"
                   className="flex-1 text-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
                 >
