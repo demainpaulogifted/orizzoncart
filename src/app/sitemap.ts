@@ -38,20 +38,6 @@ function safeDate(value: string | null | undefined, fallback: Date): Date {
   return Number.isNaN(date.getTime()) ? fallback : date;
 }
 
-function getImageUrls(images: unknown): string[] {
-  if (!Array.isArray(images)) return [];
-  return images
-    .slice(0, 3)
-    .map((image: unknown): string | null => {
-      if (typeof image === 'string' && image.trim()) return image.trim();
-      if (image && typeof image === 'object' && 'url' in image && typeof (image as any).url === 'string' && (image as any).url.trim()) {
-        return (image as any).url.trim();
-      }
-      return null;
-    })
-    .filter((url: string | null): url is string => url !== null);
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -61,7 +47,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'daily',
       priority: 1,
-      images: [{ url: `${SITE_URL}/orizzoncart-logo.png`, title: 'OrizzonCart logo' }],
     },
     { url: absoluteUrl(SITE_URL, '/signup'), lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: absoluteUrl(SITE_URL, '/about'), lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
@@ -128,29 +113,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       });
 
-      // Products with image tags for Google Images
+      // Products (no images field - Next.js doesn't support Google Images sitemap extension natively)
       const merchantProducts = productsByMerchant.get(merchant.id) || [];
       for (const product of merchantProducts) {
         const identifier = String(product.slug || product.id || '').trim();
         if (!identifier) continue;
-
-        const imageUrls = getImageUrls(product.images);
 
         feed.push({
           url: `${base}/p/${encodeURIComponent(identifier)}`,
           lastModified: safeDate(product.updated_at, now),
           changeFrequency: 'weekly',
           priority: 0.5,
-          ...(imageUrls.length > 0 && {
-            images: imageUrls.map((url: string) => ({
-              url,
-              title: product.name,
-            })),
-          }),
-        } as any);
+        });
       }
 
-      // Store information pages (About, Refund, etc.)
+      // Store information pages
       const merchantPages = pagesByMerchant.get(merchant.id) || [];
       for (const page of merchantPages) {
         const pageSlug = String(page.slug || '').trim();
