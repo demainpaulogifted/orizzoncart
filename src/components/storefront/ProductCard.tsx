@@ -4,8 +4,8 @@ import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 export function ProductCard({ product, isShowcaseMode, onClick }: { product: any; isShowcaseMode: boolean; onClick?: () => void }) {
   const imageUrl = product.images?.[0]?.url;
-  const slug = product.store_slug || '';
-  const href = slug && product.id ? `/store/${slug}/p/${product.id}` : '#';
+  const identifier = product.slug || product.id;
+  const href = identifier ? `/p/${identifier}` : '#';
 
   return (
     <Link href={href} className="group block">
