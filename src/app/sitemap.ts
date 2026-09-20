@@ -19,6 +19,7 @@ type ProductRow = {
   updated_at: string | null;
   images: unknown;
   slug: string | null;
+  name: string;
 };
 
 type StorePageRow = {
@@ -31,44 +32,24 @@ function absoluteUrl(base: string, path: string): string {
   return new URL(path, `${base}/`).toString();
 }
 
-function safeDate(
-  value: string | null | undefined,
-  fallback: Date
-): Date {
+function safeDate(value: string | null | undefined, fallback: Date): Date {
   if (!value) return fallback;
-
   const date = new Date(value);
-
   return Number.isNaN(date.getTime()) ? fallback : date;
 }
 
 function getImageUrls(images: unknown): string[] {
-  if (!Array.isArray(images)) {
-    return [];
-  }
-
+  if (!Array.isArray(images)) return [];
   return images
     .slice(0, 3)
     .map((image: unknown): string | null => {
-      if (typeof image === 'string' && image.trim()) {
-        return image.trim();
+      if (typeof image === 'string' && image.trim()) return image.trim();
+      if (image && typeof image === 'object' && 'url' in image && typeof (image as any).url === 'string' && (image as any).url.trim()) {
+        return (image as any).url.trim();
       }
-
-      if (
-        image &&
-        typeof image === 'object' &&
-        'url' in image &&
-        typeof image.url === 'string' &&
-        image.url.trim()
-      ) {
-        return image.url.trim();
-      }
-
       return null;
     })
-    .filter(
-      (url: string | null): url is string => url !== null
-    );
+    .filter((url: string | null): url is string => url !== null);
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -80,235 +61,105 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'daily',
       priority: 1,
+      images: [{ url: `${SITE_URL}/orizzoncart-logo.png`, title: 'OrizzonCart logo' }],
     },
-    {
-      url: absoluteUrl(SITE_URL, '/about'),
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: absoluteUrl(SITE_URL, '/contact'),
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: absoluteUrl(SITE_URL, '/track-order'),
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: absoluteUrl(SITE_URL, '/terms'),
-      lastModified: now,
-      changeFrequency: 'yearly',
-      priority: 0.5,
-    },
-    {
-      url: absoluteUrl(SITE_URL, '/privacy'),
-      lastModified: now,
-      changeFrequency: 'yearly',
-      priority: 0.5,
-    },
+    { url: absoluteUrl(SITE_URL, '/signup'), lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: absoluteUrl(SITE_URL, '/about'), lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: absoluteUrl(SITE_URL, '/contact'), lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: absoluteUrl(SITE_URL, '/track-order'), lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
+    { url: absoluteUrl(SITE_URL, '/terms'), lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    { url: absoluteUrl(SITE_URL, '/privacy'), lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
   ];
 
   try {
     const admin = createAdminClient();
 
-    const {
-      data: merchantsData,
-      error: merchantsError,
-    } = await admin
+    const { data: merchantsData, error: merchantsError } = await admin
       .from('merchants')
       .select('id, store_slug, updated_at')
       .eq('payment_receiving_status', 'ACTIVE')
       .not('store_slug', 'is', null);
 
     if (merchantsError) {
-      console.error(
-        'Sitemap merchants error:',
-        merchantsError
-      );
-
+      console.error('Sitemap merchants error:', merchantsError);
       return mainSite;
     }
 
-    const merchants =
-      (merchantsData || []) as MerchantRow[];
+    const merchants = (merchantsData || []) as MerchantRow[];
+    if (merchants.length === 0) return mainSite;
 
-    if (merchants.length === 0) {
-      return mainSite;
-    }
+    const merchantIds = merchants.map((m) => m.id);
 
-    const merchantIds = merchants.map(
-      (merchant) => merchant.id
-    );
-
-    const [
-      { data: productsData, error: productsError },
-      { data: pagesData, error: pagesError },
-    ] = await Promise.all([
-      admin
-        .from('products')
-        .select(
-          'id, merchant_id, updated_at, images, slug'
-        )
-        .in('merchant_id', merchantIds)
-        .eq('is_active', true),
-
-      admin
-        .from('store_pages')
-        .select(
-          'merchant_id, slug, updated_at'
-        )
-        .in('merchant_id', merchantIds)
-        .eq('is_active', true),
+    const [{ data: productsData }, { data: pagesData }] = await Promise.all([
+      admin.from('products').select('id, merchant_id, updated_at, images, slug, name').in('merchant_id', merchantIds).eq('is_active', true),
+      admin.from('store_pages').select('merchant_id, slug, updated_at').in('merchant_id', merchantIds).eq('is_active', true),
     ]);
 
-    if (productsError) {
-      console.error(
-        'Sitemap products error:',
-        productsError
-      );
+    const products = (productsData || []) as ProductRow[];
+    const pages = (pagesData || []) as StorePageRow[];
+
+    const productsByMerchant = new Map<string, ProductRow[]>();
+    for (const p of products) {
+      const list = productsByMerchant.get(p.merchant_id) || [];
+      list.push(p);
+      productsByMerchant.set(p.merchant_id, list);
     }
 
-    if (pagesError) {
-      console.error(
-        'Sitemap pages error:',
-        pagesError
-      );
-    }
-
-    const products =
-      (productsData || []) as ProductRow[];
-
-    const pages =
-      (pagesData || []) as StorePageRow[];
-
-    const productsByMerchant =
-      new Map<string, ProductRow[]>();
-
-    for (const product of products) {
-      const list =
-        productsByMerchant.get(product.merchant_id) ||
-        [];
-
-      list.push(product);
-
-      productsByMerchant.set(
-        product.merchant_id,
-        list
-      );
-    }
-
-    const pagesByMerchant =
-      new Map<string, StorePageRow[]>();
-
-    for (const page of pages) {
-      const list =
-        pagesByMerchant.get(page.merchant_id) ||
-        [];
-
-      list.push(page);
-
-      pagesByMerchant.set(
-        page.merchant_id,
-        list
-      );
+    const pagesByMerchant = new Map<string, StorePageRow[]>();
+    for (const pg of pages) {
+      const list = pagesByMerchant.get(pg.merchant_id) || [];
+      list.push(pg);
+      pagesByMerchant.set(pg.merchant_id, list);
     }
 
     const feed: MetadataRoute.Sitemap = [];
 
     for (const merchant of merchants) {
-      const storeSlug =
-        String(merchant.store_slug || '').trim();
+      const storeSlug = String(merchant.store_slug || '').trim();
+      if (!storeSlug) continue;
 
-      if (!storeSlug) {
-        continue;
-      }
+      const base = `https://${storeSlug}.orizzoncart.name.ng`;
 
-      const base =
-        `https://${storeSlug}.orizzoncart.name.ng`;
-
-      /*
-       * Store homepage
-       */
+      // Store homepage
       feed.push({
         url: `${base}/`,
-        lastModified: safeDate(
-          merchant.updated_at,
-          now
-        ),
+        lastModified: safeDate(merchant.updated_at, now),
         changeFrequency: 'daily',
         priority: 0.6,
       });
 
-      /*
-       * Products
-       */
-      const merchantProducts =
-        productsByMerchant.get(merchant.id) || [];
-
+      // Products with image tags for Google Images
+      const merchantProducts = productsByMerchant.get(merchant.id) || [];
       for (const product of merchantProducts) {
-        const productSlug =
-          String(
-            product.slug || product.id || ''
-          ).trim();
+        const identifier = String(product.slug || product.id || '').trim();
+        if (!identifier) continue;
 
-        if (!productSlug) {
-          continue;
-        }
-
-        const imageUrls =
-          getImageUrls(product.images);
+        const imageUrls = getImageUrls(product.images);
 
         feed.push({
-          url:
-            `${base}/p/` +
-            encodeURIComponent(productSlug),
-
-          lastModified: safeDate(
-            product.updated_at,
-            now
-          ),
-
+          url: `${base}/p/${encodeURIComponent(identifier)}`,
+          lastModified: safeDate(product.updated_at, now),
           changeFrequency: 'weekly',
-
           priority: 0.5,
-
-          ...(imageUrls.length > 0
-            ? { images: imageUrls }
-            : {}),
-        });
+          ...(imageUrls.length > 0 && {
+            images: imageUrls.map((url: string) => ({
+              url,
+              title: product.name,
+            })),
+          }),
+        } as any);
       }
 
-      /*
-       * Store information pages
-       */
-      const merchantPages =
-        pagesByMerchant.get(merchant.id) || [];
-
+      // Store information pages (About, Refund, etc.)
+      const merchantPages = pagesByMerchant.get(merchant.id) || [];
       for (const page of merchantPages) {
-        const pageSlug =
-          String(page.slug || '').trim();
-
-        if (!pageSlug) {
-          continue;
-        }
+        const pageSlug = String(page.slug || '').trim();
+        if (!pageSlug) continue;
 
         feed.push({
-          url:
-            `${base}/info/` +
-            encodeURIComponent(pageSlug),
-
-          lastModified: safeDate(
-            page.updated_at,
-            now
-          ),
-
+          url: `${base}/info/${encodeURIComponent(pageSlug)}`,
+          lastModified: safeDate(page.updated_at, now),
           changeFrequency: 'monthly',
-
           priority: 0.4,
         });
       }
@@ -316,11 +167,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [...mainSite, ...feed];
   } catch (error) {
-    console.error(
-      'Sitemap generation error:',
-      error
-    );
-
+    console.error('Sitemap generation error:', error);
     return mainSite;
   }
 }
