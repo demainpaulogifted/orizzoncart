@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { ProductGallery } from '@/components/storefront/ProductGallery';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
 import { getStoreUrl } from '@/lib/store-url';
+import { redirectToSubdomain } from '@/lib/store-redirect';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,25 +15,49 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { store_slug, product_id } = await params;
   const admin = createAdminClient();
 
-  const { data: merchant } = await admin.from('merchants').select('id').eq('store_slug', store_slug).maybeSingle();
+  const { data: merchant } = await admin
+    .from('merchants')
+    .select('id, store_name')
+    .eq('store_slug', store_slug)
+    .maybeSingle();
   if (!merchant) return {};
 
-  let { data: product } = await admin.from('products').select('name, description, images').eq('merchant_id', merchant.id).eq('slug', product_id).maybeSingle();
+  let { data: product } = await admin
+    .from('products')
+    .select('name, description, images, slug')
+    .eq('merchant_id', merchant.id)
+    .eq('slug', product_id)
+    .maybeSingle();
   if (!product) {
-    const { data } = await admin.from('products').select('name, description, images').eq('merchant_id', merchant.id).eq('id', product_id).maybeSingle();
+    const { data } = await admin
+      .from('products')
+      .select('name, description, images, slug')
+      .eq('merchant_id', merchant.id)
+      .eq('id', product_id)
+      .maybeSingle();
     product = data;
   }
   if (!product) return {};
 
-  const title = `${product.name} | ${store_slug}`;
-  const description = product.description || `Buy ${product.name} online.`;
-  const image = product.images?.[0]?.url || `${process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng'}/icon-512.png`;
+  const identifier = product.slug || product_id;
+  const title = `${product.name} | ${merchant.store_name}`;
+  const description = product.description || `Buy ${product.name} online at ${merchant.store_name}.`;
+  const image =
+    product.images?.[0]?.url ||
+    `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng'}/icon-192.png`;
 
   return {
     title,
     description,
-    openGraph: { title, description, images: product.images?.map((i: any) => i.url).filter(Boolean) || [image] },
+    openGraph: {
+      title,
+      description,
+      siteName: merchant.store_name,
+      url: `https://${store_slug}.orizzoncart.name.ng/p/${identifier}`,
+      images: product.images?.map((i: any) => i.url).filter(Boolean) || [image],
+    },
     twitter: { card: 'summary_large_image', title, description },
+    alternates: { canonical: `https://${store_slug}.orizzoncart.name.ng/p/${identifier}` },
   };
 }
 
@@ -44,10 +70,15 @@ function TrustRow({ icon, text }: { icon: string; text: string }) {
   );
 }
 
-export default async function ProductDetailPage({ params }: any) {
+export default async function ProductDetailPage({ params, searchParams }: any) {
   const { store_slug, product_id } = await params;
-  const admin = createAdminClient();
 
+  // ENFORCE: subdomain only
+  const host = (await headers()).get('host') || '';
+  const qs = new URLSearchParams(await searchParams).toString();
+  redirectToSubdomain(host, store_slug, `/p/${product_id}`, qs);
+
+  const admin = createAdminClient();
   const { data: merchant } = await admin
     .from('merchants')
     .select('id, store_name, store_slug')
@@ -83,26 +114,21 @@ export default async function ProductDetailPage({ params }: any) {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28 md:pb-12">
-      {/* TOP STORE BAR — always visible, even from Google */}
+      {/* TOP STORE BAR */}
       <div className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <Link href={`/store/${store_slug}`} className="flex items-center gap-2 min-w-0">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 min-w-0">
             <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 text-white flex items-center justify-center font-extrabold text-sm shrink-0">
               {merchant.store_name?.[0]?.toUpperCase() || 'S'}
             </span>
             <span className="font-extrabold text-sm text-gray-900 truncate">← {merchant.store_name}</span>
-          </Link>
-          <Link href="/" className="text-xs font-bold text-gray-500 hover:text-purple-600 shrink-0">
-            OrizzonCart Home
           </Link>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
         <nav className="text-xs text-gray-500 mb-4 flex gap-1 items-center">
-          <Link href="/" className="hover:text-purple-600 font-bold">Home</Link>
-          <span>/</span>
-          <Link href={`/store/${store_slug}`} className="hover:text-purple-600 font-bold">{merchant.store_name}</Link>
+          <Link href="/" className="hover:text-purple-600 font-bold">{merchant.store_name}</Link>
           <span>/</span>
           <span className="truncate max-w-[200px]">{product.name}</span>
         </nav>
@@ -140,7 +166,7 @@ export default async function ProductDetailPage({ params }: any) {
             </div>
 
             <Link
-              href={`/store/${store_slug}?add=${product.id}`}
+              href={`/?add=${product.id}`}
               className="hidden md:block w-full bg-purple-600 text-white text-center py-4 rounded-xl font-extrabold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-colors"
             >
               Add to Cart 🛒
@@ -148,16 +174,15 @@ export default async function ProductDetailPage({ params }: any) {
           </div>
         </div>
 
-        {/* MORE FROM THIS STORE — internal links for SEO + navigation */}
         {related && related.length > 0 && (
           <div className="mt-10">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-extrabold text-gray-900">More from {merchant.store_name}</h2>
-              <Link href={`/store/${store_slug}`} className="text-xs font-bold text-purple-600 hover:underline">View all →</Link>
+              <Link href="/" className="text-xs font-bold text-purple-600 hover:underline">View all →</Link>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {related.map((r: any) => (
-                <Link key={r.id} href={`/store/${store_slug}/p/${r.slug || r.id}`} className="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow">
+                <Link key={r.id} href={`/p/${r.slug || r.id}`} className="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow">
                   <div className="relative aspect-square bg-gray-100">
                     {r.images?.[0]?.url ? (
                       <Image src={r.images[0].url} alt={r.name} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover" />
@@ -196,22 +221,18 @@ export default async function ProductDetailPage({ params }: any) {
           )}
         </div>
 
-        {/* BOTTOM STORE CTA */}
         <div className="mt-8 bg-white rounded-2xl border p-5 text-center space-y-2">
-          <Link href={`/store/${store_slug}`} className="block w-full bg-purple-600 text-white py-3.5 rounded-xl font-extrabold hover:bg-purple-700">
+          <Link href="/" className="block w-full bg-purple-600 text-white py-3.5 rounded-xl font-extrabold hover:bg-purple-700">
             🛍️ Visit {merchant.store_name} Store
           </Link>
           <p className="text-[11px] text-gray-400">
-            Powered by <Link href="/" className="font-bold text-purple-600 hover:underline">OrizzonCart</Link>
+            Powered by <Link href="https://www.orizzoncart.name.ng" className="font-bold text-purple-600 hover:underline">OrizzonCart</Link>
           </p>
         </div>
       </div>
 
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t p-3 z-40 md:hidden">
-        <Link
-          href={`/store/${store_slug}?add=${product.id}`}
-          className="block w-full bg-purple-600 text-white text-center py-3.5 rounded-xl font-extrabold"
-        >
+        <Link href={`/?add=${product.id}`} className="block w-full bg-purple-600 text-white text-center py-3.5 rounded-xl font-extrabold">
           Add to Cart — ₦{Number(product.price).toLocaleString()}
         </Link>
       </div>
