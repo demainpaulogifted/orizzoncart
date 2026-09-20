@@ -6,10 +6,10 @@ import { toast } from 'sonner';
 
 const SECTIONS = [
   { href: '/dashboard/settings/payment', icon: '💳', title: 'Payment Settings', desc: 'Payout method, own keys (0%) or OrizzonPay (5%)' },
-  { href: '/dashboard/settings/shipping', icon: '🚚', title: 'Shipping', desc: 'Free, flat waybill or pickup' },
+  { href: '/dashboard/settings/shipping', icon: '🚚', title: 'Shipping', desc: 'Delivery, pickup or neighbourhood free' },
   { href: '/dashboard/settings/theme', icon: '🎨', title: 'Store Theme', desc: 'Change your storefront look' },
   { href: '/dashboard/settings/commerce', icon: '🛒', title: 'Commerce Rules', desc: 'Cart & checkout controls' },
-  { href: '/dashboard/settings/plans', icon: '', title: 'Maintenance Plans', desc: 'Keep your store active' },
+  { href: '/dashboard/settings/plans', icon: '🧾', title: 'Maintenance Plans', desc: 'Keep your store active' },
 ];
 
 export default function SettingsHubPage() {
@@ -61,11 +61,18 @@ export default function SettingsHubPage() {
 
   if (!merchant) return <div className="p-10 text-center text-gray-500">Loading...</div>;
 
+  const storeUrl = `https://${merchant.store_slug}.orizzoncart.name.ng`;
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">⚙️ Settings</h1>
-        <p className="text-gray-600 text-sm">Everything about your store, in one place.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">⚙️ Settings</h1>
+          <p className="text-gray-600 text-sm">Everything about your store, in one place.</p>
+        </div>
+        <Link href={storeUrl} target="_blank" className="px-4 py-2.5 bg-purple-600 text-white rounded-xl text-xs font-bold shrink-0 hover:bg-purple-700">
+          👀 Visit Live Store
+        </Link>
       </div>
 
       {/* HUB */}
