@@ -34,9 +34,11 @@ export default function DashboardHome() {
 
   if (!merchant) return <div className="p-10 text-center text-gray-500">Loading dashboard...</div>;
 
+  const storeUrl = `https://${merchant.store_slug}.orizzoncart.name.ng`;
   const hasPayout = !!(merchant.payout_method || merchant.bank_name || merchant.paystack_secret_key || merchant.flutterwave_secret_key);
+
   const steps = [
-    { done: true, title: 'Create your store', tip: 'Done! Your store is live on OrizzonCart.', href: `/store/${merchant.store_slug}`, cta: 'View Store' },
+    { done: true, title: 'Create your store', tip: 'Done! Your store is live on OrizzonCart.', href: storeUrl, cta: 'View Store' },
     { done: counts.products > 0, title: 'Add your first product', tip: 'Stores with 3+ products and real photos sell 4x more.', href: '/dashboard/products/add', cta: 'Add Product' },
     { done: !!merchant.shipping_mode, title: 'Set shipping or pickup', tip: 'Digital products skip shipping automatically — set this for physical items.', href: '/dashboard/settings/shipping', cta: 'Set Shipping' },
     { done: counts.pages > 0, title: 'Add a trust page', tip: 'A Refund Policy or About page can lift conversion by up to 30%.', href: '/dashboard/pages', cta: 'Create Page' },
@@ -91,7 +93,7 @@ export default function DashboardHome() {
                   {!s.done && <p className="text-xs text-gray-500 mt-0.5">💡 {s.tip}</p>}
                 </div>
                 {!s.done && (
-                  <Link href={s.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">
+                  <Link href={s.href} target={s.href.startsWith('http') ? '_blank' : undefined} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">
                     {s.cta}
                   </Link>
                 )}
@@ -128,7 +130,7 @@ export default function DashboardHome() {
           <Link href="/dashboard/settings/payment" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">💳 Payment</Link>
           <Link href="/dashboard/settings/theme" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">🎨 Theme</Link>
           <Link href="/dashboard/settings/shipping" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">🚚 Shipping</Link>
-          <Link href={`/store/${merchant.store_slug}`} target="_blank" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">👀 View Store</Link>
+          <Link href={storeUrl} target="_blank" className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center">👀 View Store</Link>
         </div>
       </div>
     </div>
