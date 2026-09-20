@@ -17,7 +17,7 @@ export default function OnboardingPage() {
     store_description: '',
   });
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.com';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng';
 
   const handleStoreName = (value: string) => {
     setForm({ ...form, store_name: value, store_slug: generateSlug(value) });
@@ -110,7 +110,7 @@ export default function OnboardingPage() {
               <span className="text-sm text-gray-500 whitespace-nowrap">.{rootDomain}</span>
             </div>
             <p className="text-xs text-purple-600 mt-2 font-semibold">
-              ✨ Your customers will visit: <span className="font-mono">{form.store_slug || 'yourstore'}.{rootDomain}</span>
+              ✨ Your store's ONLY address: <span className="font-mono">{form.store_slug || 'yourstore'}.{rootDomain}</span> — assigned automatically at creation.
             </p>
           </div>
 
