@@ -32,6 +32,12 @@ export default function HomePage() {
           </span>
           <nav className="flex items-center gap-2">
             <Link
+              href="/blog/start-online-store-nigeria"
+              className="hidden sm:block text-sm font-medium text-gray-600 hover:text-purple-600 px-3 py-2 transition-colors"
+            >
+              Blog
+            </Link>
+            <Link
               href="/track-order"
               className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2"
             >
@@ -45,7 +51,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/signup"
-              className="text-sm font-semibold text-white bg-gray-900 rounded-full px-4 py-2 hover:bg-gray-800"
+              className="text-sm font-semibold text-white bg-gray-900 rounded-full px-4 py-2 hover:bg-gray-800 transition-colors"
             >
               Get Started
             </Link>
@@ -262,11 +268,11 @@ export default function HomePage() {
               <li>✅ Your own store link</li>
               <li>✅ Unlimited products</li>
               <li>✅ Premium theme preview</li>
-              <li> Cart & checkout locked</li>
+              <li>❌ Cart & checkout locked</li>
             </ul>
             <Link
               href="/signup"
-              className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50"
+              className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50 transition-colors"
             >
               Start Free
             </Link>
@@ -288,7 +294,7 @@ export default function HomePage() {
             </ul>
             <Link
               href="/signup"
-              className="mt-8 block text-center px-6 py-3 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700"
+              className="mt-8 block text-center px-6 py-3 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
             >
               Activate My Store
             </Link>
@@ -306,10 +312,60 @@ export default function HomePage() {
             </ul>
             <a
               href="#themes"
-              className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50"
+              className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50 transition-colors"
             >
               Browse Themes
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* NEW: Blog / Resources Section (Shopify-style conversion driver) */}
+      <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
+        <div className="bg-purple-50 rounded-3xl p-8 md:p-12 border border-purple-100">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div>
+              <span className="inline-block bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full mb-4">
+                📚 Free Guide
+              </span>
+              <h2 className="text-3xl md:text-4xl font-extrabold mb-4 text-gray-900">
+                How to Start an Online Store in Nigeria (2024 Guide)
+              </h2>
+              <p className="text-gray-600 mb-6 text-lg">
+                Stop losing sales to &quot;How much?&quot; DMs. Read our complete, step-by-step blueprint to building a professional, automated online store that accepts payments and scales your business.
+              </p>
+              <Link
+                href="/blog/start-online-store-nigeria"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-bold rounded-full hover:bg-purple-700 transition-all"
+              >
+                Read the Ultimate Guide →
+              </Link>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">🎯</span>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Find a Winning Niche</h4>
+                    <p className="text-sm text-gray-600">Validate your product idea before spending a dime.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">⚙️</span>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Build in 10 Minutes</h4>
+                    <p className="text-sm text-gray-600">No coding required. Just pick a theme and add products.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">💳</span>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Accept Payments Securely</h4>
+                    <p className="text-sm text-gray-600">Integrate Paystack or Flutterwave in one click.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -325,7 +381,7 @@ export default function HomePage() {
           </p>
           <Link
             href="/signup"
-            className="inline-block px-10 py-4 bg-white text-purple-700 rounded-full font-bold text-lg shadow-lg hover:bg-purple-50"
+            className="inline-block px-10 py-4 bg-white text-purple-700 rounded-full font-bold text-lg shadow-lg hover:bg-purple-50 transition-all"
           >
             Create Your Online Store →
           </Link>
@@ -344,22 +400,25 @@ export default function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap justify-center md:justify-end gap-x-5 gap-y-2 text-sm">
-            <Link href="/about" className="hover:text-white">
+            <Link href="/blog/start-online-store-nigeria" className="hover:text-white transition-colors">
+              Blog
+            </Link>
+            <Link href="/about" className="hover:text-white transition-colors">
               About
             </Link>
-            <Link href="/contact" className="hover:text-white">
+            <Link href="/contact" className="hover:text-white transition-colors">
               Contact
             </Link>
-            <Link href="/privacy" className="hover:text-white">
+            <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-white">
+            <Link href="/terms" className="hover:text-white transition-colors">
               Terms
             </Link>
-            <Link href="/track-order" className="hover:text-white">
+            <Link href="/track-order" className="hover:text-white transition-colors">
               Track Order
             </Link>
-            <Link href="/login" className="hover:text-white">
+            <Link href="/login" className="hover:text-white transition-colors">
               Log in
             </Link>
           </div>
