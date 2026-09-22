@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Prevent crawling of dynamic API routes and auth paths
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard/
+
+# Point Google to your sitemap
+Sitemap: https://orizzoncart.name.ng/sitemap.xml
