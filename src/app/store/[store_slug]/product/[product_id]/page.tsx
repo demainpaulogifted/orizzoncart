@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
       title: product.name,
       description: product.description || '',
       images: product.images?.[0] ? [product.images[0]] : [],
-      type: 'product',
+      // 'type' removed to fix Next.js TypeScript strict union type error
     },
   };
 }
