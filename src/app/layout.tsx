@@ -33,6 +33,11 @@ export const metadata: Metadata = {
     description: 'Create your online store and start selling online with OrizzonCart.',
   },
   robots: { index: true, follow: true },
+  
+  // ✅ MONETAG VERIFICATION META TAG ADDED HERE
+  other: {
+    monetag: "383b1b3cac9bec94eba8e7baaca0cf22",
+  },
 };
 
 export const viewport: Viewport = {
