@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { THEMES } from '@/lib/themes';
 import { MonetagVignette } from '@/components/ads/MonetagVignette'; // ✅ ADDED
+import { MonetagPushNotifications } from '@/components/ads/MonetagPushNotifications'; // ✅ ADDED
 
 const steps = [
   { icon: '👤', title: 'Create your account', text: 'Sign up free with your email in 30 seconds.' },
@@ -25,13 +26,16 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ✅ VIGNETTE AD: Shows once on landing page after 3 seconds */}
+      {/* ✅ 1. VIGNETTE AD: Shows once on landing page after 3 seconds */}
       <MonetagVignette
         zoneId="11902705"
         storageKey="landing_vignette"
         delay={3000}
         frequency={1}
       />
+
+      {/* ✅ 2. PUSH NOTIFICATIONS: Prompts users to subscribe for ongoing revenue */}
+      <MonetagPushNotifications zoneId="11902738" />
 
       <main className="min-h-screen bg-white text-gray-900">
         {/* Navbar */}
