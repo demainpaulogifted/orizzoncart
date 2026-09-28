@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
   
   const { data: product } = await admin
     .from('products')
-    .select('name, description, images, price, slug, id')
+    .select('name, description, images, price, slug, id, stock')
     .eq('merchant_id', merchant.id)
     .eq('is_active', true)
     .or(`slug.eq.${decodedIdentifier},id.eq.${decodedIdentifier}`)
@@ -46,9 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
       description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
       images: imageUrl ? [imageUrl] : [],
     },
-    alternates: {
-      canonical: productUrl,
-    },
+    alternates: { canonical: productUrl },
   };
 }
 
@@ -96,10 +94,7 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
       <ProductDetailClient product={product} merchant={merchant} />
     </>
   );
