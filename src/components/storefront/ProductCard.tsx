@@ -1,49 +1,31 @@
-import Image from 'next/image';
 import Link from 'next/link';
-import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
+import Image from 'next/image';
 
-export function ProductCard({ product, isShowcaseMode, onClick }: { product: any; isShowcaseMode: boolean; onClick?: () => void }) {
-  const imageUrl = product.images?.[0]?.url;
-  const identifier = product.slug || product.id;
-  const href = identifier ? `/p/${identifier}` : '#';
+export default function ProductCard({ product, storeSlug }: { product: any; storeSlug: string }) {
+  const productIdentifier = product.slug || product.id;
+  const href = `/p/${encodeURIComponent(productIdentifier)}`;
+  const imageUrl = Array.isArray(product.images) && product.images.length > 0 
+    ? product.images[0] 
+    : '/placeholder-product.png'; // Ensure you have a fallback image in public/
 
   return (
     <Link href={href} className="group block">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-white shadow-md group-hover:shadow-2xl transition-all duration-300">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={product.name}
-            fill
-            sizes="(max-width: 640px) 50vw, 33vw"
-            quality={80}
-            loading="lazy"
-            className="object-cover group-hover:scale-105 transition-transform duration-700"
-          />
-        ) : product.is_digital ? (
-          <FlyerCover
-            title={product.name}
-            category={product.category || 'Digital'}
-            colorKey={flyerColorKey(product.name)}
-            className="absolute inset-0"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-            <span className="text-4xl opacity-40">🛍️</span>
-          </div>
-        )}
-
-        {product.is_digital && (
-          <span className="absolute top-2 left-2 bg-blue-600/90 text-white text-[9px] font-extrabold px-2 py-1 rounded-full">⚡ DIGITAL</span>
-        )}
-        {!product.is_digital && product.category && (
-          <span className="absolute top-2 left-2 bg-white/90 text-gray-800 text-[9px] font-extrabold px-2 py-1 rounded-full uppercase">{product.category}</span>
-        )}
+      <div className="aspect-square w-full overflow-hidden rounded-xl bg-gray-100 border border-gray-200 group-hover:border-gray-300 transition-colors">
+        <Image
+          src={imageUrl}
+          alt={product.name}
+          width={500}
+          height={500}
+          className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+        />
       </div>
-
-      <div className="mt-3 px-1 text-center">
-        <h3 className="text-sm sm:text-base font-semibold text-gray-900 leading-snug line-clamp-2">{product.name}</h3>
-        <p className="mt-1 text-lg font-extrabold text-purple-700">₦{Number(product.price).toLocaleString()}</p>
+      <div className="mt-4 space-y-1">
+        <h3 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 line-clamp-2">
+          {product.name}
+        </h3>
+        <p className="text-sm font-bold text-gray-900">
+          ₦{Number(product.price).toLocaleString()}
+        </p>
       </div>
     </Link>
   );
