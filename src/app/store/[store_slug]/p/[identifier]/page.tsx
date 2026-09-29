@@ -9,28 +9,43 @@ import ReviewList from '@/components/reviews/ReviewList';
 
 export const dynamic = 'force-dynamic';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function findProduct(admin: any, merchantId: string, identifier: string) {
+  const { data: bySlug } = await admin
+    .from('products')
+    .select('*')
+    .eq('merchant_id', merchantId)
+    .eq('is_active', true)
+    .eq('slug', identifier)
+    .maybeSingle();
+  if (bySlug) return bySlug;
+
+  if (UUID_REGEX.test(identifier)) {
+    const { data: byId } = await admin
+      .from('products')
+      .select('*')
+      .eq('merchant_id', merchantId)
+      .eq('is_active', true)
+      .eq('id', identifier)
+      .maybeSingle();
+    if (byId) return byId;
+  }
+  return null;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ store_slug: string; identifier: string }> }): Promise<Metadata> {
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
 
   const { data: merchant } = await admin
     .from('merchants')
-    .select('id, store_name, store_slug')
+    .select('id, store_name')
     .eq('store_slug', store_slug)
     .maybeSingle();
-
   if (!merchant) return { title: 'Product Not Found' };
 
-  const decodedIdentifier = decodeURIComponent(identifier);
-  
-  const { data: product } = await admin
-    .from('products')
-    .select('name, description, images, price, slug, id, stock')
-    .eq('merchant_id', merchant.id)
-    .eq('is_active', true)
-    .or(`slug.eq.${decodedIdentifier},id.eq.${decodedIdentifier}`)
-    .maybeSingle();
-
+  const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) return { title: 'Product Not Found' };
 
   const imageUrl = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
@@ -50,7 +65,6 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
       card: 'summary_large_image',
       title: product.name,
       description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
-      images: imageUrl ? [imageUrl] : [],
     },
     alternates: { canonical: productUrl },
   };
@@ -60,7 +74,6 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
 
-  // ENFORCE: platform domain can never display a store — subdomain only
   const host = (await headers()).get('host') || '';
   const decodedIdentifier = decodeURIComponent(identifier);
   redirectToSubdomain(host, store_slug, `/p/${encodeURIComponent(decodedIdentifier)}`, '');
@@ -70,35 +83,27 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
     .select('*')
     .eq('store_slug', store_slug)
     .maybeSingle();
-
   if (!merchant) notFound();
 
-  const { data: product } = await admin
-    .from('products')
-    .select('*')
-    .eq('merchant_id', merchant.id)
-    .eq('is_active', true)
-    .or(`slug.eq.${decodedIdentifier},id.eq.${decodedIdentifier}`)
-    .maybeSingle();
-
+  const product = await findProduct(admin, merchant.id, decodedIdentifier);
   if (!product) notFound();
 
-  // Fetch reviews for schema and display
-  const { data: reviews } = await admin
-    .from('product_reviews')
-    .select('rating')
-    .eq('product_id', product.id)
-    .eq('is_approved', true);
-
-  const reviewCount = reviews?.length || 0;
-  const averageRating = reviewCount > 0
-    ? reviews!.reduce((sum: any, r: any) => sum + r.rating, 0) / reviewCount
-    : 0;
+  let reviewCount = 0;
+  let averageRating = 0;
+  try {
+    const { data: reviews } = await admin
+      .from('product_reviews')
+      .select('rating')
+      .eq('product_id', product.id)
+      .eq('is_approved', true);
+    reviewCount = reviews?.length || 0;
+    averageRating = reviewCount > 0 ? reviews!.reduce((s: number, r: any) => s + (r.rating || 0), 0) / reviewCount : 0;
+  } catch {}
 
   const primaryImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
   const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
 
-  const productSchema = {
+  const productSchema: any = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
@@ -111,42 +116,28 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
       availability: (product.stock || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       url: productUrl,
     },
-    ...(reviewCount > 0 ? {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: averageRating.toFixed(1),
-        reviewCount,
-        bestRating: 5,
-        worstRating: 1,
-      }
-    } : {}),
   };
+  if (reviewCount > 0) {
+    productSchema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: averageRating.toFixed(1),
+      reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
-      
-      {/* Product Details */}
       <ProductDetailClient product={product} merchant={merchant} />
-
-      {/* Reviews Section */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="border-t border-gray-200 pt-10">
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">
-            Customer Reviews ({reviewCount})
-          </h2>
-
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Customer Reviews ({reviewCount})</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Review Form */}
             <div>
-              <ReviewForm
-                productId={product.id}
-                merchantId={merchant.id}
-                onSuccess={() => {}}
-              />
+              <ReviewForm productId={product.id} merchantId={merchant.id} onSuccess={() => {}} />
             </div>
-
-            {/* Review List */}
             <div>
               <ReviewList productId={product.id} />
             </div>
