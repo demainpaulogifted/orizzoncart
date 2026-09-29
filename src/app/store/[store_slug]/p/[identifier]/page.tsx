@@ -5,11 +5,7 @@ import ProductDetailClient from '@/components/storefront/ProductDetailClient';
 import ReviewForm from '@/components/reviews/ReviewForm';
 import ReviewList from '@/components/reviews/ReviewList';
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ store_slug: string; identifier: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ store_slug: string; identifier: string }> }): Promise<Metadata> {
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
 
@@ -22,58 +18,41 @@ export async function generateMetadata({
   if (!merchant) return { title: 'Product Not Found' };
 
   const decodedIdentifier = decodeURIComponent(identifier);
-
+  
   const { data: product } = await admin
     .from('products')
     .select('name, description, images, price, slug, id, stock')
     .eq('merchant_id', merchant.id)
     .eq('is_active', true)
-    .or(`slug.eq.\( {decodedIdentifier},id.eq. \){decodedIdentifier}`)
+    .or(`slug.eq.${decodedIdentifier},id.eq.${decodedIdentifier}`)
     .maybeSingle();
 
   if (!product) return { title: 'Product Not Found' };
 
-  const imageUrl =
-    Array.isArray(product.images) && product.images.length > 0
-      ? typeof product.images[0] === 'string'
-        ? product.images[0]
-        : product.images[0]?.url
-      : null;
-
-  const productUrl = `https://\( {store_slug}.orizzoncart.name.ng/p/ \){encodeURIComponent(
-    product.slug || product.id
-  )}`;
+  const imageUrl = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
+  const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
 
   return {
     title: `${product.name} | ${merchant.store_name}`,
-    description:
-      product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+    description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
     openGraph: {
       title: product.name,
-      description:
-        product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+      description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
       url: productUrl,
-      images: imageUrl
-        ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }]
-        : [],
-      type: 'website', // ✅ fixed (was 'product')
+      images: imageUrl ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }] : [],
+      type: 'product',
     },
     twitter: {
       card: 'summary_large_image',
       title: product.name,
-      description:
-        product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+      description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
       images: imageUrl ? [imageUrl] : [],
     },
     alternates: { canonical: productUrl },
   };
 }
 
-export default async function ProductPage({
-  params,
-}: {
-  params: Promise<{ store_slug: string; identifier: string }>;
-}) {
+export default async function ProductPage({ params }: { params: Promise<{ store_slug: string; identifier: string }> }) {
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
 
@@ -92,10 +71,22 @@ export default async function ProductPage({
     .select('*')
     .eq('merchant_id', merchant.id)
     .eq('is_active', true)
-    .or(`slug.eq.\( {decodedIdentifier},id.eq. \){decodedIdentifier}`)
+    .or(`slug.eq.${decodedIdentifier},id.eq.${decodedIdentifier}`)
     .maybeSingle();
 
   if (!product) notFound();
+
+  // Fetch reviews for schema and display
+  const { data: reviews } = await admin
+    .from('product_reviews')
+    .select('rating')
+    .eq('product_id', product.id)
+    .eq('is_approved', true);
+
+  const reviewCount = reviews?.length || 0;
+  const averageRating = reviewCount > 0
+    ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+    : 0;
 
   const primaryImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
   const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
@@ -110,10 +101,7 @@ export default async function ProductPage({
       '@type': 'Offer',
       price: product.price,
       priceCurrency: 'NGN',
-      availability:
-        (product.stock || 0) > 0
-          ? 'https://schema.org/InStock'
-          : 'https://schema.org/OutOfStock',
+      availability: (product.stock || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       url: productUrl,
     },
     aggregateRating: reviewCount > 0 ? {
@@ -128,6 +116,8 @@ export default async function ProductPage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      
+      {/* Product Details */}
       <ProductDetailClient product={product} merchant={merchant} />
 
       {/* Reviews Section */}
@@ -143,9 +133,7 @@ export default async function ProductPage({
               <ReviewForm
                 productId={product.id}
                 merchantId={merchant.id}
-                onSuccess={() => {
-                  // Client will refetch
-                }}
+                onSuccess={() => {}}
               />
             </div>
 
