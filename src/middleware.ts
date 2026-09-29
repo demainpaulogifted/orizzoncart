@@ -20,7 +20,7 @@ export function middleware(req: NextRequest) {
       const isPlatformPath = PLATFORM_PATHS.some(
         (p) => pathname === p || pathname.startsWith(p.endsWith('/') ? p : `${p}/`)
       );
-      const alreadyStorePath = pathname === '/store' || pathname.startsWith('/store/');
+      const alreadyStorePath = pathname.startsWith('/store/');
 
       if (!isPlatformPath && !alreadyStorePath) {
         const url = req.nextUrl.clone();
@@ -34,5 +34,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|woff2?)$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
