@@ -7,7 +7,7 @@ export default function ProductCard({
   isShowcaseMode = false 
 }: { 
   product: any; 
-  storeSlug: string; 
+  storeSlug?: string; 
   isShowcaseMode?: boolean; 
 }) {
   const productIdentifier = product.slug || product.id;
@@ -38,7 +38,6 @@ export default function ProductCard({
     </>
   );
 
-  // If the store is in showcase mode, don't make it clickable
   if (isShowcaseMode) {
     return <div className="block opacity-75 cursor-default">{content}</div>;
   }
