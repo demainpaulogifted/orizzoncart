@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ProductCard } from './ProductCard';
+import ProductCard from './ProductCard';
 import { MonetagInPage } from '@/components/ads/MonetagInPage';
 
 interface StoreShopProps {
@@ -12,11 +12,11 @@ interface StoreShopProps {
   inContentZoneId?: string;
 }
 
-export function StoreShop({ 
-  products, 
-  merchant, 
+export function StoreShop({
+  products,
+  merchant,
   isShowcaseMode,
-  inContentZoneId = '11902709'
+  inContentZoneId = '11902709',
 }: StoreShopProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
@@ -32,7 +32,8 @@ export function StoreShop({
 
   const filteredProducts = products.filter((p: any) => {
     const matchesCategory = category === 'All' || p.category === category;
-    const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      !search || p.name?.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -83,16 +84,15 @@ export function StoreShop({
       {/* Product Grid with In-Content Ads */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredProducts.map((product: any, index: number) => (
-          <>
+          <div key={product.id}>
             <ProductCard
-              key={product.id}
               product={{ ...product, store_slug: storeSlug }}
               isShowcaseMode={isShowcaseMode}
             />
-            
+
             {/* Insert In-Content Ad after every 4th product */}
             {adPositions.includes(index + 1) && (
-              <div className="col-span-2 sm:col-span-3 lg:col-span-4">
+              <div className="col-span-2 sm:col-span-3 lg:col-span-4 mt-4">
                 <MonetagInPage
                   zoneId={inContentZoneId}
                   position="inline"
@@ -100,7 +100,7 @@ export function StoreShop({
                 />
               </div>
             )}
-          </>
+          </div>
         ))}
       </div>
 
