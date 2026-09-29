@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
       description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
       url: productUrl,
       images: imageUrl ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }] : [],
-      type: 'product',
+      type: 'website', // Fixed: Next.js TS requires 'website' or 'article', not 'product'
     },
     twitter: {
       card: 'summary_large_image',
@@ -85,7 +85,7 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
 
   const reviewCount = reviews?.length || 0;
   const averageRating = reviewCount > 0
-    ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+    ? reviews!.reduce((sum: any, r: any) => sum + r.rating, 0) / reviewCount
     : 0;
 
   const primaryImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
@@ -104,13 +104,15 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
       availability: (product.stock || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       url: productUrl,
     },
-    aggregateRating: reviewCount > 0 ? {
-      '@type': 'AggregateRating',
-      ratingValue: averageRating.toFixed(1),
-      reviewCount,
-      bestRating: 5,
-      worstRating: 1,
-    } : undefined,
+    ...(reviewCount > 0 ? {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: averageRating.toFixed(1),
+        reviewCount,
+        bestRating: 5,
+        worstRating: 1,
+      }
+    } : {}),
   };
 
   return (
