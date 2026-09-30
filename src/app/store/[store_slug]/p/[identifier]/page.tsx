@@ -17,19 +17,17 @@ function safeImage(images: unknown): string | null {
   const url =
     typeof first === 'string'
       ? first
-      : first && typeof first === 'object' && 'url' in (first as object)
+      : first && typeof first === 'object' && first !== null && 'url' in first
         ? String((first as { url?: unknown }).url ?? '')
         : null;
   return url && (url.startsWith('http') || url.startsWith('/')) ? url : null;
 }
 
-/**
- * Lookup order:
- * 1. active product by slug
- * 2. active product by UUID
- * 3. active product with empty/null slug whose id matches the identifier
- *    (covers older rows that never got a slug)
- */
+function buildProductUrl(storeSlug: string, product: { slug?: string | null; id: string }) {
+  const pathId = encodeURIComponent(product.slug || product.id);
+  return 'https://' + storeSlug + '.orizzoncart.name.ng/p/' + pathId;
+}
+
 async function findProduct(
   admin: ReturnType<typeof createAdminClient>,
   merchantId: string,
@@ -53,12 +51,11 @@ async function findProduct(
     if (byId) return byId;
   }
 
-  // Fallback: products created before slug was required
-  const { data: orphans } = await base()
+  const { data: orphan } = await base()
     .or('slug.is.null,slug.eq.')
     .eq('id', identifier)
     .maybeSingle();
-  if (orphans) return orphans;
+  if (orphan) return orphan;
 
   return null;
 }
@@ -70,48 +67,52 @@ export async function generateMetadata({
 }: {
   params: PageParams;
 }): Promise<Metadata> {
-  const { store_slug, identifier } = await params;
-  const admin = createAdminClient();
+  try {
+    const { store_slug, identifier } = await params;
+    const admin = createAdminClient();
 
-  const { data: merchant } = await admin
-    .from('merchants')
-    .select('id, store_name')
-    .eq('store_slug', store_slug)
-    .maybeSingle();
-  if (!merchant) return { title: 'Product Not Found' };
+    const { data: merchant } = await admin
+      .from('merchants')
+      .select('id, store_name')
+      .eq('store_slug', store_slug)
+      .maybeSingle();
+    if (!merchant) return { title: 'Product Not Found' };
 
-  const product = await findProduct(admin, merchant.id, identifier);
-  if (!product) return { title: 'Product Not Found' };
+    const product = await findProduct(admin, merchant.id, identifier);
+    if (!product) return { title: 'Product Not Found' };
 
-  const imageUrl = safeImage(product.images);
-  const pathId = encodeURIComponent(product.slug || product.id);
-  const productUrl = `https://\( {store_slug}.orizzoncart.name.ng/p/ \){pathId}`;
+    const imageUrl = safeImage(product.images);
+    const productUrl = buildProductUrl(store_slug, product);
 
-  return {
-    title: `${product.name} | ${merchant.store_name}`,
-    description:
-      product.description || `Buy ${product.name} at ${merchant.store_name}.`,
-    openGraph: {
-      title: product.name,
+    return {
+      title: product.name + ' | ' + merchant.store_name,
       description:
-        product.description || `Buy ${product.name} at ${merchant.store_name}.`,
-      url: productUrl,
-      images: imageUrl
-        ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }]
-        : [],
-      type: 'website',
-    },
-    alternates: { canonical: productUrl },
-  };
+        product.description ||
+        'Buy ' + product.name + ' at ' + merchant.store_name + '.',
+      openGraph: {
+        title: product.name,
+        description:
+          product.description ||
+          'Buy ' + product.name + ' at ' + merchant.store_name + '.',
+        url: productUrl,
+        images: imageUrl
+          ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }]
+          : [],
+        type: 'website',
+      },
+      alternates: { canonical: productUrl },
+    };
+  } catch {
+    return { title: 'Product' };
+  }
 }
 
 export default async function ProductPage({ params }: { params: PageParams }) {
   const { store_slug, identifier } = await params;
 
-  // Same rule as store home: never serve store content on platform host
   const host = (await headers()).get('host') || '';
-  const pathSuffix = `/p/${encodeURIComponent(decodeURIComponent(identifier).trim())}`;
-  redirectToSubdomain(host, store_slug, pathSuffix);
+  const cleanId = encodeURIComponent(decodeURIComponent(identifier).trim());
+  redirectToSubdomain(host, store_slug, '/p/' + cleanId);
 
   const admin = createAdminClient();
 
@@ -136,16 +137,17 @@ export default async function ProductPage({ params }: { params: PageParams }) {
     reviewCount = reviews?.length || 0;
     averageRating =
       reviewCount > 0
-        ? reviews!.reduce((s: number, r: { rating?: number }) => s + (r.rating || 0), 0) /
-          reviewCount
+        ? reviews!.reduce(
+            (s: number, r: { rating?: number }) => s + (r.rating || 0),
+            0
+          ) / reviewCount
         : 0;
   } catch {
-    // reviews table optional / RLS — never break product page
+    // reviews optional — never break the product page
   }
 
   const imageUrl = safeImage(product.images);
-  const pathId = encodeURIComponent(product.slug || product.id);
-  const productUrl = `https://\( {store_slug}.orizzoncart.name.ng/p/ \){pathId}`;
+  const productUrl = buildProductUrl(store_slug, product);
 
   const productSchema: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -164,6 +166,7 @@ export default async function ProductPage({ params }: { params: PageParams }) {
       url: productUrl,
     },
   };
+
   if (reviewCount > 0) {
     productSchema.aggregateRating = {
       '@type': 'AggregateRating',
