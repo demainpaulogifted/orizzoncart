@@ -13,20 +13,47 @@ interface ProductDetailClientProps {
   relatedProducts?: any[];
 }
 
+// ✅ SAFE: Extract a clean URL from any image shape (string, object, null)
+function extractImageUrl(raw: any): string | null {
+  if (!raw) return null;
+  const url = typeof raw === 'string' ? raw : typeof raw === 'object' ? raw.url : null;
+  return url && (url.startsWith('http') || url.startsWith('/')) ? url : null;
+}
+
 export default function ProductDetailClient({
   product,
   merchant,
   relatedProducts = [],
 }: ProductDetailClientProps) {
   const [quantity, setQuantity] = useState(1);
+  const [activeIndex, setActiveIndex] = useState(0);
   const storeSlug = merchant?.store_slug || '';
+
+  // ✅ Build a clean array of image URLs from ANY shape (string, array, object array)
+  const imageUrls: string[] = (() => {
+    const raw = product.images;
+    if (!raw) return [];
+    if (typeof raw === 'string') return [raw];
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item: any) => extractImageUrl(item))
+        .filter((u: string | null): u is string => !!u);
+    }
+    if (typeof raw === 'object') {
+      const u = extractImageUrl(raw);
+      return u ? [u] : [];
+    }
+    return [];
+  })();
+
+  const mainImage = imageUrls[activeIndex] || null;
 
   const addToCart = () => {
     const key = `orz_cart_${storeSlug}`;
     let cart: any[] = [];
     try {
       cart = JSON.parse(localStorage.getItem(key) || '[]');
-    } catch {
+    } catch (e) {
       // Ignore parse errors
     }
 
@@ -39,29 +66,16 @@ export default function ProductDetailClient({
 
     localStorage.setItem(key, JSON.stringify(cart));
     window.dispatchEvent(new Event('cart-updated'));
-    toast.success('Added to cart 🛒');
+    toast.success('Added to cart ');
   };
-
-  // Safe image handling — works for array, string, object, or null
-  const firstImage = Array.isArray(product.images) ? product.images[0] : product.images;
-  const rawImageUrl =
-    typeof firstImage === 'string'
-      ? firstImage
-      : firstImage && typeof firstImage === 'object'
-        ? (firstImage as { url?: string }).url
-        : null;
-  const imageUrl =
-    rawImageUrl && (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/'))
-      ? rawImageUrl
-      : null;
 
   return (
     <div className="min-h-screen bg-[var(--color-surface,#f8fafc)] text-[var(--color-text,#111827)]">
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Back — use "/" so subdomain middleware serves store home */}
+        {/* Breadcrumb / Back */}
         <div className="mb-6">
           <Link
-            href="/"
+            href={`/`}
             className="inline-flex items-center text-sm text-gray-600 hover:text-purple-600 transition-colors"
           >
             <svg
@@ -82,37 +96,71 @@ export default function ProductDetailClient({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Image */}
-          <div className="relative aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden shadow-sm">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                priority
-              />
-            ) : product.is_digital ? (
-              <FlyerCover
-                title={product.name}
-                category={product.category || 'Digital Product'}
-                colorKey={flyerColorKey(product.name)}
-                className="w-full h-full"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-gray-100 to-gray-200">
-                🛍️
+          {/* ✅ IMAGE GALLERY */}
+          <div className="space-y-3">
+            {/* Main image */}
+            <div className="relative aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden shadow-sm">
+              {mainImage ? (
+                <Image
+                  src={mainImage}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  priority
+                />
+              ) : product.is_digital ? (
+                <FlyerCover
+                  title={product.name}
+                  category={product.category || 'Digital Product'}
+                  colorKey={flyerColorKey(product.name)}
+                  className="w-full h-full"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-gray-100 to-gray-200">
+                  🛍️
+                </div>
+              )}
+              {product.is_digital && (
+                <span className="absolute top-4 left-4 bg-blue-600/90 text-white text-xs font-extrabold px-3 py-1.5 rounded-full">
+                   DIGITAL
+                </span>
+              )}
+              {imageUrls.length > 1 && (
+                <span className="absolute top-4 right-4 bg-black/60 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                  {activeIndex + 1} / {imageUrls.length}
+                </span>
+              )}
+            </div>
+
+            {/* Thumbnails — only show when multiple images */}
+            {imageUrls.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {imageUrls.map((url, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveIndex(idx)}
+                    className={`relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      idx === activeIndex
+                        ? 'border-purple-600 ring-2 ring-purple-200'
+                        : 'border-gray-200 opacity-70 hover:opacity-100'
+                    }`}
+                    aria-label={`View image ${idx + 1}`}
+                  >
+                    <Image
+                      src={url}
+                      alt={`${product.name} thumbnail ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                    />
+                  </button>
+                ))}
               </div>
-            )}
-            {product.is_digital && (
-              <span className="absolute top-4 left-4 bg-blue-600/90 text-white text-xs font-extrabold px-3 py-1.5 rounded-full">
-                ⚡ DIGITAL
-              </span>
             )}
           </div>
 
-          {/* Details */}
+          {/* Details Section */}
           <div className="flex flex-col">
             {product.category && (
               <span className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">
@@ -131,6 +179,7 @@ export default function ProductDetailClient({
               {product.description || 'No description available for this product.'}
             </div>
 
+            {/* Actions */}
             <div className="mt-auto space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
@@ -164,7 +213,7 @@ export default function ProductDetailClient({
 
               {product.is_digital && (
                 <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 flex items-start gap-3">
-                  <span className="text-xl">📥</span>
+                  <span className="text-xl"></span>
                   <div>
                     <p className="text-sm font-bold text-purple-900">
                       Instant Digital Download
@@ -179,7 +228,7 @@ export default function ProductDetailClient({
           </div>
         </div>
 
-        {/* Related */}
+        {/* Related Products */}
         {relatedProducts && relatedProducts.length > 0 && (
           <div className="mt-16 pt-10 border-t border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
@@ -189,8 +238,7 @@ export default function ProductDetailClient({
               {relatedProducts.map((relatedProduct: any) => (
                 <ProductCard
                   key={relatedProduct.id}
-                  product={relatedProduct}
-                  storeSlug={storeSlug}
+                  product={{ ...relatedProduct, store_slug: storeSlug }}
                   isShowcaseMode={false}
                 />
               ))}
