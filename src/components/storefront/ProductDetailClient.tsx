@@ -26,7 +26,7 @@ export default function ProductDetailClient({
     let cart: any[] = [];
     try {
       cart = JSON.parse(localStorage.getItem(key) || '[]');
-    } catch (e) {
+    } catch {
       // Ignore parse errors
     }
 
@@ -42,14 +42,13 @@ export default function ProductDetailClient({
     toast.success('Added to cart 🛒');
   };
 
-  // ✅ SAFE IMAGE HANDLING — fixes the 500 server error.
-  // Works whether `images` is an array, a plain string, an object, or null.
+  // Safe image handling — works for array, string, object, or null
   const firstImage = Array.isArray(product.images) ? product.images[0] : product.images;
   const rawImageUrl =
     typeof firstImage === 'string'
       ? firstImage
       : firstImage && typeof firstImage === 'object'
-        ? (firstImage as any).url
+        ? (firstImage as { url?: string }).url
         : null;
   const imageUrl =
     rawImageUrl && (rawImageUrl.startsWith('http') || rawImageUrl.startsWith('/'))
@@ -59,10 +58,10 @@ export default function ProductDetailClient({
   return (
     <div className="min-h-screen bg-[var(--color-surface,#f8fafc)] text-[var(--color-text,#111827)]">
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* Breadcrumb / Back */}
+        {/* Back — use "/" so subdomain middleware serves store home */}
         <div className="mb-6">
           <Link
-            href={`/store/${storeSlug}`}
+            href="/"
             className="inline-flex items-center text-sm text-gray-600 hover:text-purple-600 transition-colors"
           >
             <svg
@@ -83,7 +82,7 @@ export default function ProductDetailClient({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Image Section */}
+          {/* Image */}
           <div className="relative aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden shadow-sm">
             {imageUrl ? (
               <Image
@@ -113,7 +112,7 @@ export default function ProductDetailClient({
             )}
           </div>
 
-          {/* Details Section */}
+          {/* Details */}
           <div className="flex flex-col">
             {product.category && (
               <span className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">
@@ -132,7 +131,6 @@ export default function ProductDetailClient({
               {product.description || 'No description available for this product.'}
             </div>
 
-            {/* Actions */}
             <div className="mt-auto space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
@@ -181,7 +179,7 @@ export default function ProductDetailClient({
           </div>
         </div>
 
-        {/* Related Products */}
+        {/* Related */}
         {relatedProducts && relatedProducts.length > 0 && (
           <div className="mt-16 pt-10 border-t border-gray-200">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
@@ -191,7 +189,8 @@ export default function ProductDetailClient({
               {relatedProducts.map((relatedProduct: any) => (
                 <ProductCard
                   key={relatedProduct.id}
-                  product={{ ...relatedProduct, store_slug: storeSlug }}
+                  product={relatedProduct}
+                  storeSlug={storeSlug}
                   isShowcaseMode={false}
                 />
               ))}
