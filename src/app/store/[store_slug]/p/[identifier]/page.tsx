@@ -4,7 +4,6 @@ import type { Metadata } from 'next';
 import ProductDetailClient from '@/components/storefront/ProductDetailClient';
 
 export const dynamic = 'force-dynamic';
-
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function safeImage(images: any): string | null {
@@ -14,23 +13,10 @@ function safeImage(images: any): string | null {
 }
 
 async function findProduct(admin: any, merchantId: string, identifier: string) {
-  const { data: bySlug } = await admin
-    .from('products')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .eq('is_active', true)
-    .eq('slug', identifier)
-    .maybeSingle();
+  const { data: bySlug } = await admin.from('products').select('*').eq('merchant_id', merchantId).eq('is_active', true).eq('slug', identifier).maybeSingle();
   if (bySlug) return bySlug;
-
   if (UUID_REGEX.test(identifier)) {
-    const { data: byId } = await admin
-      .from('products')
-      .select('*')
-      .eq('merchant_id', merchantId)
-      .eq('is_active', true)
-      .eq('id', identifier)
-      .maybeSingle();
+    const { data: byId } = await admin.from('products').select('*').eq('merchant_id', merchantId).eq('is_active', true).eq('id', identifier).maybeSingle();
     if (byId) return byId;
   }
   return null;
@@ -39,64 +25,31 @@ async function findProduct(admin: any, merchantId: string, identifier: string) {
 export async function generateMetadata({ params }: { params: Promise<{ store_slug: string; identifier: string }> }): Promise<Metadata> {
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
-
-  const { data: merchant } = await admin
-    .from('merchants')
-    .select('id, store_name')
-    .eq('store_slug', store_slug)
-    .maybeSingle();
+  const { data: merchant } = await admin.from('merchants').select('id, store_name').eq('store_slug', store_slug).maybeSingle();
   if (!merchant) return { title: 'Product Not Found' };
-
   const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) return { title: 'Product Not Found' };
-
   const imageUrl = safeImage(product.images);
-  const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
-
   return {
     title: `${product.name} | ${merchant.store_name}`,
-    description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
-    openGraph: {
-      title: product.name,
-      description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
-      url: productUrl,
-      images: imageUrl ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }] : [],
-      type: 'website',
-    },
-    alternates: { canonical: productUrl },
+    description: product.description,
+    openGraph: { title: product.name, description: product.description, url: `https://${store_slug}.orizzoncart.name.ng/p/${product.slug || product.id}`, images: imageUrl ? [{ url: imageUrl, width: 800, height: 600 }] : [], type: 'website' },
   };
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ store_slug: string; identifier: string }> }) {
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
-
-  const { data: merchant } = await admin
-    .from('merchants')
-    .select('*')
-    .eq('store_slug', store_slug)
-    .maybeSingle();
+  const { data: merchant } = await admin.from('merchants').select('*').eq('store_slug', store_slug).maybeSingle();
   if (!merchant) notFound();
-
   const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) notFound();
-
-  // ✅ FETCH RELATED PRODUCTS: Same store, active, exclude current product, limit to 4
-  const { data: relatedProducts } = await admin
-    .from('products')
-    .select('id, name, price, images, slug, is_active')
-    .eq('merchant_id', merchant.id)
-    .eq('is_active', true)
-    .neq('id', product.id)
-    .limit(4);
-
-  return (
-    <div className="min-h-screen bg-[var(--color-surface,#f8fafc)] text-[var(--color-text,#111827)]">
-      <ProductDetailClient 
-        product={product} 
-        merchant={merchant} 
-        relatedProducts={relatedProducts || []} 
-      />
-    </div>
-  );
+  
+  // Fetch review count
+  const { data: reviews } = await admin.from('product_reviews').select('rating').eq('product_id', product.id).eq('is_approved', true);
+  product.reviewCount = reviews?.length || 0;
+  
+  const { data: relatedProducts } = await admin.from('products').select('id, name, price, images, slug').eq('merchant_id', merchant.id).eq('is_active', true).neq('id', product.id).limit(4);
+  
+  return <ProductDetailClient product={product} merchant={merchant} relatedProducts={relatedProducts || []} />;
 }
