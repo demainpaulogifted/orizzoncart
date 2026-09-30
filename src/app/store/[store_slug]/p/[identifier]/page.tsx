@@ -1,105 +1,74 @@
 import { notFound } from 'next/navigation';
-import { headers } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import type { Metadata } from 'next';
 import ProductDetailClient from '@/components/storefront/ProductDetailClient';
-import { redirectToSubdomain } from '@/lib/store-redirect';
 
 export const dynamic = 'force-dynamic';
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function findProduct(
-  admin: ReturnType<typeof createAdminClient>,
-  merchantId: string,
-  rawIdentifier: string
-) {
-  const identifier = decodeURIComponent(rawIdentifier).trim();
-  if (!identifier) return null;
+function safeImage(images: any): string | null {
+  const first = Array.isArray(images) ? images[0] : images;
+  const url = typeof first === 'string' ? first : first && typeof first === 'object' ? first.url : null;
+  return url && (url.startsWith('http') || url.startsWith('/')) ? url : null;
+}
 
-  // 1) by slug
-  const { data: bySlug, error: slugErr } = await admin
+async function findProduct(admin: any, merchantId: string, identifier: string) {
+  const { data: bySlug } = await admin
     .from('products')
     .select('*')
     .eq('merchant_id', merchantId)
     .eq('is_active', true)
     .eq('slug', identifier)
     .maybeSingle();
-
-  if (slugErr) {
-    console.error('findProduct slug error', slugErr.message);
-  }
   if (bySlug) return bySlug;
 
-  // 2) by id (uuid only)
   if (UUID_REGEX.test(identifier)) {
-    const { data: byId, error: idErr } = await admin
+    const { data: byId } = await admin
       .from('products')
       .select('*')
       .eq('merchant_id', merchantId)
       .eq('is_active', true)
       .eq('id', identifier)
       .maybeSingle();
-
-    if (idErr) {
-      console.error('findProduct id error', idErr.message);
-    }
     if (byId) return byId;
   }
-
   return null;
 }
 
-type PageParams = Promise<{ store_slug: string; identifier: string }>;
+export async function generateMetadata({ params }: { params: Promise<{ store_slug: string; identifier: string }> }): Promise<Metadata> {
+  const { store_slug, identifier } = await params;
+  const admin = createAdminClient();
 
-export async function generateMetadata({
-  params,
-}: {
-  params: PageParams;
-}): Promise<Metadata> {
-  try {
-    const { store_slug, identifier } = await params;
-    const admin = createAdminClient();
+  const { data: merchant } = await admin
+    .from('merchants')
+    .select('id, store_name')
+    .eq('store_slug', store_slug)
+    .maybeSingle();
+  if (!merchant) return { title: 'Product Not Found' };
 
-    const { data: merchant } = await admin
-      .from('merchants')
-      .select('id, store_name')
-      .eq('store_slug', store_slug)
-      .maybeSingle();
+  const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
+  if (!product) return { title: 'Product Not Found' };
 
-    if (!merchant) {
-      return { title: 'Product Not Found', robots: { index: false, follow: false } };
-    }
+  const imageUrl = safeImage(product.images);
+  const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
 
-    const product = await findProduct(admin, merchant.id, identifier);
-    if (!product) {
-      return { title: 'Product Not Found', robots: { index: false, follow: false } };
-    }
-
-    return {
-      title: product.name + ' | ' + merchant.store_name,
-      description:
-        product.description ||
-        'Buy ' + product.name + ' at ' + merchant.store_name + '.',
-      // noindex until product pages are stable
-      robots: { index: false, follow: true },
-    };
-  } catch {
-    return {
-      title: 'Product',
-      robots: { index: false, follow: false },
-    };
-  }
+  return {
+    title: `${product.name} | ${merchant.store_name}`,
+    description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+    openGraph: {
+      title: product.name,
+      description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+      url: productUrl,
+      images: imageUrl ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }] : [],
+      type: 'website',
+    },
+    alternates: { canonical: productUrl },
+  };
 }
 
-export default async function ProductPage({ params }: { params: PageParams }) {
+export default async function ProductPage({ params }: { params: Promise<{ store_slug: string; identifier: string }> }) {
   const { store_slug, identifier } = await params;
-
-  const host = (await headers()).get('host') || '';
-  const cleanId = encodeURIComponent(decodeURIComponent(identifier).trim());
-  redirectToSubdomain(host, store_slug, '/p/' + cleanId);
-
   const admin = createAdminClient();
 
   const { data: merchant } = await admin
@@ -107,12 +76,27 @@ export default async function ProductPage({ params }: { params: PageParams }) {
     .select('*')
     .eq('store_slug', store_slug)
     .maybeSingle();
-
   if (!merchant) notFound();
 
-  const product = await findProduct(admin, merchant.id, identifier);
+  const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) notFound();
 
-  // Minimal render — no reviews, no JSON-LD (those can wait until this returns 200)
-  return <ProductDetailClient product={product} merchant={merchant} />;
+  // ✅ FETCH RELATED PRODUCTS: Same store, active, exclude current product, limit to 4
+  const { data: relatedProducts } = await admin
+    .from('products')
+    .select('id, name, price, images, slug, is_active')
+    .eq('merchant_id', merchant.id)
+    .eq('is_active', true)
+    .neq('id', product.id)
+    .limit(4);
+
+  return (
+    <div className="min-h-screen bg-[var(--color-surface,#f8fafc)] text-[var(--color-text,#111827)]">
+      <ProductDetailClient 
+        product={product} 
+        merchant={merchant} 
+        relatedProducts={relatedProducts || []} 
+      />
+    </div>
+  );
 }
