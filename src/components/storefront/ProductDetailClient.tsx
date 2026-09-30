@@ -42,7 +42,8 @@ export default function ProductDetailClient({
     toast.success('Added to cart 🛒');
   };
 
-  // SAFE image extraction: handles array, string, object, or null
+  // ✅ SAFE IMAGE HANDLING — fixes the 500 server error.
+  // Works whether `images` is an array, a plain string, an object, or null.
   const firstImage = Array.isArray(product.images) ? product.images[0] : product.images;
   const rawImageUrl =
     typeof firstImage === 'string'
@@ -58,19 +59,31 @@ export default function ProductDetailClient({
   return (
     <div className="min-h-screen bg-[var(--color-surface,#f8fafc)] text-[var(--color-text,#111827)]">
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Breadcrumb / Back */}
         <div className="mb-6">
           <Link
-            href={`/`}
+            href={`/store/${storeSlug}`}
             className="inline-flex items-center text-sm text-gray-600 hover:text-purple-600 transition-colors"
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-4 h-4 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             Back to {merchant?.store_name || 'Store'}
           </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+          {/* Image Section */}
           <div className="relative aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden shadow-sm">
             {imageUrl ? (
               <Image
@@ -100,6 +113,7 @@ export default function ProductDetailClient({
             )}
           </div>
 
+          {/* Details Section */}
           <div className="flex flex-col">
             {product.category && (
               <span className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">
@@ -118,6 +132,7 @@ export default function ProductDetailClient({
               {product.description || 'No description available for this product.'}
             </div>
 
+            {/* Actions */}
             <div className="mt-auto space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden">
@@ -153,7 +168,9 @@ export default function ProductDetailClient({
                 <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 flex items-start gap-3">
                   <span className="text-xl">📥</span>
                   <div>
-                    <p className="text-sm font-bold text-purple-900">Instant Digital Download</p>
+                    <p className="text-sm font-bold text-purple-900">
+                      Instant Digital Download
+                    </p>
                     <p className="text-xs text-purple-700 mt-1">
                       You will receive a download link immediately after payment.
                     </p>
@@ -164,9 +181,12 @@ export default function ProductDetailClient({
           </div>
         </div>
 
+        {/* Related Products */}
         {relatedProducts && relatedProducts.length > 0 && (
           <div className="mt-16 pt-10 border-t border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">You might also like</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              You might also like
+            </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {relatedProducts.map((relatedProduct: any) => (
                 <ProductCard
