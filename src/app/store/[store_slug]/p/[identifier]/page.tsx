@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import type { Metadata } from 'next';
 import ProductDetailClient from '@/components/storefront/ProductDetailClient';
+import ReviewForm from '@/components/reviews/ReviewForm';
+import ReviewList from '@/components/reviews/ReviewList';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,5 +83,64 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
   const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) notFound();
 
-  return <ProductDetailClient product={product} merchant={merchant} />;
+  let reviewCount = 0;
+  let averageRating = 0;
+  try {
+    const { data: reviews } = await admin
+      .from('product_reviews')
+      .select('rating')
+      .eq('product_id', product.id)
+      .eq('is_approved', true);
+    reviewCount = reviews?.length || 0;
+    averageRating = reviewCount > 0
+      ? reviews!.reduce((s: number, r: any) => s + (r.rating || 0), 0) / reviewCount
+      : 0;
+  } catch {}
+
+  const imageUrl = safeImage(product.images);
+  const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
+
+  const productSchema: any = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description || '',
+    image: imageUrl ? [imageUrl] : [],
+    offers: {
+      '@type': 'Offer',
+      price: product.price,
+      priceCurrency: 'NGN',
+      availability: (product.stock || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: productUrl,
+    },
+  };
+  if (reviewCount > 0) {
+    productSchema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: averageRating.toFixed(1),
+      reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <ProductDetailClient product={product} merchant={merchant} />
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="border-t border-gray-200 pt-10">
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Customer Reviews ({reviewCount})</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div>
+              <ReviewForm productId={product.id} merchantId={merchant.id} onSuccess={() => {}} />
+            </div>
+            <div>
+              <ReviewList productId={product.id} />
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
 }
