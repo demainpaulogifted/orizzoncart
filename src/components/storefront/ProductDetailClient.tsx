@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -49,7 +49,18 @@ export default function ProductDetailClient({
 
   const mainImage = imageUrls[activeIndex] || null;
 
+  // ✅ SMART STOCK LOGIC
+  const isTrackable = product.track_inventory !== false;
+  const currentStock = isTrackable ? (product.stock || 0) : 999999;
+  const isOutOfStock = isTrackable && currentStock <= 0 && !product.allow_backorders;
+  const isLowStock = isTrackable && currentStock > 0 && currentStock <= 5;
+
   const addToCart = () => {
+    if (isOutOfStock) {
+      toast.error('This product is out of stock');
+      return;
+    }
+
     const key = `orz_cart_${storeSlug}`;
     let cart: any[] = [];
     try {
@@ -76,7 +87,6 @@ export default function ProductDetailClient({
       whatsapp: `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
-      copy: url,
     };
 
     if (platform === 'copy') {
@@ -197,10 +207,12 @@ export default function ProductDetailClient({
               
               <div className="flex items-center gap-4 mb-4">
                 <div className="text-4xl font-black text-purple-700">₦{Number(product.price || 0).toLocaleString()}</div>
-                {product.stock > 0 ? (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-full">In Stock</span>
-                ) : (
+                {isOutOfStock ? (
                   <span className="px-3 py-1 bg-red-100 text-red-700 text-sm font-bold rounded-full">Out of Stock</span>
+                ) : isLowStock ? (
+                  <span className="px-3 py-1 bg-amber-100 text-amber-700 text-sm font-bold rounded-full">Only {currentStock} left!</span>
+                ) : (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-full">In Stock</span>
                 )}
               </div>
 
@@ -212,25 +224,59 @@ export default function ProductDetailClient({
               </div>
             </div>
 
+            {/* Low Stock Warning */}
+            {isLowStock && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
+                <span className="text-2xl">️</span>
+                <div>
+                  <p className="font-bold text-amber-900">Hurry! Only {currentStock} left in stock</p>
+                  <p className="text-sm text-amber-700">Order now before it sells out</p>
+                </div>
+              </div>
+            )}
+
             {/* Quantity & Add to Cart */}
             <div className="space-y-4 pt-6 border-t">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center border-2 border-gray-200 rounded-xl overflow-hidden">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-4 py-3 hover:bg-gray-100 transition-colors font-bold text-gray-600">−</button>
+                    <button 
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                      className="px-4 py-3 hover:bg-gray-100 transition-colors font-bold text-gray-600"
+                      disabled={isOutOfStock}
+                    >−</button>
                     <span className="px-6 py-3 font-bold text-gray-900 min-w-[4rem] text-center bg-gray-50">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="px-4 py-3 hover:bg-gray-100 transition-colors font-bold text-gray-600">+</button>
+                    <button 
+                      onClick={() => setQuantity(quantity + 1)} 
+                      className="px-4 py-3 hover:bg-gray-100 transition-colors font-bold text-gray-600"
+                      disabled={isOutOfStock}
+                    >+</button>
                   </div>
                   <button
                     onClick={addToCart}
-                    disabled={product.stock <= 0}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white font-bold py-3.5 px-8 rounded-xl transition-all shadow-lg shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-2"
+                    disabled={isOutOfStock}
+                    className={`flex-1 font-bold py-3.5 px-8 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${
+                      isOutOfStock 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-purple-600 hover:bg-purple-700 text-white shadow-purple-600/20'
+                    }`}
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    Add to Cart - ₦{totalPrice}
+                    {isOutOfStock ? (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        Out of Stock
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        Add to Cart - ₦{totalPrice}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -247,7 +293,7 @@ export default function ProductDetailClient({
                 <div className="text-xs font-bold text-gray-700">Fast Delivery</div>
               </div>
               <div className="text-center p-3 bg-white rounded-xl border">
-                <div className="text-2xl mb-1">💬</div>
+                <div className="text-2xl mb-1"></div>
                 <div className="text-xs font-bold text-gray-700">24/7 Support</div>
               </div>
             </div>
