@@ -1,44 +1,75 @@
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import type { Metadata } from 'next';
 import ProductDetailClient from '@/components/storefront/ProductDetailClient';
 import ReviewForm from '@/components/reviews/ReviewForm';
 import ReviewList from '@/components/reviews/ReviewList';
+import { redirectToSubdomain } from '@/lib/store-redirect';
 
 export const dynamic = 'force-dynamic';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function safeImage(images: any): string | null {
+function safeImage(images: unknown): string | null {
   const first = Array.isArray(images) ? images[0] : images;
-  const url = typeof first === 'string' ? first : first && typeof first === 'object' ? first.url : null;
+  const url =
+    typeof first === 'string'
+      ? first
+      : first && typeof first === 'object' && 'url' in (first as object)
+        ? String((first as { url?: unknown }).url ?? '')
+        : null;
   return url && (url.startsWith('http') || url.startsWith('/')) ? url : null;
 }
 
-async function findProduct(admin: any, merchantId: string, identifier: string) {
-  const { data: bySlug } = await admin
-    .from('products')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .eq('is_active', true)
-    .eq('slug', identifier)
-    .maybeSingle();
-  if (bySlug) return bySlug;
+/**
+ * Lookup order:
+ * 1. active product by slug
+ * 2. active product by UUID
+ * 3. active product with empty/null slug whose id matches the identifier
+ *    (covers older rows that never got a slug)
+ */
+async function findProduct(
+  admin: ReturnType<typeof createAdminClient>,
+  merchantId: string,
+  rawIdentifier: string
+) {
+  const identifier = decodeURIComponent(rawIdentifier).trim();
+  if (!identifier) return null;
 
-  if (UUID_REGEX.test(identifier)) {
-    const { data: byId } = await admin
+  const base = () =>
+    admin
       .from('products')
       .select('*')
       .eq('merchant_id', merchantId)
-      .eq('is_active', true)
-      .eq('id', identifier)
-      .maybeSingle();
+      .eq('is_active', true);
+
+  const { data: bySlug } = await base().eq('slug', identifier).maybeSingle();
+  if (bySlug) return bySlug;
+
+  if (UUID_REGEX.test(identifier)) {
+    const { data: byId } = await base().eq('id', identifier).maybeSingle();
     if (byId) return byId;
   }
+
+  // Fallback: products created before slug was required
+  const { data: orphans } = await base()
+    .or('slug.is.null,slug.eq.')
+    .eq('id', identifier)
+    .maybeSingle();
+  if (orphans) return orphans;
+
   return null;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ store_slug: string; identifier: string }> }): Promise<Metadata> {
+type PageParams = Promise<{ store_slug: string; identifier: string }>;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: PageParams;
+}): Promise<Metadata> {
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
 
@@ -49,28 +80,39 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
     .maybeSingle();
   if (!merchant) return { title: 'Product Not Found' };
 
-  const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
+  const product = await findProduct(admin, merchant.id, identifier);
   if (!product) return { title: 'Product Not Found' };
 
   const imageUrl = safeImage(product.images);
-  const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
+  const pathId = encodeURIComponent(product.slug || product.id);
+  const productUrl = `https://\( {store_slug}.orizzoncart.name.ng/p/ \){pathId}`;
 
   return {
     title: `${product.name} | ${merchant.store_name}`,
-    description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+    description:
+      product.description || `Buy ${product.name} at ${merchant.store_name}.`,
     openGraph: {
       title: product.name,
-      description: product.description || `Buy ${product.name} at ${merchant.store_name}.`,
+      description:
+        product.description || `Buy ${product.name} at ${merchant.store_name}.`,
       url: productUrl,
-      images: imageUrl ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }] : [],
+      images: imageUrl
+        ? [{ url: imageUrl, width: 800, height: 600, alt: product.name }]
+        : [],
       type: 'website',
     },
     alternates: { canonical: productUrl },
   };
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ store_slug: string; identifier: string }> }) {
+export default async function ProductPage({ params }: { params: PageParams }) {
   const { store_slug, identifier } = await params;
+
+  // Same rule as store home: never serve store content on platform host
+  const host = (await headers()).get('host') || '';
+  const pathSuffix = `/p/${encodeURIComponent(decodeURIComponent(identifier).trim())}`;
+  redirectToSubdomain(host, store_slug, pathSuffix);
+
   const admin = createAdminClient();
 
   const { data: merchant } = await admin
@@ -80,7 +122,7 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
     .maybeSingle();
   if (!merchant) notFound();
 
-  const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
+  const product = await findProduct(admin, merchant.id, identifier);
   if (!product) notFound();
 
   let reviewCount = 0;
@@ -92,15 +134,20 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
       .eq('product_id', product.id)
       .eq('is_approved', true);
     reviewCount = reviews?.length || 0;
-    averageRating = reviewCount > 0
-      ? reviews!.reduce((s: number, r: any) => s + (r.rating || 0), 0) / reviewCount
-      : 0;
-  } catch {}
+    averageRating =
+      reviewCount > 0
+        ? reviews!.reduce((s: number, r: { rating?: number }) => s + (r.rating || 0), 0) /
+          reviewCount
+        : 0;
+  } catch {
+    // reviews table optional / RLS — never break product page
+  }
 
   const imageUrl = safeImage(product.images);
-  const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
+  const pathId = encodeURIComponent(product.slug || product.id);
+  const productUrl = `https://\( {store_slug}.orizzoncart.name.ng/p/ \){pathId}`;
 
-  const productSchema: any = {
+  const productSchema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
@@ -110,7 +157,10 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
       '@type': 'Offer',
       price: product.price,
       priceCurrency: 'NGN',
-      availability: (product.stock || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      availability:
+        (product.stock || 0) > 0
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/OutOfStock',
       url: productUrl,
     },
   };
@@ -126,14 +176,23 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
       <ProductDetailClient product={product} merchant={merchant} />
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="border-t border-gray-200 pt-10">
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Customer Reviews ({reviewCount})</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">
+            Customer Reviews ({reviewCount})
+          </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
-              <ReviewForm productId={product.id} merchantId={merchant.id} onSuccess={() => {}} />
+              <ReviewForm
+                productId={product.id}
+                merchantId={merchant.id}
+                onSuccess={() => {}}
+              />
             </div>
             <div>
               <ReviewList productId={product.id} />
