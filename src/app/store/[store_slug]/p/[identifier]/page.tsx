@@ -1,13 +1,17 @@
 import { notFound } from 'next/navigation';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
-import { headers } from 'next/headers';
-import { redirectToSubdomain } from '@/lib/store-redirect';
 import type { Metadata } from 'next';
 import ProductDetailClient from '@/components/storefront/ProductDetailClient';
 
 export const dynamic = 'force-dynamic';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function safeImage(images: any): string | null {
+  const first = Array.isArray(images) ? images[0] : images;
+  const url = typeof first === 'string' ? first : first && typeof first === 'object' ? first.url : null;
+  return url && (url.startsWith('http') || url.startsWith('/')) ? url : null;
+}
 
 async function findProduct(admin: any, merchantId: string, identifier: string) {
   const { data: bySlug } = await admin
@@ -46,7 +50,7 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
   const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) return { title: 'Product Not Found' };
 
-  const imageUrl = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : null;
+  const imageUrl = safeImage(product.images);
   const productUrl = `https://${store_slug}.orizzoncart.name.ng/p/${encodeURIComponent(product.slug || product.id)}`;
 
   return {
@@ -67,10 +71,6 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
   const { store_slug, identifier } = await params;
   const admin = createAdminClient();
 
-  const host = (await headers()).get('host') || '';
-  const decodedIdentifier = decodeURIComponent(identifier);
-  redirectToSubdomain(host, store_slug, `/p/${encodeURIComponent(decodedIdentifier)}`, '');
-
   const { data: merchant } = await admin
     .from('merchants')
     .select('*')
@@ -78,14 +78,8 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
     .maybeSingle();
   if (!merchant) notFound();
 
-  const product = await findProduct(admin, merchant.id, decodedIdentifier);
+  const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) notFound();
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ProductDetailClient product={product} merchant={merchant} />
-      </div>
-    </div>
-  );
+  return <ProductDetailClient product={product} merchant={merchant} />;
 }
