@@ -3,8 +3,8 @@ import Link from 'next/link';
 export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin?: boolean }) {
   const items = [
     { href: '/dashboard', icon: '📊', label: 'Home' },
-    { href: '/dashboard/products',
-    { href: '/dashboard/reviews', icon: '⭐', label: 'Reviews' }, icon: '📦', label: 'Products' },
+    { href: '/dashboard/products', icon: '📦', label: 'Products' },
+    { href: '/dashboard/reviews', icon: '⭐', label: 'Reviews' },
     { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
     { href: '/dashboard/pages', icon: '📄', label: 'Pages' },
     { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
