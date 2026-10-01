@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 export default function MerchantReviewsPage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storeSlug, setStoreSlug] = useState('');
   const supabase = createClient();
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export default function MerchantReviewsPage() {
 
       const { data: merchant } = await supabase
         .from('merchants')
-        .select('id')
+        .select('id, store_slug')
         .eq('user_id', user.id)
         .single();
 
@@ -30,6 +31,8 @@ export default function MerchantReviewsPage() {
         setLoading(false);
         return;
       }
+      
+      setStoreSlug(merchant.store_slug);
 
       const { data, error } = await supabase
         .from('product_reviews')
@@ -145,14 +148,17 @@ export default function MerchantReviewsPage() {
                     {review.customer_email && <span>• {review.customer_email}</span>}
                     <span>• {new Date(review.created_at).toLocaleDateString()}</span>
                   </div>
-                  <div className="mt-2">
-                    <Link
-                      href={`/p/${review.products?.slug || review.product_id}`}
-                      className="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                    >
-                      📦 Product: {review.products?.name || 'Unknown'}
-                    </Link>
-                  </div>
+                  {review.products && (
+                    <div className="mt-2">
+                      <Link
+                        href={`https://${storeSlug}.orizzoncart.name.ng/p/${review.products.slug}`}
+                        target="_blank"
+                        className="text-xs text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1"
+                      >
+                        📦 {review.products.name}
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -164,7 +170,7 @@ export default function MerchantReviewsPage() {
                         : 'bg-green-100 text-green-800 hover:bg-green-200'
                     }`}
                   >
-                    {review.is_approved ? ' Hide' : '✅ Approve'}
+                    {review.is_approved ? '🙈 Hide' : '✅ Approve'}
                   </button>
                   <button
                     onClick={() => deleteReview(review.id)}
