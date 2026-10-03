@@ -15,14 +15,16 @@ export const metadata: Metadata = {
   description:
     'OrizzonCart empowers businesses worldwide to launch beautiful, high-converting online stores in minutes. From local neighborhood shops to global digital brands, seamlessly accept payments, sell directly via WhatsApp, and manage orders with zero coding. Your store, your rules, your world.',
   keywords: [
-    'online store builder',
-    'e-commerce platform',
-    'sell on WhatsApp',
-    'global payment gateway',
-    'no-code website builder',
-    'digital products store',
-    'local business growth',
-    'multi-currency e-commerce'
+    // Platform Keywords
+    'OrizzonCart', 'online store builder', 'e-commerce platform', 'create online store', 
+    'sell on WhatsApp', 'multi-vendor marketplace', 'no-code website builder',
+    // Payment & Local Keywords
+    'accept payments Nigeria', 'Paystack integration', 'Flutterwave integration', 
+    'sell online Africa', 'Naira payment gateway', 'local business growth',
+    // Niche Keywords (Captures thousands of long-tail searches)
+    'digital products store', 'dropshipping Nigeria', 'boutique website builder', 
+    'fashion store online', 'electronics e-commerce', 'food delivery website',
+    'service booking platform', 'online course platform', 'sell ebooks online'
   ],
   applicationName: 'OrizzonCart',
   alternates: { canonical: '/' },
@@ -30,12 +32,11 @@ export const metadata: Metadata = {
   icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
   openGraph: {
     title: 'OrizzonCart — Build Your Global Online Store in Minutes',
-    description:
-      'Empowering businesses worldwide to launch beautiful, high-converting online stores. Accept payments, sell via WhatsApp, and manage orders with zero coding.',
+    description: 'Empowering businesses worldwide to launch beautiful, high-converting online stores. Accept payments, sell via WhatsApp, and manage orders with zero coding.',
     siteName: 'OrizzonCart',
     url: SITE_URL,
     type: 'website',
-    locale: 'en_US', // Broadened for global reach
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
@@ -63,8 +64,7 @@ const brandSchema = {
       name: 'OrizzonCart',
       url: SITE_URL,
       logo: `${SITE_URL}/icon-192.png`,
-      description:
-        'OrizzonCart is a global, multi-tenant e-commerce platform empowering businesses of all sizes to create beautiful online stores, accept secure payments, and manage orders effortlessly.',
+      description: 'OrizzonCart is a global, multi-tenant e-commerce platform empowering businesses of all sizes to create beautiful online stores, accept secure payments, and manage orders effortlessly.',
       sameAs: [
         'https://www.facebook.com/OrizzonCart',
         'https://www.instagram.com/orizzoncart',
@@ -79,10 +79,7 @@ const brandSchema = {
       publisher: { '@id': `${SITE_URL}/#organization` },
       potentialAction: {
         '@type': 'SearchAction',
-        target: {
-          '@type': 'EntryPoint',
-          urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-        },
+        target: { '@type': 'EntryPoint', urlTemplate: `${SITE_URL}/search?q={search_term_string}` },
         'query-input': 'required name=search_term_string',
       },
     },
@@ -93,10 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(brandSchema) }}
-        />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(brandSchema) }} />
         {children}
         <Toaster position="top-center" richColors />
       </body>
