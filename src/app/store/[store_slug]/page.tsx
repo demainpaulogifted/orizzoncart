@@ -13,18 +13,18 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
   
   const { data: merchant } = await admin
     .from('merchants')
-    .select('store_name, store_description, tagline, description')
+    .select('store_name, store_description, tagline, description, is_active, payment_receiving_status')
     .eq('store_slug', store_slug)
     .maybeSingle();
 
-  if (!merchant) {
+  if (!merchant || !merchant.is_active) {
     return {
       title: 'Store Not Found',
-      description: 'This store does not exist or is not active.',
+      description: 'This store does not exist or is no longer active.',
+      robots: { index: false, follow: false },
     };
   }
 
-  // ✅ Use merchant's actual store info for SEO
   const storeName = merchant.store_name || 'Online Store';
   const storeDesc = merchant.store_description || merchant.tagline || merchant.description || 
                     `Shop at ${storeName} - Quality products, fast delivery, and secure payments.`;
@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
       description: storeDesc,
     },
     robots: {
-      index: true,
+      index: merchant.payment_receiving_status === 'ACTIVE',
       follow: true,
     },
   };
@@ -64,7 +64,10 @@ export default async function StorePage({ params, searchParams }: any) {
 
   const admin = createAdminClient();
   const { data: merchant } = await admin.from('merchants').select('*').eq('store_slug', store_slug).maybeSingle();
-  if (!merchant) notFound();
+  
+  if (!merchant || !merchant.is_active) {
+    notFound();
+  }
 
   const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
   const isShowcaseMode =
