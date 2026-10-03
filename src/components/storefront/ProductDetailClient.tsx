@@ -1,3 +1,4 @@
+import { MonetagVignette } from '@/components/ads/MonetagVignette';
 'use client';
 
 import { useState } from 'react';
@@ -102,6 +103,7 @@ export default function ProductDetailClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <MonetagVignette zoneId="11938217" storageKey={`prod_${storeSlug}_vignette`} delay={4000} frequency={2} />
       {/* Professional Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
