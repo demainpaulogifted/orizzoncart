@@ -1,52 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useState, useMemo } from 'react';
 import ProductCard from './ProductCard';
 import { MonetagInPage } from '@/components/ads/MonetagInPage';
+
+// ⚠️ REPLACE THIS WITH YOUR ACTUAL MONETAG IN-PAGE ZONE ID
+const IN_PAGE_ZONE_ID = "11902740"; 
 
 interface StoreShopProps {
   products: any[];
   merchant: any;
-  isShowcaseMode: boolean;
-  inContentZoneId?: string;
+  isShowcaseMode?: boolean;
 }
 
-export function StoreShop({
-  products,
-  merchant,
-  isShowcaseMode,
-  inContentZoneId = '11902709',
-}: StoreShopProps) {
+export function StoreShop({ products, merchant, isShowcaseMode = false }: StoreShopProps) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
 
-  const storeSlug = merchant?.store_slug || 'store';
+  const storeSlug = merchant?.store_slug || '';
 
-  const categories = [
-    'All',
-    ...Array.from(
-      new Set(products.map((p: any) => p.category).filter(Boolean))
-    ),
-  ];
+  const categories = useMemo(() => {
+    const cats = new Set(products.map((p: any) => p.category).filter(Boolean));
+    return ['All', ...Array.from(cats)];
+  }, [products]);
 
   const filteredProducts = products.filter((p: any) => {
     const matchesCategory = category === 'All' || p.category === category;
-    const matchesSearch =
-      !search || p.name?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  // Calculate ad positions - after every 4 products
-  const getAdPositions = () => {
-    const positions: number[] = [];
-    for (let i = 4; i < filteredProducts.length; i += 4) {
-      positions.push(i);
-    }
-    return positions;
-  };
-
-  const adPositions = getAdPositions();
+  // Show an in-content ad after every 4th product
+  const adPositions = [4, 8, 12, 16, 20];
 
   return (
     <div className="space-y-6">
@@ -94,22 +79,18 @@ export function StoreShop({
             {adPositions.includes(index + 1) && (
               <div className="col-span-2 sm:col-span-3 lg:col-span-4 mt-4">
                 <MonetagInPage
-                  zoneId={inContentZoneId}
-                  position="inline"
-                  className="rounded-xl border border-gray-200 bg-white"
+                  zoneId={IN_PAGE_ZONE_ID}
+                  className="rounded-xl border border-gray-200 bg-white min-h-[100px] flex items-center justify-center"
                 />
               </div>
             )}
           </div>
         ))}
       </div>
-
-      {/* No Products Message */}
+      
       {filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-sm">
-            No products found in this category.
-          </p>
+        <div className="text-center py-12 text-gray-500">
+          No products found matching your search.
         </div>
       )}
     </div>

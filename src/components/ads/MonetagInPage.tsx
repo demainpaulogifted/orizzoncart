@@ -5,23 +5,22 @@ import { useEffect, useRef } from 'react';
 interface MonetagInPageProps {
   zoneId: string;
   className?: string;
-  position?: 'top' | 'bottom' | 'inline';
 }
 
-export function MonetagInPage({ 
-  zoneId, 
-  className = '',
-  position = 'inline'
-}: MonetagInPageProps) {
+export function MonetagInPage({ zoneId, className = '' }: MonetagInPageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !zoneId) return;
+
+    // Clear previous script to prevent duplicates on re-render
+    containerRef.current.innerHTML = '';
 
     const script = document.createElement('script');
-    script.dataset.zone = zoneId;
-    script.src = 'https://nap5k.com/tag.min.js';
     script.async = true;
+    script.setAttribute('data-cfasync', 'false');
+    // Monetag In-Page script structure
+    script.src = `//pl24859737.revenuecpmgate.com/inpage.js?z=${zoneId}`; 
     
     containerRef.current.appendChild(script);
 
@@ -32,26 +31,5 @@ export function MonetagInPage({
     };
   }, [zoneId]);
 
-  const positionStyles = {
-    top: 'sticky top-0 z-30 mb-4',
-    bottom: 'mt-6 mb-4',
-    inline: 'my-6'
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className={`monetag-inpage-ad ${className} ${positionStyles[position]}`}
-      style={{
-        minHeight: position === 'bottom' ? '100px' : '250px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div className="text-xs text-gray-400 text-center">
-        Advertisement
-      </div>
-    </div>
-  );
+  return <div ref={containerRef} className={className} />;
 }
