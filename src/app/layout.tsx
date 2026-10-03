@@ -9,32 +9,40 @@ const SITE_URL = (
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'OrizzonCart — Own Your Sales',
+    default: 'OrizzonCart — Build Your Global Online Store in Minutes',
     template: '%s | OrizzonCart',
   },
   description:
-    'OrizzonCart helps Nigerian businesses create beautiful online stores, accept payments, sell through WhatsApp, and manage orders.',
+    'OrizzonCart empowers businesses worldwide to launch beautiful, high-converting online stores in minutes. From local neighborhood shops to global digital brands, seamlessly accept payments, sell directly via WhatsApp, and manage orders with zero coding. Your store, your rules, your world.',
+  keywords: [
+    'online store builder',
+    'e-commerce platform',
+    'sell on WhatsApp',
+    'global payment gateway',
+    'no-code website builder',
+    'digital products store',
+    'local business growth',
+    'multi-currency e-commerce'
+  ],
   applicationName: 'OrizzonCart',
   alternates: { canonical: '/' },
   manifest: '/manifest.json',
   icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
   openGraph: {
-    title: 'OrizzonCart — Own Your Sales',
+    title: 'OrizzonCart — Build Your Global Online Store in Minutes',
     description:
-      'Create your online store, accept payments, sell through WhatsApp, and manage orders with OrizzonCart.',
+      'Empowering businesses worldwide to launch beautiful, high-converting online stores. Accept payments, sell via WhatsApp, and manage orders with zero coding.',
     siteName: 'OrizzonCart',
     url: SITE_URL,
     type: 'website',
-    locale: 'en_NG',
+    locale: 'en_US', // Broadened for global reach
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'OrizzonCart — Own Your Sales',
-    description: 'Create your online store and start selling online with OrizzonCart.',
+    title: 'OrizzonCart — Build Your Global Online Store in Minutes',
+    description: 'Empowering businesses worldwide to launch beautiful, high-converting online stores with zero coding.',
   },
   robots: { index: true, follow: true },
-  
-  // ✅ MONETAG VERIFICATION META TAG ADDED HERE
   other: {
     monetag: "383b1b3cac9bec94eba8e7baaca0cf22",
   },
@@ -56,7 +64,7 @@ const brandSchema = {
       url: SITE_URL,
       logo: `${SITE_URL}/icon-192.png`,
       description:
-        'OrizzonCart is a multi-tenant online store platform built for Nigerian businesses. Add your store name and how you receive payment — your online store is live in minutes.',
+        'OrizzonCart is a global, multi-tenant e-commerce platform empowering businesses of all sizes to create beautiful online stores, accept secure payments, and manage orders effortlessly.',
       sameAs: [
         'https://www.facebook.com/OrizzonCart',
         'https://www.instagram.com/orizzoncart',
@@ -83,7 +91,7 @@ const brandSchema = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-NG">
+    <html lang="en">
       <body className="antialiased">
         <script
           type="application/ld+json"
