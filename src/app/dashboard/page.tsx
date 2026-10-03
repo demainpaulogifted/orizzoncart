@@ -154,7 +154,7 @@ export default function DashboardHome() {
         {/* ✅ IN-PAGE PUSH AD: Clean, non-intrusive banner at the very bottom of the dashboard */}
         <MonetagInPage
           zoneId="11902709"
-          position="bottom"
+          
           className="rounded-xl border border-gray-200 bg-white"
         />
       </div>
