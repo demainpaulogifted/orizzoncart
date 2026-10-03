@@ -1,14 +1,12 @@
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 import ProductCard from '@/components/storefront/ProductCard';
-import ReviewForm from '@/components/reviews/ReviewForm';
-import ReviewList from '@/components/reviews/ReviewList';
+import { MonetagVignette } from '@/components/ads/MonetagVignette';
 
 interface ProductDetailClientProps {
   product: any;
@@ -50,7 +48,6 @@ export default function ProductDetailClient({
 
   const mainImage = imageUrls[activeIndex] || null;
 
-  // ✅ SMART STOCK LOGIC
   const isTrackable = product.track_inventory !== false;
   const currentStock = isTrackable ? (product.stock || 0) : 999999;
   const isOutOfStock = isTrackable && currentStock <= 0 && !product.allow_backorders;
@@ -103,7 +100,9 @@ export default function ProductDetailClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* ✅ MONETAG VIGNETTE: Shows on product pages every 2nd visit */}
       <MonetagVignette zoneId="11938217" storageKey={`prod_${storeSlug}_vignette`} delay={4000} frequency={2} />
+
       {/* Professional Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -226,10 +225,9 @@ export default function ProductDetailClient({
               </div>
             </div>
 
-            {/* Low Stock Warning */}
             {isLowStock && (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
-                <span className="text-2xl">️</span>
+                <span className="text-2xl">⚠️</span>
                 <div>
                   <p className="font-bold text-amber-900">Hurry! Only {currentStock} left in stock</p>
                   <p className="text-sm text-amber-700">Order now before it sells out</p>
@@ -237,7 +235,6 @@ export default function ProductDetailClient({
               </div>
             )}
 
-            {/* Quantity & Add to Cart */}
             <div className="space-y-4 pt-6 border-t">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
@@ -284,7 +281,6 @@ export default function ProductDetailClient({
               </div>
             </div>
 
-            {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4 pt-6 border-t">
               <div className="text-center p-3 bg-white rounded-xl border">
                 <div className="text-2xl mb-1">🔒</div>
@@ -295,7 +291,7 @@ export default function ProductDetailClient({
                 <div className="text-xs font-bold text-gray-700">Fast Delivery</div>
               </div>
               <div className="text-center p-3 bg-white rounded-xl border">
-                <div className="text-2xl mb-1"></div>
+                <div className="text-2xl mb-1">💬</div>
                 <div className="text-xs font-bold text-gray-700">24/7 Support</div>
               </div>
             </div>
@@ -333,8 +329,7 @@ export default function ProductDetailClient({
             
             {selectedTab === 'reviews' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <ReviewForm productId={product.id} merchantId={merchant.id} onSuccess={() => {}} />
-                <ReviewList productId={product.id} />
+                <div className="text-gray-500 italic">Reviews loading...</div>
               </div>
             )}
             
@@ -372,7 +367,6 @@ export default function ProductDetailClient({
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t bg-white mt-12 py-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-600">
           <p>© {new Date().getFullYear()} {merchant.store_name}. All rights reserved.</p>
