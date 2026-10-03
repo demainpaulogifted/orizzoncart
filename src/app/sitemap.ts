@@ -56,7 +56,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 3.  AUTOMATIC BLOG DISCOVERY (Fetches all published blogs)
   // Note: If your table is named 'posts' instead of 'blogs', change 'blogs' to 'posts' below.
   const { data: blogs } = await supabase
-    .from('blogs')
+    .from('posts')
     .select('slug, updated_at')
     .eq('is_published', true);
 

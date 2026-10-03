@@ -9,7 +9,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const supabase = createClient();
   
   const { data: blog } = await supabase
-    .from('blogs') // Change to 'posts' if your table is named posts
+    .from('posts') // Change to 'posts' if your table is named posts
     .select('*')
     .eq('slug', slug)
     .eq('is_published', true)
@@ -35,7 +35,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const supabase = createClient();
 
   const { data: blog } = await supabase
-    .from('blogs') // Change to 'posts' if your table is named posts
+    .from('posts') // Change to 'posts' if your table is named posts
     .select('*')
     .eq('slug', slug)
     .eq('is_published', true)
