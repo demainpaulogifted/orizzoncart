@@ -30,6 +30,16 @@ const metaSteps = [
   'Tick the checkbox below and click "Mark as Connected".',
 ];
 
+const tiktokSteps = [
+  'Copy your feed link above and open it in a new tab - it downloads your product CSV file.',
+  'Go to business.tiktok.com and log in (create a free TikTok Business account if you don\'t have one).',
+  'Open "Assets" then "Catalogs".',
+  'Click "Create Catalog" and choose "Upload product file" (CSV).',
+  'Upload the CSV file you downloaded in step 1.',
+  'If TikTok shows "Sync by URL / Scheduled fetch" instead, paste your feed link there and set it to daily.',
+  'Tick the checkbox below and click "Mark as Connected".',
+];
+
 export default async function FreeMarketingPage() {
   const supabase = await createClient();
   const {
@@ -64,6 +74,7 @@ export default async function FreeMarketingPage() {
 
   const googleFeedUrl = `${BASE_URL}/api/marketing/feed?merchant_id=${merchant.id}&platform=google`;
   const metaFeedUrl = `${BASE_URL}/api/marketing/feed?merchant_id=${merchant.id}&platform=meta`;
+  const tiktokFeedUrl = `${BASE_URL}/api/marketing/feed?merchant_id=${merchant.id}&platform=tiktok`;
 
   const platforms = [
     {
@@ -86,9 +97,9 @@ export default async function FreeMarketingPage() {
       key: 'tiktok_catalog',
       name: 'TikTok Business Catalog (TBCC)',
       icon: '🎵',
-      ready: false,
-      feedUrl: '',
-      steps: [],
+      ready: true,
+      feedUrl: tiktokFeedUrl,
+      steps: tiktokSteps,
     },
   ];
 
