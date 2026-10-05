@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { getStoreUrl } from '@/lib/store-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,9 @@ export async function GET(request: Request) {
   const storeSlug = merchant?.store_slug || 'store';
   const storeName = merchant?.business_name || 'OrizzonCart Store';
 
+  // THIS is the merchant's subdomain, e.g. https://dem-paulo.orizzoncart.name.ng
+  const storeUrl = getStoreUrl(storeSlug);
+
   const { data: products, error } = await supabase
     .from('products')
     .select('*')
@@ -53,7 +57,9 @@ export async function GET(request: Request) {
   const feed = (products || []).map((p: any) => {
     const imageUrl =
       p.images && p.images.length > 0 ? absoluteUrl(p.images[0].url) : '';
-    const productLink = `${BASE_URL}/store/${storeSlug}/p/${p.slug}`;
+
+    // Product link now uses the SUBDOMAIN: https://store-slug.root/p/slug
+    const productLink = `${storeUrl}/p/${p.slug || p.id}`;
     const inStock = (p.inventory_quantity ?? 0) > 0;
 
     return {
@@ -92,7 +98,7 @@ export async function GET(request: Request) {
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
 <channel>
   <title>${escapeXml(storeName)}</title>
-  <link>${escapeXml(`${BASE_URL}/store/${storeSlug}`)}</link>
+  <link>${escapeXml(storeUrl)}</link>
   <description>${escapeXml(`${storeName} product catalog`)}</description>
 ${items}
 </channel>
@@ -106,7 +112,7 @@ ${items}
     });
   }
 
-  // DEFAULT FORMAT (JSON) - for our own dashboard and future Meta/TikTok
+  // DEFAULT FORMAT (JSON)
   return NextResponse.json({
     success: true,
     count: feed.length,
