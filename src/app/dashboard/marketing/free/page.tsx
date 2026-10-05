@@ -19,6 +19,17 @@ const googleSteps = [
   'Tick the checkbox below and click "Mark as Connected".',
 ];
 
+const metaSteps = [
+  'Copy your feed link above.',
+  'Go to business.facebook.com and log in with your Facebook account.',
+  'Open Commerce Manager (business.facebook.com/commerce).',
+  'If you do not have a catalog yet, click "Create Catalog" and choose "E-commerce".',
+  'Open your catalog, go to "Data Sources" and click "Add Data Source".',
+  'Choose "Data feed" (scheduled fetch) and paste your feed link.',
+  'Set the fetch schedule to daily and save.',
+  'Tick the checkbox below and click "Mark as Connected".',
+];
+
 export default async function FreeMarketingPage() {
   const supabase = await createClient();
   const {
@@ -52,6 +63,7 @@ export default async function FreeMarketingPage() {
     (connections || []).find((c: any) => c.platform === platform);
 
   const googleFeedUrl = `${BASE_URL}/api/marketing/feed?merchant_id=${merchant.id}&platform=google`;
+  const metaFeedUrl = `${BASE_URL}/api/marketing/feed?merchant_id=${merchant.id}&platform=meta`;
 
   const platforms = [
     {
@@ -66,9 +78,9 @@ export default async function FreeMarketingPage() {
       key: 'meta_commerce_catalog',
       name: 'Meta Commerce Manager (MCMC)',
       icon: '📘',
-      ready: false,
-      feedUrl: '',
-      steps: [],
+      ready: true,
+      feedUrl: metaFeedUrl,
+      steps: metaSteps,
     },
     {
       key: 'tiktok_catalog',
@@ -111,7 +123,7 @@ export default async function FreeMarketingPage() {
                   <p className="text-xs text-gray-500">
                     {p.ready
                       ? conn
-                        ? 'Connected • Google fetches your products automatically'
+                        ? 'Connected • products sync automatically'
                         : 'Ready to connect • free automatic product sync'
                       : 'One-click connect coming in the next update'}
                   </p>
