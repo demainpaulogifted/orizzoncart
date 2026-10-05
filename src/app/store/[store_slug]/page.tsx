@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
     .eq('store_slug', store_slug)
     .maybeSingle();
 
-  if (!merchant || !merchant.is_active) {
+  // Only show "Store Not Found" when the store truly does not exist
+  if (!merchant) {
     return {
       title: 'Store Not Found',
       description: 'This store does not exist or is no longer active.',
