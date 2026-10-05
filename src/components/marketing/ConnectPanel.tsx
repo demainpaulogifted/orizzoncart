@@ -93,7 +93,7 @@ export function ConnectPanel({ platform, feedUrl, connected, steps }: Props) {
         <div className="mt-3 w-full text-left bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
           <div>
             <p className="text-xs font-semibold text-gray-700 mb-1">
-              Your product feed link (Google reads this automatically):
+              Your product feed link (the platform reads this automatically):
             </p>
             <div className="flex gap-2">
               <input
@@ -133,7 +133,7 @@ export function ConnectPanel({ platform, feedUrl, connected, steps }: Props) {
                   onChange={(e) => setConfirmed(e.target.checked)}
                   className="mt-0.5"
                 />
-                I have pasted my feed link into Google Merchant Center.
+                I have added this feed link to my account.
               </label>
               <button
                 onClick={() => save('confirm')}
