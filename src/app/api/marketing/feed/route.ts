@@ -113,7 +113,7 @@ ${items}
     });
   }
 
-  // META FORMAT (CSV) - Facebook & Instagram Commerce Manager reads this
+  // META FORMAT (CSV) - Facebook & Instagram Commerce Manager
   if (platform === 'meta') {
     const header = [
       'retailer_id',
@@ -137,6 +137,46 @@ ${items}
           csvValue(p.image_link),
           csvValue(p.price),
           csvValue(p.availability),
+          csvValue(p.condition),
+        ].join(',')
+      );
+
+    const csv = [header, ...lines].join('\r\n');
+
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  }
+
+  // TIKTOK FORMAT (CSV) - TikTok Business Catalog Center
+  if (platform === 'tiktok') {
+    const header = [
+      'product_id',
+      'title',
+      'description',
+      'image_url',
+      'product_url',
+      'price',
+      'currency',
+      'availability',
+      'condition',
+    ].join(',');
+
+    const lines = feed
+      .filter((p) => p.image_link)
+      .map((p) =>
+        [
+          csvValue(p.id),
+          csvValue(p.title),
+          csvValue(p.description),
+          csvValue(p.image_link),
+          csvValue(p.link),
+          csvValue(p.price.split(' ')[0]),
+          csvValue(p.price.split(' ')[1] || 'NGN'),
+          csvValue(p.availability === 'in stock' ? 'in_stock' : 'out_of_stock'),
           csvValue(p.condition),
         ].join(',')
       );
