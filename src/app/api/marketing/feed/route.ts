@@ -21,6 +21,11 @@ function absoluteUrl(url: string): string {
   return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
+function csvValue(value: string): string {
+  const clean = String(value ?? '').replace(/\r?\n/g, ' ').trim();
+  return `"${clean.replace(/"/g, '""')}"`;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const merchantId = searchParams.get('merchant_id');
@@ -40,8 +45,6 @@ export async function GET(request: Request) {
 
   const storeSlug = merchant?.store_slug || 'store';
   const storeName = merchant?.business_name || 'OrizzonCart Store';
-
-  // THIS is the merchant's subdomain, e.g. https://dem-paulo.orizzoncart.name.ng
   const storeUrl = getStoreUrl(storeSlug);
 
   const { data: products, error } = await supabase
@@ -57,15 +60,13 @@ export async function GET(request: Request) {
   const feed = (products || []).map((p: any) => {
     const imageUrl =
       p.images && p.images.length > 0 ? absoluteUrl(p.images[0].url) : '';
-
-    // Product link now uses the SUBDOMAIN: https://store-slug.root/p/slug
     const productLink = `${storeUrl}/p/${p.slug || p.id}`;
     const inStock = (p.inventory_quantity ?? 0) > 0;
 
     return {
       id: String(p.id),
       title: p.name,
-      description: p.description || p.name,
+      description: (p.description || p.name).replace(/\r?\n/g, ' '),
       link: productLink,
       image_link: imageUrl,
       price: `${Number(p.price || 0).toFixed(2)} NGN`,
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
     };
   });
 
-  // GOOGLE FORMAT (XML) - Google Merchant Center reads this automatically
+  // GOOGLE FORMAT (XML)
   if (platform === 'google') {
     const items = feed
       .filter((p) => p.image_link)
@@ -107,6 +108,44 @@ ${items}
     return new Response(xml, {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  }
+
+  // META FORMAT (CSV) - Facebook & Instagram Commerce Manager reads this
+  if (platform === 'meta') {
+    const header = [
+      'retailer_id',
+      'name',
+      'description',
+      'url',
+      'image_url',
+      'price',
+      'availability',
+      'condition',
+    ].join(',');
+
+    const lines = feed
+      .filter((p) => p.image_link)
+      .map((p) =>
+        [
+          csvValue(p.id),
+          csvValue(p.title),
+          csvValue(p.description),
+          csvValue(p.link),
+          csvValue(p.image_link),
+          csvValue(p.price),
+          csvValue(p.availability),
+          csvValue(p.condition),
+        ].join(',')
+      );
+
+    const csv = [header, ...lines].join('\r\n');
+
+    return new Response(csv, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
         'Cache-Control': 'public, max-age=3600',
       },
     });
