@@ -8,9 +8,11 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
     { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
     { href: '/dashboard/pages', icon: '📄', label: 'Pages' },
     { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
+    { href: '/dashboard/marketing', icon: '📣', label: 'Marketing' }, // <-- NEW MARKETING BUTTON ADDED HERE
     { href: '/dashboard/support', icon: '💬', label: 'Help' },
     { href: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
   ];
+
   if (isAdmin) items.push({ href: '/admin', icon: '👑', label: 'Admin' });
 
   return (
