@@ -14,8 +14,8 @@ export default function GoogleAdsBuilderPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Fetch products for selection
-    fetch('/api/products') 
+    // Fetch products for selection (FIXED: points to our new marketing products API)
+    fetch('/api/marketing/products') 
       .then(r => r.json())
       .then(data => {
         // The API might return { products: [...] } or just [...]
