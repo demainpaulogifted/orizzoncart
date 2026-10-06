@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { MarketplaceReturnBanner } from '@/components/marketplace/MarketplaceReturnBanner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,50 +43,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-extrabold text-gray-900">Welcome Back</h1>
-          <p className="text-sm text-gray-500">Sign in to manage your OrizzonCart store</p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
-            <input
-              required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-            />
+    <>
+      {/* Escape hatch for shoppers who accidentally landed on the merchant login page */}
+      <MarketplaceReturnBanner />
+      
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-extrabold text-gray-900">Welcome Back</h1>
+            <p className="text-sm text-gray-500">Sign in to manage your OrizzonCart store</p>
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">Password</label>
-            <input
-              required type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-            />
-          </div>
-          <button
-            type="submit" disabled={loading}
-            className="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
 
-        <div className="text-center space-y-3 pt-2">
-          <Link href="/forgot-password" className="text-sm font-medium text-purple-600 hover:text-purple-700">
-            Forgot your password?
-          </Link>
-          <p className="text-sm text-gray-500">
-            Don't have an account?{' '}
-            <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-700">
-              Sign up free
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
+              <input
+                required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Password</label>
+              <input
+                required type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+              />
+            </div>
+            <button
+              type="submit" disabled={loading}
+              className="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="text-center space-y-3 pt-2">
+            <Link href="/forgot-password" className="text-sm font-medium text-purple-600 hover:text-purple-700">
+              Forgot your password?
             </Link>
-          </p>
+            <p className="text-sm text-gray-500">
+              Don't have an account?{' '}
+              <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-700">
+                Sign up free
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
