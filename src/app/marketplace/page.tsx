@@ -11,7 +11,23 @@ function themeFor(themeId: string | null) {
   return (THEMES as any)[themeId as any] || themeList[0];
 }
 
-const CATEGORIES = ['Fashion', 'Tech', 'Home', 'Beauty', 'Foods', 'Digital'];
+const CATEGORIES = [
+  'Fashion',
+  'Tech',
+  'Home',
+  'Beauty',
+  'Foods',
+  'Digital',
+  'Health',
+  'Kids',
+  'Sports',
+  'Automotive',
+  'Books',
+  'Crafts',
+  'Pets',
+  'Garden',
+  'Jewelry',
+];
 
 export default async function MarketplacePage() {
   const admin = createAdminClient();
@@ -21,6 +37,7 @@ export default async function MarketplacePage() {
     .select('id, store_slug, store_name, logo_url, theme_id')
     .eq('is_on_marketplace', true)
     .eq('payment_receiving_status', 'ACTIVE')
+    .eq('is_verified', true)
     .eq('is_active', true);
 
   const merchantIds = merchants?.map((m) => m.id) || [];
@@ -87,10 +104,9 @@ export default async function MarketplacePage() {
               {(merchants || []).map((m: any) => {
                 const t = themeFor(m.theme_id);
                 return (
-                  <a
+                  <Link
                     key={m.id}
-                    href={`https://${m.store_slug}.orizzoncart.name.ng`}
-                    target="_blank"
+                    href={`/marketplace/store/${m.store_slug}`}
                     className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                   >
                     <div className="h-2" style={{ backgroundColor: t.variables['--color-primary'] }} />
@@ -112,10 +128,10 @@ export default async function MarketplacePage() {
                         className="mt-2 text-[10px] font-bold text-center rounded-full py-1 text-white"
                         style={{ backgroundColor: t.variables['--color-primary'] }}
                       >
-                        Visit Store →
+                        View Profile →
                       </p>
                     </div>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -195,7 +211,9 @@ export default async function MarketplacePage() {
                       <p className="text-sm font-extrabold" style={{ color: t.variables['--color-primary'] }}>
                         ₦{Number(p.price).toLocaleString()}
                       </p>
-                      <p className="text-[10px] text-gray-400 truncate">🏪 {p.merchant?.store_name}</p>
+                      <Link href={`/marketplace/store/${p.merchant?.store_slug}`} className="block text-[10px] text-gray-400 truncate hover:text-purple-600">
+                        🏪 {p.merchant?.store_name} • View profile
+                      </Link>
                     </div>
                   </a>
                 );
