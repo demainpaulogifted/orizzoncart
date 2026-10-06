@@ -24,7 +24,8 @@ export function StoreReviews({ merchantId }: { merchantId: string }) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avg, setAvg] = useState(0);
   const [count, setCount] = useState(0);
-  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [openForm, setOpenForm] = useState(false);
   const [name, setName] = useState('');
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
@@ -57,12 +58,11 @@ export function StoreReviews({ merchantId }: { merchantId: string }) {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || 'Failed to submit');
-      setMsg('✅ Thank you! Your review is live.');
+      setMsg('✅ Thank you! Your review was submitted and will appear once the store approves it.');
       setName('');
       setComment('');
       setRating(5);
-      setOpen(false);
-      load();
+      setOpenForm(false);
     } catch (e2: any) {
       setMsg('❌ ' + e2.message);
     } finally {
@@ -71,8 +71,9 @@ export function StoreReviews({ merchantId }: { merchantId: string }) {
   }
 
   return (
-    <div className="bg-white border rounded-2xl p-4 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-white border rounded-2xl p-4 space-y-4 shadow-sm">
+      {/* Summary row — always visible, placed high on the page */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="font-bold text-sm">⭐ Store Reviews</h2>
           <div className="flex items-center gap-2 mt-1">
@@ -82,15 +83,48 @@ export function StoreReviews({ merchantId }: { merchantId: string }) {
             </span>
           </div>
         </div>
-        <button
-          onClick={() => setOpen(!open)}
-          className="px-3 py-2 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700"
-        >
-          {open ? 'Close' : 'Write a Review'}
-        </button>
+        <div className="flex gap-2">
+          {count > 0 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="px-3 py-2 bg-white border border-purple-200 text-purple-700 text-xs font-bold rounded-lg hover:bg-purple-50"
+            >
+              {expanded ? 'Hide Reviews ▲' : `View All Reviews (${count}) ▼`}
+            </button>
+          )}
+          <button
+            onClick={() => setOpenForm(!openForm)}
+            className="px-3 py-2 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700"
+          >
+            {openForm ? 'Close' : 'Write a Review'}
+          </button>
+        </div>
       </div>
 
-      {open && (
+      {/* Expandable list of ALL approved reviews */}
+      {expanded && (
+        <div className="space-y-3 bg-gray-50 border rounded-xl p-4">
+          {reviews.length === 0 ? (
+            <p className="text-xs text-gray-500 text-center py-4">No approved reviews yet.</p>
+          ) : (
+            reviews.map((r) => (
+              <div key={r.id} className="border-b border-gray-200 last:border-0 pb-3 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold">{r.reviewer_name}</p>
+                  <Stars value={r.rating} className="text-xs" />
+                </div>
+                {r.comment && <p className="text-xs text-gray-600 mt-1">{r.comment}</p>}
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {new Date(r.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Review form */}
+      {openForm && (
         <form onSubmit={submit} className="bg-gray-50 border rounded-xl p-4 space-y-3">
           <div>
             <label className="text-xs font-bold text-gray-600">Your rating</label>
@@ -130,23 +164,6 @@ export function StoreReviews({ merchantId }: { merchantId: string }) {
             {saving ? 'Submitting…' : 'Submit Review'}
           </button>
         </form>
-      )}
-
-      {reviews.length > 0 && (
-        <div className="space-y-3">
-          {reviews.map((r) => (
-            <div key={r.id} className="border-b border-gray-100 last:border-0 pb-3 last:pb-0">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold">{r.reviewer_name}</p>
-                <Stars value={r.rating} className="text-xs" />
-              </div>
-              {r.comment && <p className="text-xs text-gray-600 mt-1">{r.comment}</p>}
-              <p className="text-[10px] text-gray-400 mt-1">
-                {new Date(r.created_at).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
-        </div>
       )}
     </div>
   );
