@@ -31,6 +31,12 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
 
       <div className="mt-auto" />
 
+      {/* NEW: Escape hatch back to the public marketplace app */}
+      <Link href="/marketplace" target="_blank" prefetch={false} className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors">
+        <span className="text-base leading-none">🏪</span>
+        <span className="text-[9px] font-semibold mt-1 leading-none">Market</span>
+      </Link>
+
       <Link href={`/store/${merchant?.store_slug}`} target="_blank" prefetch={false} className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors">
         <span className="text-base leading-none">👀</span>
         <span className="text-[9px] font-semibold mt-1 leading-none">Store</span>
