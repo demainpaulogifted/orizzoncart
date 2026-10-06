@@ -9,8 +9,17 @@ const PLATFORM_PATHS = [
 ];
 
 export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  
+  // Tell the layout which PWA manifest to serve for this route
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set(
+    'x-app-manifest',
+    req.nextUrl.pathname.startsWith('/marketplace')
+      ? '/manifest-marketplace.json'
+      : '/manifest.json'
+  );
+
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+
   // Session cookie for marketplace feed shuffling
   if (!req.cookies.get('mkt_seed')) {
     res.cookies.set('mkt_seed', Math.random().toString(36).slice(2, 10), {
