@@ -4,7 +4,7 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { THEMES } from '@/lib/themes';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
+import { MarketplaceVignetteTracker } from '@/components/marketplace/MarketplaceVignetteTracker';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
 
 export const dynamic = 'force-dynamic';
@@ -143,13 +143,8 @@ export default async function MarketplacePage() {
 
   return (
     <>
-      {/* Vignette ad for marketplace visitors */}
-      <MonetagVignette
-        zoneId="11902705"
-        storageKey="marketplace_vignette"
-        delay={3000}
-        frequency={1}
-      />
+      {/* Vignette ad: only shows after 3+ navigations in marketplace */}
+      <MarketplaceVignetteTracker />
 
       {/* Install-app popup + download button */}
       <MarketplaceAppExperience />
