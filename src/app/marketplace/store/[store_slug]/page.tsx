@@ -30,11 +30,12 @@ export default async function SellerProfilePage({
   const eligible =
     m.is_verified && m.payment_receiving_status === 'ACTIVE' && m.is_on_marketplace;
 
-  // Import store reviews for the header rating
+  // Import store reviews for the header rating (only approved ones)
   const { data: reviewRows } = await admin
     .from('store_reviews')
     .select('rating')
-    .eq('merchant_id', m.id);
+    .eq('merchant_id', m.id)
+    .eq('status', 'approved');
 
   const reviewCount = reviewRows?.length || 0;
   const reviewAvg = reviewCount
