@@ -1,14 +1,25 @@
 {
+  "id": "/marketplace",
   "name": "OrizzonCart Marketplace",
   "short_name": "Marketplace",
-  "description": "Shop from verified Nigerian businesses. One app, hundreds of stores, flash deals and trackable deliveries.",
+  "description": "Shop from verified Nigerian businesses. Flash deals, secure payments, trackable delivery.",
   "start_url": "/marketplace",
-  "scope": "/marketplace",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#6d28d9",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/marketplace-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/marketplace-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
   ]
 }
