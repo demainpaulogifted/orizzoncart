@@ -1,7 +1,22 @@
 import Link from 'next/link';
 import { THEMES } from '@/lib/themes';
-import { MonetagVignette } from '@/components/ads/MonetagVignette'; // ✅ ADDED
-import { MonetagPushNotifications } from '@/components/ads/MonetagPushNotifications'; // ✅ ADDED
+import { MonetagVignette } from '@/components/ads/MonetagVignette';
+import { MonetagPushNotifications } from '@/components/ads/MonetagPushNotifications';
+
+export const metadata = {
+  title: 'OrizzonCart — Own Your Sales | Build Your Online Store in Nigeria',
+  description:
+    'OrizzonCart is the online store builder for Nigerian businesses: your own store link, Paystack & Flutterwave payments, WhatsApp selling, receipts and order tracking. Start free today.',
+  keywords: ['OrizzonCart', 'orizzoncart', 'OrizzonCart online store', 'build online store Nigeria'],
+  alternates: { canonical: 'https://orizzoncart.name.ng' },
+  openGraph: {
+    title: 'OrizzonCart — Own Your Sales',
+    description: 'Build your online store in minutes with OrizzonCart. Payments, receipts, tracking — zero coding.',
+    url: 'https://orizzoncart.name.ng',
+    siteName: 'OrizzonCart',
+    type: 'website',
+  },
+};
 
 const steps = [
   { icon: '👤', title: 'Create your account', text: 'Sign up free with your email in 30 seconds.' },
@@ -26,7 +41,6 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ✅ 1. VIGNETTE AD: Shows once on landing page after 3 seconds */}
       <MonetagVignette
         zoneId="11902705"
         storageKey="landing_vignette"
@@ -34,7 +48,6 @@ export default function HomePage() {
         frequency={1}
       />
 
-      {/* ✅ 2. PUSH NOTIFICATIONS: Prompts users to subscribe for ongoing revenue */}
       <MonetagPushNotifications zoneId="11902738" />
 
       <main className="min-h-screen bg-white text-gray-900">
@@ -55,7 +68,7 @@ export default function HomePage() {
                 href="/marketplace"
                 className="hidden sm:block text-sm font-semibold text-purple-600 hover:text-purple-800 px-3 py-2 transition-colors"
               >
-                🛍️ Marketplace
+                🛍️ OrizzonCart Marketplace
               </Link>
               <Link
                 href="/track-order"
@@ -109,6 +122,13 @@ export default function HomePage() {
             </div>
             <p className="mt-8 text-sm text-gray-500">
               Free to launch • No monthly fees to start • Live in 6 simple steps
+            </p>
+            <p className="mt-3 text-sm font-semibold text-purple-700">
+              Looking to shop?{' '}
+              <Link href="/marketplace" className="underline font-extrabold">
+                OrizzonCart Marketplace
+              </Link>{' '}
+              — verified Nigerian stores in one app.
             </p>
           </div>
         </section>
@@ -421,7 +441,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-wrap justify-center md:justify-end gap-x-5 gap-y-2 text-sm">
               <Link href="/marketplace" className="hover:text-white transition-colors font-semibold">
-                🛍️ Marketplace
+                🛍️ OrizzonCart Marketplace
               </Link>
               <Link href="/blog/start-online-store-nigeria" className="hover:text-white transition-colors">
                 Blog
