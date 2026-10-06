@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { MonetagVignette } from '@/components/ads/MonetagVignette';
+import { MarketplaceReturnBanner } from '@/components/marketplace/MarketplaceReturnBanner';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -45,6 +46,9 @@ export default function SignupPage() {
         delay={5000}
         frequency={1}
       />
+
+      {/* Escape hatch for shoppers */}
+      <MarketplaceReturnBanner />
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100 px-4 py-12">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
