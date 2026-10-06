@@ -10,25 +10,27 @@ export function MarketplaceVignetteTracker() {
     const key = 'mkt_nav_count';
     let count = parseInt(sessionStorage.getItem(key) || '0', 10);
 
-    // Increment on mount (counts as navigation)
+    // Increment on every marketplace navigation
     count += 1;
     sessionStorage.setItem(key, count.toString());
 
-    // Show vignette after 3 navigations, with 3s delay
+    // After 3+ navigations, show vignette on EVERY page (no frequency cap)
     if (count >= 3) {
-      const t = setTimeout(() => setShowVignette(true), 3000);
+      const t = setTimeout(() => setShowVignette(true), 2500);
       return () => clearTimeout(t);
     }
   }, []);
 
   if (!showVignette) return null;
 
+  // NO frequency cap = shows every time = max ad revenue
+  // delay={0} because user is already engaged (3+ clicks in)
   return (
     <MonetagVignette
       zoneId="11902705"
-      storageKey="marketplace_vignette_nav3"
+      storageKey={`mkt_vignette_${Date.now()}`} // unique key = bypasses localStorage frequency cap
       delay={0}
-      frequency={1}
+      frequency={999}
     />
   );
 }
