@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
+import { StoreReviews, Stars } from '@/components/reviews/StoreReviews';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,17 @@ export default async function SellerProfilePage({
   const eligible =
     m.is_verified && m.payment_receiving_status === 'ACTIVE' && m.is_on_marketplace;
 
+  // Import store reviews for the header rating
+  const { data: reviewRows } = await admin
+    .from('store_reviews')
+    .select('rating')
+    .eq('merchant_id', m.id);
+
+  const reviewCount = reviewRows?.length || 0;
+  const reviewAvg = reviewCount
+    ? Math.round((reviewRows!.reduce((a: number, r: any) => a + r.rating, 0) / reviewCount) * 10) / 10
+    : 0;
+
   let products: any[] = [];
   if (eligible) {
     const { data } = await admin
@@ -45,7 +57,6 @@ export default async function SellerProfilePage({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Seller header */}
       <div className="bg-gradient-to-r from-purple-700 to-blue-700 text-white">
         <div className="max-w-3xl mx-auto px-4 py-6 flex items-center gap-4">
           {m.logo_url ? (
@@ -57,21 +68,27 @@ export default async function SellerProfilePage({
           )}
           <div className="min-w-0">
             <h1 className="text-xl font-extrabold truncate">{m.store_name}</h1>
-            {m.is_verified ? (
-              <span className="inline-block mt-1 text-[10px] font-extrabold bg-green-500 text-white px-2 py-0.5 rounded-full">
-                ✅ VERIFIED SELLER
-              </span>
-            ) : (
-              <span className="inline-block mt-1 text-[10px] font-extrabold bg-gray-500 text-white px-2 py-0.5 rounded-full">
-                UNVERIFIED
-              </span>
-            )}
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {m.is_verified ? (
+                <span className="text-[10px] font-extrabold bg-green-500 text-white px-2 py-0.5 rounded-full">
+                  ✅ VERIFIED SELLER
+                </span>
+              ) : (
+                <span className="text-[10px] font-extrabold bg-gray-500 text-white px-2 py-0.5 rounded-full">
+                  UNVERIFIED
+                </span>
+              )}
+              {reviewCount > 0 && (
+                <span className="flex items-center gap-1 text-[10px] font-extrabold bg-white/15 px-2 py-0.5 rounded-full">
+                  <Stars value={reviewAvg} className="text-[10px]" /> {reviewAvg} ({reviewCount})
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       <main className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
-        {/* About */}
         {m.business_about && (
           <div className="bg-white border rounded-2xl p-4">
             <h2 className="font-bold text-sm mb-2">About this business</h2>
@@ -82,7 +99,6 @@ export default async function SellerProfilePage({
           </div>
         )}
 
-        {/* Contact */}
         <div className="bg-white border rounded-2xl p-4 space-y-2">
           <h2 className="font-bold text-sm">Contact & Locations</h2>
           {m.business_phone && (
@@ -104,7 +120,9 @@ export default async function SellerProfilePage({
           </div>
         </div>
 
-        {/* Products */}
+        {/* Imported store reviews */}
+        <StoreReviews merchantId={m.id} />
+
         {eligible ? (
           <div>
             <h2 className="font-extrabold text-lg mb-3">Products from {m.store_name}</h2>
