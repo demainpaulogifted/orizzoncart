@@ -25,6 +25,7 @@ export default async function ShopPage({
     .select('id, store_slug, store_name, theme_id')
     .eq('is_on_marketplace', true)
     .eq('payment_receiving_status', 'ACTIVE')
+    .eq('is_verified', true)
     .eq('is_active', true);
 
   const ids = merchants?.map((m) => m.id) || [];
@@ -125,7 +126,9 @@ export default async function ShopPage({
                     <p className="text-sm font-extrabold" style={{ color: t.variables['--color-primary'] }}>
                       ₦{Number(p.price).toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-gray-400 truncate">🏪 {merchant?.store_name}</p>
+                    <Link href={`/marketplace/store/${merchant?.store_slug}`} className="block text-[10px] text-gray-400 truncate hover:text-purple-600">
+                      🏪 {merchant?.store_name} • View profile
+                    </Link>
                   </div>
                 </a>
               );
