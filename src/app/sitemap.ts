@@ -10,6 +10,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 1. Static Platform Pages
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+    { url: `${baseUrl}/marketplace`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${baseUrl}/marketplace/categories`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${baseUrl}/marketplace/orders`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.5 },
@@ -50,6 +53,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.9,
       });
 
+      // Add marketplace seller profile page
+      merchantPages.push({
+        url: `${baseUrl}/marketplace/store/${merchant.store_slug}`,
+        lastModified: merchant.updated_at ? new Date(merchant.updated_at) : new Date(),
+        changeFrequency: 'daily',
+        priority: 0.8,
+      });
+
       const { data: products } = await supabase
         .from('products')
         .select('id, slug, updated_at')
@@ -59,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (products) {
         for (const product of products) {
           merchantPages.push({
-            url: `\( {storeUrl}/p/ \){product.slug || product.id}`,
+            url: `${storeUrl}/p/${product.slug || product.id}`,
             lastModified: product.updated_at ? new Date(product.updated_at) : new Date(),
             changeFrequency: 'weekly',
             priority: 0.7,
