@@ -9,10 +9,6 @@ export function MarketplaceAppExperience() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Switch PWA identity to the Marketplace app on marketplace pages
-    const link = document.querySelector('link[rel="manifest"]');
-    if (link) link.setAttribute('href', '/manifest-marketplace.json');
-
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
 
     const onPrompt = (e: any) => {
@@ -94,15 +90,6 @@ export function MarketplaceAppExperience() {
             </div>
           </div>
         </div>
-      )}
-
-      {showButton && !showPopup && (
-        <button
-          onClick={() => setShowPopup(true)}
-          className="fixed right-3 bottom-20 z-[60] px-3 py-2 rounded-full bg-gray-900 text-white text-[11px] font-bold shadow-lg hover:bg-gray-700"
-        >
-          📲 Get App
-        </button>
       )}
     </>
   );
