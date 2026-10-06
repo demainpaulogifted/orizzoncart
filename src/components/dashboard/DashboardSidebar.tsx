@@ -8,7 +8,8 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
     { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
     { href: '/dashboard/pages', icon: '📄', label: 'Pages' },
     { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
-    { href: '/dashboard/marketing', icon: '📣', label: 'Marketing' }, // <-- NEW MARKETING BUTTON ADDED HERE
+    { href: '/dashboard/marketing', icon: '📣', label: 'Marketing' },
+    { href: '/dashboard/settings/marketplace', icon: '🛍️', label: 'Marketplace' },
     { href: '/dashboard/support', icon: '💬', label: 'Help' },
     { href: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
   ];
