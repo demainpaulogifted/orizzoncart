@@ -10,19 +10,17 @@ import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAp
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'OrizzonCart Marketplace — Shop Verified Nigerian Stores',
+  title: 'OrizzonCart Marketplace — Shop Verified Nigerian Stores Online',
   description:
-    'Discover fashion, tech, beauty, foods and more from verified Nigerian businesses. Daily flash deals, secure payments, trackable delivery. Join hundreds of thousands of shoppers.',
+    'OrizzonCart Marketplace brings verified Nigerian stores together: fashion, tech, beauty, foods and more. Flash deals daily, secure payments, trackable delivery. Shop the OrizzonCart Marketplace today.',
   keywords: [
-    'online shopping Nigeria',
-    'Nigerian online stores',
-    'buy fashion online Nigeria',
+    'OrizzonCart Marketplace',
+    'orizzoncart marketplace',
+    'OrizzonCart market',
     'marketplace app Nigeria',
-    'verified sellers Nigeria',
-    'flash deals Nigeria',
-    'buy tech gadgets Nigeria',
-    'Nigerian business directory',
+    'verified Nigerian sellers',
   ],
+  alternates: { canonical: 'https://orizzoncart.name.ng/marketplace' },
   openGraph: {
     title: 'OrizzonCart Marketplace — Shop Verified Nigerian Stores',
     description:
@@ -30,6 +28,7 @@ export const metadata = {
     url: 'https://orizzoncart.name.ng/marketplace',
     siteName: 'OrizzonCart Marketplace',
     type: 'website',
+    images: [{ url: '/marketplace-og.jpg', width: 1200, height: 630, alt: 'OrizzonCart Marketplace' }],
   },
 };
 
@@ -71,7 +70,6 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 export default async function MarketplacePage() {
   const admin = createAdminClient();
 
-  // Session-based shuffle seed: unique per visitor + refreshes every 6 hours
   const cookieStore = await cookies();
   const sessionSeed = cookieStore.get('mkt_seed')?.value || 'guest';
   const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
@@ -105,7 +103,6 @@ export default async function MarketplacePage() {
   const deals = all.filter((p: any) => p.compare_at_price && p.compare_at_price > p.price);
   const fresh = all.slice(0, 20);
 
-  // Structured data so Google extracts products, prices & keywords from the app
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -143,10 +140,7 @@ export default async function MarketplacePage() {
 
   return (
     <>
-      {/* Vignette ad: shows on every navigation after 3+ clicks */}
       <MarketplaceVignetteTracker />
-
-      {/* Install-app popup + download button */}
       <MarketplaceAppExperience />
 
       <div className="min-h-screen bg-gray-50 pb-24">
@@ -171,6 +165,9 @@ export default async function MarketplacePage() {
         </header>
 
         <main className="max-w-3xl mx-auto px-4 space-y-6 pt-4">
+          <h1 className="sr-only">
+            OrizzonCart Marketplace — Shop Verified Nigerian Stores Online
+          </h1>
           <FlashSaleBanner />
 
           {/* Category chips */}
@@ -270,7 +267,7 @@ export default async function MarketplacePage() {
             </section>
           )}
 
-          {/* New arrivals grid (shuffled per session) */}
+          {/* New arrivals grid */}
           <section>
             <h2 className="font-extrabold text-lg mb-3">✨ Fresh For You</h2>
             {fresh.length === 0 ? (
