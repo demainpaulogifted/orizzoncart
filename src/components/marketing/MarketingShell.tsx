@@ -19,7 +19,7 @@ export function MarketingShell({
               href="/marketplace"
               className="text-sm font-semibold text-purple-600 hover:text-purple-800 px-3 py-2"
             >
-              🛍️ Marketplace
+              🛍️ OrizzonCart Marketplace
             </Link>
             <Link
               href="/track-order"
@@ -57,7 +57,7 @@ export function MarketingShell({
           </div>
           <div className="flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-sm">
             <Link href="/marketplace" className="hover:text-white">
-              Marketplace
+              OrizzonCart Marketplace
             </Link>
             <Link href="/about" className="hover:text-white">
               About
