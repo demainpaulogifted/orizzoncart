@@ -142,11 +142,12 @@ export default async function StorePage({ params, searchParams }: any) {
         isShowcaseMode={isShowcaseMode}
         pages={pages || []}
         styleVars={styleVars}
+        reviewsSlot={
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <StoreReviews merchantId={merchant.id} />
+          </div>
+        }
       />
-      {/* Store Reviews - appears below the storefront product grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <StoreReviews merchantId={merchant.id} />
-      </div>
     </>
   );
 }
