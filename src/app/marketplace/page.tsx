@@ -143,7 +143,7 @@ export default async function MarketplacePage() {
 
   return (
     <>
-      {/* Vignette ad: only shows after 3+ navigations in marketplace */}
+      {/* Vignette ad: shows on every navigation after 3+ clicks */}
       <MarketplaceVignetteTracker />
 
       {/* Install-app popup + download button */}
@@ -172,32 +172,6 @@ export default async function MarketplacePage() {
 
         <main className="max-w-3xl mx-auto px-4 space-y-6 pt-4">
           <FlashSaleBanner />
-
-          {/* Merchant lure caption */}
-          <section className="bg-white border rounded-2xl p-5 space-y-3 shadow-sm">
-            <p className="text-center font-extrabold text-lg leading-snug">
-              🔥 Over <span className="text-purple-700">500,000 shoppers</span> bought here last month.
-            </p>
-            <p className="text-center text-xs text-gray-500">
-              Merchants across Nigeria processed every order — and got paid straight into their accounts.
-            </p>
-            <div className="grid sm:grid-cols-2 gap-3 pt-1">
-              <blockquote className="bg-purple-50 rounded-xl p-3 text-xs text-gray-700">
-                "I woke up to 14 orders from people who found me on the Marketplace. I just packed and shipped."
-                <span className="block mt-1 font-bold text-purple-700">— Adaeze O. • Fashion Seller, Lagos</span>
-              </blockquote>
-              <blockquote className="bg-blue-50 rounded-xl p-3 text-xs text-gray-700">
-                "My shop never closes now. The Marketplace keeps sending orders even while I sleep."
-                <span className="block mt-1 font-bold text-blue-700">— Musa I. • Tech Seller, Kano</span>
-              </blockquote>
-            </div>
-            <Link
-              href="/signup"
-              className="block text-center py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-extrabold rounded-xl"
-            >
-              🏪 Start Selling — Get Your Share of the Orders
-            </Link>
-          </section>
 
           {/* Category chips */}
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
