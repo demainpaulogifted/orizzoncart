@@ -17,7 +17,7 @@ export function MarketplaceAppExperience() {
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
 
-    // Bold popup ~8 seconds after load (right after the ~3s vignette ad)
+    // Bold popup ~8s after first visit; floating button on return visits
     const seen = sessionStorage.getItem('mkt_app_popup');
     let t: any;
     if (!seen) {
@@ -90,6 +90,16 @@ export function MarketplaceAppExperience() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating download button (appears after popup is dismissed or on return visits) */}
+      {showButton && !showPopup && (
+        <button
+          onClick={() => setShowPopup(true)}
+          className="fixed right-3 bottom-20 z-[60] px-4 py-2.5 rounded-full bg-gray-900 text-white text-[11px] font-bold shadow-xl hover:bg-gray-700 border border-white/20"
+        >
+          📲 Get App
+        </button>
       )}
     </>
   );
