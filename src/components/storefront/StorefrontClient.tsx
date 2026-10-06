@@ -7,7 +7,14 @@ import { StoreShop } from '@/components/storefront/StoreShop';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
 import { MonetagVignette } from '@/components/ads/MonetagVignette';
 
-export function StorefrontClient({ merchant, products, isShowcaseMode, pages, styleVars }: any) {
+export function StorefrontClient({
+  merchant,
+  products,
+  isShowcaseMode,
+  pages,
+  styleVars,
+  reviewsSlot,
+}: any) {
   const slug = merchant?.store_slug || '';
   const [cartOpen, setCartOpen] = useState(false);
   const [count, setCount] = useState(0);
@@ -198,6 +205,9 @@ export function StorefrontClient({ merchant, products, isShowcaseMode, pages, st
         )}
         <StoreShop products={products} merchant={merchant} isShowcaseMode={isShowcaseMode} />
       </main>
+
+      {/* ✅ Store Reviews slot — renders ABOVE the footer */}
+      {reviewsSlot}
 
       <footer className="border-t border-stone-200 bg-white py-6 mt-10">
         <div className="max-w-6xl mx-auto px-4 text-center space-y-1">
