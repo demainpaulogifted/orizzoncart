@@ -9,6 +9,17 @@ const PLATFORM_PATHS = [
 ];
 
 export function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  
+  // Session cookie for marketplace feed shuffling
+  if (!req.cookies.get('mkt_seed')) {
+    res.cookies.set('mkt_seed', Math.random().toString(36).slice(2, 10), {
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+      sameSite: 'lax',
+    });
+  }
+
   const host = (req.headers.get('host') || '').toLowerCase();
   const { pathname } = req.nextUrl;
 
@@ -30,7 +41,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
