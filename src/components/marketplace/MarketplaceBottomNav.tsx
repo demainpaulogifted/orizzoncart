@@ -37,20 +37,29 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
           Shop
         </Link>
 
-        <Link
+        {/* Publish: Opens in new tab so shopper doesn't lose the app */}
+        <a
           href={isMerchant ? '/dashboard/products/add' : '/signup'}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex flex-col items-center justify-end pb-1 -mt-5"
         >
           <span className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-2xl font-extrabold flex items-center justify-center shadow-lg border-4 border-white">
             +
           </span>
           <span className="text-[9px] font-bold text-purple-600 mt-0.5">Publish</span>
-        </Link>
+        </a>
 
-        <Link href={isMerchant ? '/dashboard' : '/login'} className={item('merchant')}>
+        {/* Merchant: Opens in new tab */}
+        <a
+          href={isMerchant ? '/dashboard' : '/login'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={item('merchant')}
+        >
           <span className="text-lg leading-none">🏪</span>
           Merchant
-        </Link>
+        </a>
 
         <Link href="/marketplace/orders" className={item('orders')}>
           <span className="text-lg leading-none">📦</span>
