@@ -33,7 +33,9 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
   const storeUrl = `https://${store_slug}.orizzoncart.name.ng`;
 
   return {
-    title: storeName,
+    title: {
+      absolute: storeName,   // forces the real store name in the tab
+    },
     description: storeDesc,
     alternates: { canonical: storeUrl },
     openGraph: {
