@@ -9,11 +9,11 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/api/marketing/feed'],
+        allow: ['/', '/marketplace', '/marketplace/', '/api/marketing/feed'],
         disallow: [
           '/admin/',
           '/dashboard/',
-          '/api/',
+          '/api/', // Blocks all APIs except the feed we allowed above
           '/onboarding/',
           '/checkout/',
           '/login/',
