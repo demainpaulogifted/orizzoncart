@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 const allItems = [
   { name: 'Overview', href: '/admin', icon: '👑', grad: 'from-amber-400 to-yellow-600', adminOnly: true },
   { name: 'Businesses', href: '/admin/businesses', icon: '🏪', grad: 'from-blue-400 to-indigo-600', adminOnly: true },
+  { name: 'Blog', href: '/admin/blog', icon: '✍️', grad: 'from-orange-400 to-amber-600', adminOnly: true },
   { name: 'Billing', href: '/admin/settings/billing', icon: '💰', grad: 'from-green-400 to-emerald-600', adminOnly: true },
   { name: 'Themes', href: '/admin/settings/themes', icon: '🎨', grad: 'from-fuchsia-400 to-purple-600', adminOnly: true },
   { name: 'Keys', href: '/admin/settings/payments', icon: '🔑', grad: 'from-red-400 to-rose-600', adminOnly: true },
