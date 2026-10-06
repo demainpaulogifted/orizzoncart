@@ -16,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.5 },
   ];
 
-  // 2. Static Blog Posts (hardcoded pages in the repo)
+  // 2. Static Blog Posts (the ones that exist in your repo)
   const staticBlogPages: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/blog/start-online-store-nigeria`,
@@ -69,23 +69,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // 4. Dynamic Blog Posts from database
-  const { data: blogs } = await supabase
-    .from('posts')
-    .select('slug, updated_at')
-    .eq('is_published', true);
-
-  const blogPages: MetadataRoute.Sitemap = [];
-  if (blogs) {
-    for (const blog of blogs) {
-      blogPages.push({
-        url: `\( {baseUrl}/blog/ \){blog.slug}`,
-        lastModified: blog.updated_at ? new Date(blog.updated_at) : new Date(),
-        changeFrequency: 'weekly',
-        priority: 0.8,
-      });
-    }
-  }
-
-  return [...staticPages, ...staticBlogPages, ...merchantPages, ...blogPages];
+  return [...staticPages, ...staticBlogPages, ...merchantPages];
 }
