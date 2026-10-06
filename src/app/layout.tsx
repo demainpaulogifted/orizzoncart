@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 import { Toaster } from 'sonner';
 
@@ -15,20 +16,16 @@ export const metadata: Metadata = {
   description:
     'OrizzonCart empowers businesses worldwide to launch beautiful, high-converting online stores in minutes. From local neighborhood shops to global digital brands, seamlessly accept payments, sell directly via WhatsApp, and manage orders with zero coding. Your store, your rules, your world.',
   keywords: [
-    // Platform Keywords
     'OrizzonCart', 'online store builder', 'e-commerce platform', 'create online store', 
     'sell on WhatsApp', 'multi-vendor marketplace', 'no-code website builder',
-    // Payment & Local Keywords
     'accept payments Nigeria', 'Paystack integration', 'Flutterwave integration', 
     'sell online Africa', 'Naira payment gateway', 'local business growth',
-    // Niche Keywords (Captures thousands of long-tail searches)
     'digital products store', 'dropshipping Nigeria', 'boutique website builder', 
     'fashion store online', 'electronics e-commerce', 'food delivery website',
     'service booking platform', 'online course platform', 'sell ebooks online'
   ],
   applicationName: 'OrizzonCart',
   alternates: { canonical: '/' },
-  manifest: '/manifest.json',
   icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
   openGraph: {
     title: 'OrizzonCart — Build Your Global Online Store in Minutes',
@@ -86,9 +83,15 @@ const brandSchema = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const appManifest = (await headers()).get('x-app-manifest') || '/manifest.json';
+
   return (
     <html lang="en">
+      <head>
+        {/* Override the default manifest from metadata with the route-specific one */}
+        <link rel="manifest" href={appManifest} />
+      </head>
       <body className="antialiased">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(brandSchema) }} />
         {children}
