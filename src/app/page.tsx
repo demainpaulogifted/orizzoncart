@@ -52,6 +52,12 @@ export default function HomePage() {
                 Blog
               </Link>
               <Link
+                href="/marketplace"
+                className="hidden sm:block text-sm font-semibold text-purple-600 hover:text-purple-800 px-3 py-2 transition-colors"
+              >
+                🛍️ Marketplace
+              </Link>
+              <Link
                 href="/track-order"
                 className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2"
               >
@@ -414,6 +420,9 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex flex-wrap justify-center md:justify-end gap-x-5 gap-y-2 text-sm">
+              <Link href="/marketplace" className="hover:text-white transition-colors font-semibold">
+                🛍️ Marketplace
+              </Link>
               <Link href="/blog/start-online-store-nigeria" className="hover:text-white transition-colors">
                 Blog
               </Link>
