@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { StorefrontClient } from '@/components/storefront/StorefrontClient';
 import { redirectToSubdomain } from '@/lib/store-redirect';
+import { StoreReviews } from '@/components/reviews/StoreReviews';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,10 @@ export default async function StorePage({ params, searchParams }: any) {
         pages={pages || []}
         styleVars={styleVars}
       />
+      {/* Store Reviews - appears below the storefront product grid */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <StoreReviews merchantId={merchant.id} />
+      </div>
     </>
   );
 }
