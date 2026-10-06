@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     .from('store_reviews')
     .select('*')
     .eq('merchant_id', merchantId)
+    .eq('status', 'approved')
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
     reviewer_name: name,
     rating: Math.round(rating),
     comment: comment || null,
+    status: 'pending',
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
