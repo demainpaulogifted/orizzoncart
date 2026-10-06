@@ -29,19 +29,27 @@ export function MerchantHeader({ merchant, isShowcaseMode }: { merchant: any; is
             {merchant.store_name}
           </span>
         </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <button
-            onClick={() => window.dispatchEvent(new Event('cart-open-request'))}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-primary)] text-white text-sm font-extrabold shadow-md hover:opacity-90"
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/marketplace"
+            className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-bold hover:bg-[var(--color-primary)] hover:text-white transition-colors"
           >
-            🛒 Cart
-            <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-white">
-              {count}
-            </span>
-          </button>
-          <Link href="/track-order" className="text-xs font-bold text-[var(--color-primary)] hover:underline">
-            📦 Track Order
+            🛍️ <span>Marketplace</span>
           </Link>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => window.dispatchEvent(new Event('cart-open-request'))}
+              className="relative flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-primary)] text-white text-sm font-extrabold shadow-md hover:opacity-90"
+            >
+              🛒 Cart
+              <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-white">
+                {count}
+              </span>
+            </button>
+            <Link href="/track-order" className="text-xs font-bold text-[var(--color-primary)] hover:underline">
+              📦 Track Order
+            </Link>
+          </div>
         </div>
       </div>
     </header>
