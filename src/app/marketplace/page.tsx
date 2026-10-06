@@ -1,161 +1,218 @@
 import Link from 'next/link';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
-import { MarketplaceMerchantButton } from '@/components/marketplace/MarketplaceMerchantButton';
+import { THEMES } from '@/lib/themes';
+import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
+import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
 
 export const dynamic = 'force-dynamic';
+
+const themeList: any[] = Object.values(THEMES);
+function themeFor(themeId: string | null) {
+  return (THEMES as any)[themeId as any] || themeList[0];
+}
+
+const CATEGORIES = ['Fashion', 'Tech', 'Home', 'Beauty', 'Foods', 'Digital'];
 
 export default async function MarketplacePage() {
   const admin = createAdminClient();
 
   const { data: merchants } = await admin
     .from('merchants')
-    .select('id, store_slug, store_name, logo_url')
+    .select('id, store_slug, store_name, logo_url, theme_id')
     .eq('is_on_marketplace', true)
     .eq('payment_receiving_status', 'ACTIVE')
     .eq('is_active', true);
 
   const merchantIds = merchants?.map((m) => m.id) || [];
 
-  const { data: products } = await admin
-    .from('products')
-    .select('id, name, slug, price, images, merchant_id')
-    .in('merchant_id', merchantIds)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(40);
+  const { data: products } = merchantIds.length
+    ? await admin
+        .from('products')
+        .select('id, name, slug, price, compare_at_price, images, merchant_id')
+        .in('merchant_id', merchantIds)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(60)
+    : { data: [] as any[] };
 
-  const enrichedProducts = (products || []).map((p) => {
-    const merchant = merchants?.find((m) => m.id === p.merchant_id);
-    return {
-      ...p,
-      store_slug: merchant?.store_slug,
-      store_name: merchant?.store_name,
-      store_logo: merchant?.logo_url,
-    };
-  });
+  const byId = new Map((merchants || []).map((m) => [m.id, m]));
+  const all = (products || []).map((p: any) => ({ ...p, merchant: byId.get(p.merchant_id) }));
+  const deals = all.filter((p: any) => p.compare_at_price && p.compare_at_price > p.price);
+  const fresh = all.slice(0, 20);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-extrabold">
-            Orizzon<span className="text-purple-600">Cart</span> Marketplace
-          </Link>
-          <div className="flex gap-4 items-center">
-            <Link href="/login" className="text-sm text-gray-600 hover:text-purple-600">
-              Login
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Premium sticky header with search */}
+      <header className="sticky top-0 z-40 bg-gradient-to-r from-purple-700 to-blue-700 text-white shadow-md">
+        <div className="max-w-3xl mx-auto px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <Link href="/marketplace" className="font-extrabold text-lg tracking-tight">
+              Orizzon<span className="text-yellow-300">Cart</span> Marketplace
             </Link>
-            <Link
-              href="/signup"
-              className="px-4 py-2 bg-purple-600 text-white text-sm rounded-full hover:bg-purple-700"
-            >
-              Sign Up
-            </Link>
+            <span className="text-[10px] bg-white/15 rounded-full px-2 py-1 font-semibold">
+              🇳 Verified sellers only
+            </span>
           </div>
+          <form action="/marketplace/categories" method="GET">
+            <input
+              name="q"
+              placeholder="Search products, stores, categories…"
+              className="w-full rounded-full px-4 py-2.5 text-sm text-gray-900 bg-white shadow-inner outline-none"
+            />
+          </form>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl font-bold mb-4">Discover Amazing Local Products</h1>
-          <p className="text-lg opacity-90">
-            Shop from hundreds of verified Nigerian businesses
-          </p>
+      <main className="max-w-3xl mx-auto px-4 space-y-6 pt-4">
+        <FlashSaleBanner />
+
+        {/* Category chips */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+          {CATEGORIES.map((c) => (
+            <Link
+              key={c}
+              href={`/marketplace/categories?cat=${encodeURIComponent(c)}`}
+              className="shrink-0 px-4 py-2 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-700 hover:border-purple-400 hover:text-purple-700"
+            >
+              {c}
+            </Link>
+          ))}
         </div>
-      </section>
 
-      {/* Product Grid */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
-        <h2 className="text-2xl font-bold mb-6">Featured Products</h2>
-
-        {enrichedProducts.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-xl">No products available yet.</p>
-            <p className="text-sm mt-2">Merchants are setting up their stores!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {enrichedProducts.map((p) => {
-              const imageUrl =
-                p.images && p.images.length > 0 ? p.images[0].url : '';
-              const productUrl = `https://${p.store_slug}.orizzoncart.name.ng/p/${p.slug}`;
-
-              return (
-                <a
-                  key={p.id}
-                  href={productUrl}
-                  target="_blank"
-                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition group"
-                >
-                  <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                    {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={p.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">
-                        📦
+        {/* Featured stores rail (merchant theme colors) */}
+        {(merchants || []).length > 0 && (
+          <section>
+            <h2 className="font-extrabold text-lg mb-3">🏪 Featured Stores</h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+              {(merchants || []).map((m: any) => {
+                const t = themeFor(m.theme_id);
+                return (
+                  <a
+                    key={m.id}
+                    href={`https://${m.store_slug}.orizzoncart.name.ng`}
+                    target="_blank"
+                    className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
+                  >
+                    <div className="h-2" style={{ backgroundColor: t.variables['--color-primary'] }} />
+                    <div className="p-3">
+                      <div className="flex items-center gap-2">
+                        {m.logo_url ? (
+                          <img src={m.logo_url} className="w-8 h-8 rounded-full object-cover" alt="" />
+                        ) : (
+                          <span
+                            className="w-8 h-8 rounded-full text-white text-xs font-extrabold flex items-center justify-center"
+                            style={{ backgroundColor: t.variables['--color-primary'] }}
+                          >
+                            {m.store_name?.[0]?.toUpperCase() || 'S'}
+                          </span>
+                        )}
+                        <p className="text-xs font-bold truncate">{m.store_name}</p>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-sm line-clamp-2 mb-2">{p.name}</h3>
-                    <p className="text-lg font-bold text-purple-600">
-                      ₦{Number(p.price).toLocaleString()}
-                    </p>
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-                      {p.store_logo ? (
-                        <img
-                          src={p.store_logo}
-                          alt=""
-                          className="w-5 h-5 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px]">
-                          🏪
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500 truncate">{p.store_name}</span>
+                      <p
+                        className="mt-2 text-[10px] font-bold text-center rounded-full py-1 text-white"
+                        style={{ backgroundColor: t.variables['--color-primary'] }}
+                      >
+                        Visit Store →
+                      </p>
                     </div>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
         )}
-      </section>
 
-      {/* Bottom Navigation (Mobile App Style) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t md:hidden z-50">
-        <div className="grid grid-cols-4 py-2">
-          <Link href="/marketplace" className="flex flex-col items-center text-purple-600">
-            <span className="text-xl">🏠</span>
-            <span className="text-[10px] font-semibold">Home</span>
-          </Link>
-          <Link
-            href="/marketplace/categories"
-            className="flex flex-col items-center text-gray-400"
-          >
-            <span className="text-xl">🛍️</span>
-            <span className="text-[10px] font-semibold">Shop</span>
-          </Link>
-          <Link href="/marketplace/orders" className="flex flex-col items-center text-gray-400">
-            <span className="text-xl">📦</span>
-            <span className="text-[10px] font-semibold">Orders</span>
-          </Link>
-          <Link href="/marketplace/profile" className="flex flex-col items-center text-gray-400">
-            <span className="text-xl">👤</span>
-            <span className="text-[10px] font-semibold">Profile</span>
-          </Link>
+        {/* Flash deals rail */}
+        {deals.length > 0 && (
+          <section>
+            <h2 className="font-extrabold text-lg mb-3">⚡ Flash Deals</h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+              {deals.map((p: any) => {
+                const t = themeFor(p.merchant?.theme_id);
+                const off = Math.round((1 - p.price / p.compare_at_price) * 100);
+                const img = p.images?.[0]?.url;
+                return (
+                  <a
+                    key={p.id}
+                    href={`https://${p.merchant?.store_slug}.orizzoncart.name.ng/p/${p.slug}`}
+                    target="_blank"
+                    className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative"
+                  >
+                    <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                      -{off}%
+                    </span>
+                    <div className="aspect-square bg-gray-100">
+                      {img ? (
+                        <img src={img} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">📦</div>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs font-medium line-clamp-1">{p.name}</p>
+                      <p className="text-sm font-extrabold" style={{ color: t.variables['--color-primary'] }}>
+                        ₦{Number(p.price).toLocaleString()}{' '}
+                        <span className="text-[10px] text-gray-400 line-through font-medium">
+                          ₦{Number(p.compare_at_price).toLocaleString()}
+                        </span>
+                      </p>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* New arrivals grid */}
+        <section>
+          <h2 className="font-extrabold text-lg mb-3">✨ New Arrivals</h2>
+          {fresh.length === 0 ? (
+            <div className="bg-white border rounded-2xl p-10 text-center text-gray-500 text-sm">
+              No products yet. Merchants are onboarding! 🏪
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {fresh.map((p: any) => {
+                const t = themeFor(p.merchant?.theme_id);
+                const img = p.images?.[0]?.url;
+                return (
+                  <a
+                    key={p.id}
+                    href={`https://${p.merchant?.store_slug}.orizzoncart.name.ng/p/${p.slug}`}
+                    target="_blank"
+                    className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
+                  >
+                    <div className="aspect-square bg-gray-100">
+                      {img ? (
+                        <img src={img} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">📦</div>
+                      )}
+                    </div>
+                    <div className="p-2 space-y-1">
+                      <p className="text-xs font-medium line-clamp-2">{p.name}</p>
+                      <p className="text-sm font-extrabold" style={{ color: t.variables['--color-primary'] }}>
+                        ₦{Number(p.price).toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-gray-400 truncate">🏪 {p.merchant?.store_name}</p>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Trust badges */}
+        <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-gray-600">
+          <div className="bg-white border rounded-xl p-3">✅ Verified sellers</div>
+          <div className="bg-white border rounded-xl p-3">🔒 Secure payments</div>
+          <div className="bg-white border rounded-xl p-3">📍 Trackable delivery</div>
         </div>
-      </nav>
+      </main>
 
-      {/* Merchant session floating buttons (only visible to logged-in merchants) */}
-      <MarketplaceMerchantButton />
+      <MarketplaceBottomNav active="home" />
     </div>
   );
 }
