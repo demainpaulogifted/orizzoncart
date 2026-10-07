@@ -98,6 +98,23 @@ export async function POST(request: NextRequest) {
 
     await admin.from('orders').update({ payment_status: 'paid', status: 'processing' }).eq('id', order.id);
 
+    // 📦 DROPSHIPPING AUTO-FULFILLMENT
+    const { data: dsOrder } = await admin
+      .from('orders')
+      .select('has_dropship_products, auto_fulfill_enabled')
+      .eq('id', order.id)
+      .single();
+
+    if (dsOrder?.has_dropship_products && dsOrder?.auto_fulfill_enabled !== false) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+      fetch(`${appUrl}/api/dropshipping/fulfill`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      }).catch((err) => console.error('Auto-fulfillment failed:', err));
+    }
+    // -------------------------------
+
     const { data: items } = await admin.from('order_items').select('product_name, quantity').eq('order_id', order.id);
     const itemList = (items || []).map((i: any) => `${i.product_name} x${i.quantity}`).join(', ');
     sendOrderAlert(order.merchant_id, order, itemList).catch(() => {});
