@@ -2,9 +2,10 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
+import { SyncDropshipButton } from '@/components/dashboard/SyncDropshipButton';
 
 export default async function ProductsPage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const cookieStore = await cookies();
@@ -22,6 +23,9 @@ export default async function ProductsPage() {
 
   const storeUrl = merchant?.store_slug ? `https://${merchant.store_slug}.orizzoncart.name.ng` : '#';
 
+  // Check if any products are dropshipped
+  const hasDropshipProducts = (products || []).some((p: any) => p.supplier && p.supplier_product_id);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
@@ -29,9 +33,12 @@ export default async function ProductsPage() {
           <h1 className="text-2xl font-bold">Products</h1>
           <p className="text-gray-600 text-sm">{products?.length || 0} products in {merchant?.store_name || 'your store'}</p>
         </div>
-        <Link href="/dashboard/products/add" className="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 shrink-0">
-          + Add Product
-        </Link>
+        <div className="flex gap-2">
+          {hasDropshipProducts && <SyncDropshipButton />}
+          <Link href="/dashboard/products/add" className="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 shrink-0">
+            + Add Product
+          </Link>
+        </div>
       </div>
 
       {(!products || products.length === 0) ? (
@@ -52,6 +59,11 @@ export default async function ProductsPage() {
                   <p className="font-bold text-gray-900 truncate">{p.name}</p>
                   <p className="text-sm font-extrabold text-purple-700 mt-0.5">{formatCurrency(p.price)}</p>
                   {p.category && <p className="text-[11px] text-gray-500 mt-0.5 uppercase font-bold">{p.category}</p>}
+                  {p.supplier && (
+                    <p className="text-[10px] text-blue-600 mt-1 font-bold">
+                      📦 Dropshipped from {p.supplier.toUpperCase()}
+                    </p>
+                  )}
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                   {p.is_active ? 'Active' : 'Hidden'}
