@@ -10,13 +10,15 @@ const SUPPLIERS = [
     description: '500,000+ products, fast shipping, auto-fulfillment',
     icon: '📦',
     docsUrl: 'https://cjdropshipping.com/api',
+    requiresKey: true,
   },
   {
     id: 'alibaba',
     name: 'Alibaba',
     description: 'Wholesale prices, bulk orders, verified suppliers',
     icon: '🏭',
-    docsUrl: 'https://www.alibaba.com/api',
+    docsUrl: 'https://developer.alibaba.com',
+    requiresKey: false,
   },
   {
     id: 'aliexpress',
@@ -24,6 +26,7 @@ const SUPPLIERS = [
     description: 'Low-cost products, global shipping',
     icon: '🌍',
     docsUrl: 'https://openservice.aliexpress.com',
+    requiresKey: false,
   },
 ];
 
@@ -43,8 +46,19 @@ export default function SourceProductsPage() {
   }, []);
 
   async function connectSupplier(supplierId: string) {
-    const apiKey = prompt(`Enter your ${supplierId.toUpperCase()} API Key:`);
-    if (!apiKey) return;
+    const supplier = SUPPLIERS.find(s => s.id === supplierId);
+    const isRequired = supplier?.requiresKey;
+
+    let apiKey = prompt(
+      isRequired
+        ? `Enter your ${supplierId.toUpperCase()} API Key (required):`
+        : `Enter your ${supplierId.toUpperCase()} API Key (leave blank to start in Estimation Mode):`
+    );
+
+    if (isRequired && !apiKey) {
+      toast.error(`${supplierId.toUpperCase()} requires a real API key`);
+      return;
+    }
 
     const apiSecret = prompt(`Enter your ${supplierId.toUpperCase()} API Secret (if required, or leave blank):`);
 
@@ -52,12 +66,17 @@ export default function SourceProductsPage() {
       const res = await fetch('/api/dropshipping/connections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplier: supplierId, apiKey, apiSecret: apiSecret || null }),
+        body: JSON.stringify({
+          supplier: supplierId,
+          apiKey: apiKey || null,
+          apiSecret: apiSecret || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
-      toast.success(`✅ Connected to ${supplierId.toUpperCase()}!`);
+      const mode = apiKey ? 'live' : 'estimation';
+      toast.success(`✅ Connected to ${supplierId.toUpperCase()} in ${mode} mode!`);
       setConnections(prev => [...prev, { supplier: supplierId, status: 'connected' }]);
     } catch (e: any) {
       toast.error(e.message);
@@ -74,6 +93,7 @@ export default function SourceProductsPage() {
       
       toast.success('Disconnected');
       setConnections(prev => prev.filter(c => c.supplier !== supplierId));
+      if (activeSupplier === supplierId) setActiveSupplier('');
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -145,6 +165,10 @@ export default function SourceProductsPage() {
         </p>
       </div>
 
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
+        <strong>🌍 Multi-Supplier Shipping:</strong> CJ uses live API rates. Alibaba & AliExpress use smart country-based estimation until their developer apps are approved. All rates appear correctly at checkout.
+      </div>
+
       {/* Supplier Connections */}
       <section className="space-y-3">
         <h2 className="font-bold text-lg">Your Suppliers</h2>
@@ -190,7 +214,7 @@ export default function SourceProductsPage() {
                     onClick={() => connectSupplier(s.id)}
                     className="w-full py-2 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700"
                   >
-                    Connect
+                    Connect{s.requiresKey ? '' : ' (Estimation Mode)'}
                   </button>
                 )}
                 <a
