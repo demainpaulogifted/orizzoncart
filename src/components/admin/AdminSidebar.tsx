@@ -1,52 +1,94 @@
 'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-
-const allItems = [
-  { name: 'Overview', href: '/admin', icon: '👑', grad: 'from-amber-400 to-yellow-600', adminOnly: true },
-  { name: 'Businesses', href: '/admin/businesses', icon: '🏪', grad: 'from-blue-400 to-indigo-600', adminOnly: true },
-  { name: 'Blog', href: '/admin/blog', icon: '✍️', grad: 'from-orange-400 to-amber-600', adminOnly: true },
-  { name: 'Billing', href: '/admin/settings/billing', icon: '💰', grad: 'from-green-400 to-emerald-600', adminOnly: true },
-  { name: 'Themes', href: '/admin/settings/themes', icon: '🎨', grad: 'from-fuchsia-400 to-purple-600', adminOnly: true },
-  { name: 'Keys', href: '/admin/settings/payments', icon: '🔑', grad: 'from-red-400 to-rose-600', adminOnly: true },
-  { name: 'Team', href: '/admin/team', icon: '🧑‍🤝‍🧑', grad: 'from-teal-400 to-cyan-600', adminOnly: true },
-  { name: 'Inbox', href: '/admin/support', icon: '💬', grad: 'from-cyan-400 to-blue-600', adminOnly: false },
-  { name: 'Dashboard', href: '/dashboard', icon: '📊', grad: 'from-slate-500 to-slate-700', adminOnly: false },
-];
 
 export function AdminSidebar({ role }: { role?: string }) {
+  const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const items = allItems.filter((i) => !i.adminOnly || role === 'platform_admin');
-  const isActive = (href: string) => (href === '/admin' ? pathname === '/admin' : pathname.startsWith(href));
+
+  const items = [
+    { href: '/admin', icon: '👑', label: 'Overview' },
+    { href: '/admin/businesses', icon: '🏢', label: 'Businesses' },
+    { href: '/admin/verifications', icon: '⏳', label: 'Verify' },
+    { href: '/admin/orders', icon: '📦', label: 'Orders' },
+    { href: '/admin/blog', icon: '✍️', label: 'Blog' },
+    { href: '/admin/settings/billing', icon: '💰', label: 'Billing' },
+    { href: '/admin/themes', icon: '🎨', label: 'Themes' },
+    { href: '/admin/keys', icon: '🔑', label: 'Keys' },
+    { href: '/admin/team', icon: '👥', label: 'Team' },
+    { href: '/admin/inbox', icon: '💬', label: 'Inbox' },
+    { href: '/dashboard', icon: '📊', label: 'Dashboard' },
+  ];
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 w-16 sm:w-20 md:w-24 bg-white border-r border-gray-200 flex flex-col items-center py-3 sm:py-4 gap-0.5 sm:gap-1 overflow-y-auto overflow-x-hidden">
-      <Link
-        href="/admin"
-        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 text-white font-extrabold flex items-center justify-center mb-2 sm:mb-3 shadow-md text-lg"
+    <>
+      {/* Top bar with hamburger */}
+      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-gray-200 flex items-center gap-3 px-4">
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          className="w-10 h-10 rounded-lg hover:bg-gray-100 flex flex-col items-center justify-center gap-1.5"
+        >
+          <span className="block w-5 h-0.5 bg-gray-800 rounded"></span>
+          <span className="block w-5 h-0.5 bg-gray-800 rounded"></span>
+          <span className="block w-5 h-0.5 bg-gray-800 rounded"></span>
+        </button>
+        <span className="font-extrabold text-gray-900">👑 Admin</span>
+        {role && (
+          <span className="text-[10px] font-bold uppercase bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+            {role}
+          </span>
+        )}
+      </header>
+
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {/* Drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
-        👑
-      </Link>
-      {items.map((item) => {
-        const active = isActive(item.href);
-        return (
-          <Link key={item.name} href={item.href} className="flex flex-col items-center gap-0.5 w-full py-1.5 sm:py-2 group">
-            <span
-              className={cn(
-                'w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center text-lg sm:text-xl shadow-sm transition-transform group-hover:scale-105',
-                item.grad,
-                active && 'ring-2 ring-offset-1 sm:ring-offset-2 ring-amber-400'
-              )}
-            >
-              {item.icon}
-            </span>
-            <span className={cn('text-[9px] sm:text-[10px] font-semibold leading-tight text-center px-0.5', active ? 'text-amber-600' : 'text-gray-600')}>
-              {item.name}
-            </span>
-          </Link>
-        );
-      })}
-    </aside>
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100">
+          <span className="font-extrabold text-gray-900">👑 Control Center</span>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+            className="w-9 h-9 rounded-lg hover:bg-gray-100 text-gray-500 text-lg"
+          >
+            ✕
+          </button>
+        </div>
+
+        <nav className="p-3 space-y-1 overflow-y-auto">
+          {items.map((it) => {
+            const active = pathname === it.href;
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                  active
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700'
+                }`}
+              >
+                <span className="text-base leading-none">{it.icon}</span>
+                {it.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+    </>
   );
 }
