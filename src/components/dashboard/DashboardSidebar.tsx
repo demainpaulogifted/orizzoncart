@@ -8,6 +8,7 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
     { href: '/dashboard/marketing', icon: '📣', label: 'Marketing' },
     { href: '/dashboard/support', icon: '💬', label: 'Help' },
     { href: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
+    { href: '/dashboard/settings/notifications', icon: '🔔', label: 'Notify' },
   ];
 
   if (isAdmin) items.push({ href: '/admin', icon: '👑', label: 'Admin' });
