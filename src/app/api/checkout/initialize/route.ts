@@ -49,8 +49,38 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
+    // --- 🚚 SMART SHIPPING: existing modes + state-based zones ---
+    const isPickup = shipping_mode === 'PICKUP';
+    const isNeighbourhood = /neigh/i.test(shipping_mode || '');
+
+    let finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
+
+    if (isPickup || isNeighbourhood) {
+      finalShippingCost = 0;
+    } else if (customer?.state) {
+      const { data: zones } = await supabase
+        .from('shipping_zones')
+        .select('*')
+        .eq('merchant_id', merchant.id);
+
+      if (zones && zones.length > 0) {
+        const zone =
+          (zones as any[]).find((z) => (z.states || []).includes(customer.state)) ||
+          (zones as any[]).find((z) => z.is_default) ||
+          null;
+
+        if (zone) {
+          finalShippingCost =
+            zone.free_shipping_threshold && subtotal >= Number(zone.free_shipping_threshold)
+              ? 0
+              : Number(zone.flat_fee) || 0;
+        }
+      }
+      // No zones configured → keeps the flat waybill fee sent by the storefront
+    }
+
     const totalAmount = subtotal + finalShippingCost;
+    // -------------------------------------------------------------
 
     const shippingAddress =
       shipping_mode === 'PICKUP' || !customer?.address_line1
@@ -82,7 +112,6 @@ export async function POST(request: NextRequest) {
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
 
     // --- 📦 DROPSHIPPING DETECTION LOGIC ---
-    // Check if any products in this order are sourced from a supplier (CJ, Alibaba, etc.)
     const productIdsInOrder = orderItems.map((i: any) => i.product_id);
     if (productIdsInOrder.length > 0) {
       const { data: orderedProducts } = await supabase
@@ -95,12 +124,11 @@ export async function POST(request: NextRequest) {
       );
 
       if (hasDropshipItems) {
-        // Flag the order so it appears in the Dropshipping Dashboard
         await supabase
           .from('orders')
           .update({
             has_dropship_products: true,
-            supplier_fulfillment_status: 'pending', // Waiting for payment to fulfill
+            supplier_fulfillment_status: 'pending',
           })
           .eq('id', order.id);
       }
