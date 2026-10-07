@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { StoreShop } from '@/components/storefront/StoreShop';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
 import { MonetagVignette } from '@/components/ads/MonetagVignette';
+import { VisitTracker } from '@/components/storefront/VisitTracker';
 
 export function StorefrontClient({
   merchant,
@@ -80,6 +81,7 @@ export function StorefrontClient({
         delay={3000}
         frequency={3}
       />
+      <VisitTracker merchantId={merchant?.id} />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200/80 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
