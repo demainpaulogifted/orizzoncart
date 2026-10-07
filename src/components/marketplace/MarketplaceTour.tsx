@@ -176,6 +176,8 @@ export function MarketplaceTour() {
     try {
       localStorage.setItem('orz_market_tour_done', '1');
     } catch {}
+    // 🎯 Announce that the tour is finished so other components (like the install popup) can proceed
+    window.dispatchEvent(new Event('orz-market-tour-done'));
     setOpen(false);
   }
 
