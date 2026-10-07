@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const productIds = (items || []).map((i: any) => i.product_id);
     const { data: products } = await supabase
       .from('products')
-      .select('id, name, price, is_active, is_digital')
+      .select('id, name, price, is_active, is_digital, supplier, supplier_product_id')
       .in('id', productIds)
       .eq('merchant_id', merchant.id);
 
@@ -49,15 +49,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // --- 🚚 SMART SHIPPING: existing modes + state-based zones ---
+    // --- 🚚 SHIPPING CALCULATION ---
     const isPickup = shipping_mode === 'PICKUP';
     const isNeighbourhood = /neigh/i.test(shipping_mode || '');
+    const customerCountry = customer?.country || 'Nigeria';
 
     let finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
+    let supplierShippingCost = 0;
 
-    if (isPickup || isNeighbourhood) {
-      finalShippingCost = 0;
-    } else if (customer?.state) {
+    // Check if order has dropship items
+    const hasDropshipItems = validProducts.some((p: any) => p.supplier && p.supplier_product_id);
+
+    if (hasDropshipItems && !isPickup && !isNeighbourhood) {
+      // Fetch real-time shipping cost from supplier (CJ, etc.)
+      try {
+        const shippingRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/dropshipping/shipping-rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            merchantId: merchant.id,
+            items: orderItems,
+            country: customerCountry,
+          }),
+        });
+        const shippingData = await shippingRes.json();
+        supplierShippingCost = shippingData.shipping_cost || 0;
+      } catch (e) {
+        console.error('Failed to fetch supplier shipping rate:', e);
+        supplierShippingCost = 0;
+      }
+    }
+
+    // If merchant has custom zones AND no dropship items, use zone pricing
+    if (!hasDropshipItems && !isPickup && !isNeighbourhood && customer?.state) {
       const { data: zones } = await supabase
         .from('shipping_zones')
         .select('*')
@@ -76,11 +100,18 @@ export async function POST(request: NextRequest) {
               : Number(zone.flat_fee) || 0;
         }
       }
-      // No zones configured → keeps the flat waybill fee sent by the storefront
+    } else if (isPickup || isNeighbourhood) {
+      finalShippingCost = 0;
+      supplierShippingCost = 0;
+    }
+
+    // For dropship orders, use supplier shipping cost
+    if (hasDropshipItems && supplierShippingCost > 0) {
+      finalShippingCost = supplierShippingCost;
     }
 
     const totalAmount = subtotal + finalShippingCost;
-    // -------------------------------------------------------------
+    // -------------------------------
 
     const shippingAddress =
       shipping_mode === 'PICKUP' || !customer?.address_line1
@@ -88,8 +119,14 @@ export async function POST(request: NextRequest) {
             address_line1: shipping_mode === 'PICKUP' ? 'Store pickup' : 'Digital delivery — no shipping required',
             city: customer?.city || 'N/A',
             state: customer?.state || 'N/A',
+            country: customerCountry,
           }
-        : { address_line1: customer.address_line1, city: customer.city, state: customer.state };
+        : { 
+            address_line1: customer.address_line1, 
+            city: customer.city, 
+            state: customer.state,
+            country: customerCountry,
+          };
 
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       order_number: generateOrderNumber(),
@@ -99,6 +136,8 @@ export async function POST(request: NextRequest) {
       customer_phone: customer?.phone || '',
       subtotal,
       shipping_cost: finalShippingCost,
+      supplier_shipping_cost: supplierShippingCost,
+      shipping_country: customerCountry,
       total_amount: totalAmount,
       currency: 'NGN',
       status: 'pending',
@@ -112,26 +151,14 @@ export async function POST(request: NextRequest) {
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
 
     // --- 📦 DROPSHIPPING DETECTION LOGIC ---
-    const productIdsInOrder = orderItems.map((i: any) => i.product_id);
-    if (productIdsInOrder.length > 0) {
-      const { data: orderedProducts } = await supabase
-        .from('products')
-        .select('id, supplier, supplier_product_id')
-        .in('id', productIdsInOrder);
-
-      const hasDropshipItems = (orderedProducts || []).some(
-        (p: any) => p.supplier && p.supplier_product_id
-      );
-
-      if (hasDropshipItems) {
-        await supabase
-          .from('orders')
-          .update({
-            has_dropship_products: true,
-            supplier_fulfillment_status: 'pending',
-          })
-          .eq('id', order.id);
-      }
+    if (hasDropshipItems) {
+      await supabase
+        .from('orders')
+        .update({
+          has_dropship_products: true,
+          supplier_fulfillment_status: 'pending',
+        })
+        .eq('id', order.id);
     }
     // ------------------------------------
 
