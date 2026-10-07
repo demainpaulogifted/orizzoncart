@@ -5,7 +5,12 @@ import { toast } from 'sonner';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 
 function makeSlug(title: string) {
-  return `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Math.random().toString(36).substring(2, 6)}`;
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+  const suffix = Math.random().toString(36).substring(2, 6);
+  return `${base}-${suffix}`;
 }
 
 export default function SourceDigitalPage() {
