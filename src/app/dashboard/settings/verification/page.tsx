@@ -1,137 +1,202 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 const emptyLoc = { address: '', city: '', state: '' };
 
 export default function VerificationPage() {
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [about, setAbout] = useState('');
-  const [cac, setCac] = useState('');
-  const [logo, setLogo] = useState('');
-  const [locs, setLocs] = useState([
-    { ...emptyLoc },
-    { ...emptyLoc },
-    { ...emptyLoc },
-  ]);
+  const [merchant, setMerchant] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [form, setForm] = useState({
+    business_phone: '',
+    business_email: '',
+    business_about: '',
+    cac_number: '',
+    logo_url: '',
+    business_locations: [emptyLoc, emptyLoc, emptyLoc],
+  });
 
   useEffect(() => {
-    fetch('/api/dashboard/verification')
-      .then((r) => r.json())
-      .then((d) => {
-        setPhone(d.business_phone || '');
-        setEmail(d.business_email || '');
-        setAbout(d.business_about || '');
-        setCac(d.cac_number || '');
-        setLogo(d.logo_url || '');
-        if (Array.isArray(d.business_locations) && d.business_locations.length === 3)
-          setLocs(d.business_locations);
-      })
-      .catch(() => {});
+    load();
   }, []);
 
-  function setLoc(i: number, key: string, value: string) {
-    setLocs((prev) => prev.map((l, idx) => (idx === i ? { ...l, [key]: value } : l)));
+  async function load() {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: m } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (m) {
+      setMerchant(m);
+      setForm({
+        business_phone: m.business_phone || '',
+        business_email: m.business_email || '',
+        business_about: m.business_about || '',
+        cac_number: m.cac_number || '',
+        logo_url: m.logo_url || '',
+        business_locations:
+          Array.isArray(m.business_locations) && m.business_locations.length === 3
+            ? m.business_locations
+            : [emptyLoc, emptyLoc, emptyLoc],
+      });
+    }
+    setLoading(false);
+  }
+
+  function setLoc(i: number, field: string, value: string) {
+    const locs = [...form.business_locations];
+    locs[i] = { ...locs[i], [field]: value };
+    setForm({ ...form, business_locations: locs });
   }
 
   async function save() {
-    setSaving(true);
-    setMsg('');
-    try {
-      const res = await fetch('/api/dashboard/verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          business_phone: phone,
-          business_email: email,
-          business_about: about,
-          cac_number: cac,
-          logo_url: logo,
-          business_locations: locs,
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'Save failed');
-      setMsg('✅ Verified! Your business profile is now public on the marketplace.');
-    } catch (e: any) {
-      setMsg('❌ ' + e.message);
-    } finally {
-      setSaving(false);
+    // Validate required fields (CAC is NOT required)
+    if (!form.business_phone.trim()) return toast.error('Phone number is required');
+    for (let i = 0; i < 3; i++) {
+      const l = form.business_locations[i];
+      if (!l.address.trim() || !l.city.trim() || !l.state.trim()) {
+        return toast.error(`Please fill all 3 fields for Location ${i + 1}`);
+      }
     }
+
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('merchants')
+      .update({
+        business_phone: form.business_phone.trim(),
+        business_email: form.business_email.trim() || null,
+        business_about: form.business_about.trim() || null,
+        cac_number: form.cac_number.trim() || null, // Optional
+        logo_url: form.logo_url.trim() || null,
+        business_locations: form.business_locations,
+      })
+      .eq('id', merchant.id);
+
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success('✅ Submitted! Our team will review and verify your business.');
   }
 
-  const input = 'w-full px-3 py-2 border rounded-lg text-sm mt-1';
-  const label = 'text-xs font-bold text-gray-600';
+  if (loading) return <div className="p-10 text-center text-gray-500">Loading...</div>;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <Link href="/dashboard/settings" className="text-purple-600 text-sm hover:underline">
-        ← Back to Settings
-      </Link>
+    <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div>
+        <Link href="/dashboard/settings" className="text-purple-600 text-sm hover:underline">
+          ← Back to Settings
+        </Link>
+        <h1 className="text-2xl font-bold mt-2">✅ Business Verification</h1>
+        <p className="text-gray-500 text-sm mt-1">
+          Verified sellers get a trust badge, appear on the Marketplace, and show their locations to
+          customers.
+        </p>
+      </div>
 
-      <h1 className="text-2xl font-bold mt-3 mb-1">🛡️ Business Verification</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Required to appear on the OrizzonCart Marketplace as a <b>Verified Seller</b>.
-        This information is shown publicly on your seller profile to protect customers.
-      </p>
-
-      {msg && (
-        <div className={`mb-6 p-4 rounded-lg text-sm ${msg.startsWith('✅') ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-          {msg}
+      {merchant?.is_verified && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-900">
+          ✅ Your business is already <strong>VERIFIED</strong>. You can update details below.
         </div>
       )}
 
-      <div className="bg-white border rounded-xl p-6 space-y-6">
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className={label}>Business Phone Number *</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0803 123 4567" className={input} />
-          </div>
-          <div>
-            <label className={label}>Business Contact Email *</label>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@yourbusiness.ng" className={input} />
-          </div>
+      <div className="bg-white border rounded-xl p-6 space-y-4">
+        <div>
+          <label className="text-sm font-bold text-gray-700 block mb-1">Business Phone *</label>
+          <input
+            value={form.business_phone}
+            onChange={(e) => setForm({ ...form, business_phone: e.target.value })}
+            placeholder="+2348012345678"
+            className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
         <div>
-          <label className={label}>Business Logo URL *</label>
-          <input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://..." className={input} />
-          <p className="text-[10px] text-gray-400 mt-1">Upload your logo in Store Settings first, it auto-fills here.</p>
+          <label className="text-sm font-bold text-gray-700 block mb-1">Business Email</label>
+          <input
+            type="email"
+            value={form.business_email}
+            onChange={(e) => setForm({ ...form, business_email: e.target.value })}
+            placeholder="hello@yourstore.com"
+            className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
         <div>
-          <label className={label}>About Your Business *</label>
-          <textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} placeholder="Tell customers what you sell, how long you have existed, and why they can trust you…" className={input} />
+          <label className="text-sm font-bold text-gray-700 block mb-1">Logo URL</label>
+          <input
+            value={form.logo_url}
+            onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
+            placeholder="https://..."
+            className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
         <div>
-          <label className={label}>CAC / BN Registration Number (optional, boosts trust)</label>
-          <input value={cac} onChange={(e) => setCac(e.target.value)} placeholder="RC1234567" className={input} />
+          <label className="text-sm font-bold text-gray-700 block mb-1">
+            CAC Registration Number <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            value={form.cac_number}
+            onChange={(e) => setForm({ ...form, cac_number: e.target.value })}
+            placeholder="e.g. RC1234567 — leave blank if not registered"
+            className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
-        <div className="space-y-4">
-          <p className={label}>Business Locations * (exactly 3)</p>
-          <p className="text-[10px] text-gray-400 -mt-3">
-            Fewer than 3 branches? Use your shop, office/warehouse, and delivery pickup point.
-          </p>
-          {locs.map((l, i) => (
-            <div key={i} className="border rounded-lg p-4 space-y-3 bg-gray-50">
-              <p className="text-xs font-extrabold text-purple-700">📍 Location {i + 1}</p>
-              <input value={l.address} onChange={(e) => setLoc(i, 'address', e.target.value)} placeholder="Street address" className={input} />
-              <div className="grid grid-cols-2 gap-3">
-                <input value={l.city} onChange={(e) => setLoc(i, 'city', e.target.value)} placeholder="City" className={input} />
-                <input value={l.state} onChange={(e) => setLoc(i, 'state', e.target.value)} placeholder="State" className={input} />
+        <div>
+          <label className="text-sm font-bold text-gray-700 block mb-1">About Your Business</label>
+          <textarea
+            value={form.business_about}
+            onChange={(e) => setForm({ ...form, business_about: e.target.value })}
+            rows={3}
+            placeholder="Tell customers what you sell and why they should trust you..."
+            className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        <div className="space-y-3">
+          <label className="text-sm font-bold text-gray-700 block">
+            Physical Locations * (exactly 3)
+          </label>
+          {form.business_locations.map((loc, i) => (
+            <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
+              <p className="text-xs font-extrabold text-gray-500 uppercase">Location {i + 1}</p>
+              <input
+                value={loc.address}
+                onChange={(e) => setLoc(i, 'address', e.target.value)}
+                placeholder="Street address"
+                className="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={loc.city}
+                  onChange={(e) => setLoc(i, 'city', e.target.value)}
+                  placeholder="City"
+                  className="px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <input
+                  value={loc.state}
+                  onChange={(e) => setLoc(i, 'state', e.target.value)}
+                  placeholder="State"
+                  className="px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500"
+                />
               </div>
             </div>
           ))}
         </div>
 
-        <button onClick={save} disabled={saving} className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50">
-          {saving ? 'Verifying…' : 'Submit & Get Verified ✅'}
+        <button
+          onClick={save}
+          disabled={saving}
+          className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
+        >
+          {saving ? 'Submitting...' : 'Submit for Verification'}
         </button>
       </div>
     </div>
