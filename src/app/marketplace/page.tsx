@@ -6,6 +6,7 @@ import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottom
 import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
 import { MarketplaceVignetteTracker } from '@/components/marketplace/MarketplaceVignetteTracker';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
+import { MarketplaceTour } from '@/components/marketplace/MarketplaceTour';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,7 @@ export default async function MarketplacePage() {
     <>
       <MarketplaceVignetteTracker />
       <MarketplaceAppExperience />
+      <MarketplaceTour />
 
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-40 bg-gradient-to-r from-purple-700 to-blue-700 text-white shadow-md">
