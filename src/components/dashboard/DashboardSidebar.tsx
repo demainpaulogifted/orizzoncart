@@ -6,6 +6,7 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
     { href: '/dashboard/products', icon: '📦', label: 'Products' },
     { href: '/dashboard/reviews', icon: '⭐', label: 'Reviews' },
     { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
+    { href: '/dashboard/orders/dropshipping', icon: '📦', label: 'Dropship' }, // 🆕 ADDED
     { href: '/dashboard/pages', icon: '📄', label: 'Pages' },
     { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
     { href: '/dashboard/marketing', icon: '📣', label: 'Marketing' },
@@ -31,7 +32,6 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
 
       <div className="mt-auto" />
 
-      {/* NEW: Escape hatch back to the public marketplace app */}
       <Link href="/marketplace" target="_blank" prefetch={false} className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors">
         <span className="text-base leading-none">🏪</span>
         <span className="text-[9px] font-semibold mt-1 leading-none">Market</span>
