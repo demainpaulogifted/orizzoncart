@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { SyncDropshipButton } from '@/components/dashboard/SyncDropshipButton';
 
 export default async function ProductsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const cookieStore = await cookies();
@@ -23,7 +23,6 @@ export default async function ProductsPage() {
 
   const storeUrl = merchant?.store_slug ? `https://${merchant.store_slug}.orizzoncart.name.ng` : '#';
 
-  // Check if any products are dropshipped
   const hasDropshipProducts = (products || []).some((p: any) => p.supplier && p.supplier_product_id);
 
   return (
