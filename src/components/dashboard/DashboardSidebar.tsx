@@ -4,13 +4,8 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
   const items = [
     { href: '/dashboard', icon: '📊', label: 'Home' },
     { href: '/dashboard/products', icon: '📦', label: 'Products' },
-    { href: '/dashboard/reviews', icon: '⭐', label: 'Reviews' },
     { href: '/dashboard/orders', icon: '🛒', label: 'Orders' },
-    { href: '/dashboard/orders/dropshipping', icon: '📦', label: 'Dropship' }, // 🆕 ADDED
-    { href: '/dashboard/pages', icon: '📄', label: 'Pages' },
-    { href: '/dashboard/analytics', icon: '📈', label: 'Stats' },
     { href: '/dashboard/marketing', icon: '📣', label: 'Marketing' },
-    { href: '/dashboard/settings/marketplace', icon: '🛍️', label: 'Marketplace' },
     { href: '/dashboard/support', icon: '💬', label: 'Help' },
     { href: '/dashboard/settings', icon: '⚙️', label: 'Settings' },
   ];
