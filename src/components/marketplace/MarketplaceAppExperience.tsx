@@ -7,6 +7,14 @@ export function MarketplaceAppExperience() {
   const [showPopup, setShowPopup] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [tourDone, setTourDone] = useState<boolean>(() => {
+    // Check if tour was already completed on a previous visit
+    try {
+      return localStorage.getItem('orz_market_tour_done') === '1';
+    } catch {
+      return true; // If localStorage fails, assume tour is done
+    }
+  });
 
   useEffect(() => {
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
@@ -17,20 +25,33 @@ export function MarketplaceAppExperience() {
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
 
-    // Bold popup ~8s after first visit; floating button on return visits
+    // 🎯 Listen for the tour completion event
+    const onTourDone = () => setTourDone(true);
+    window.addEventListener('orz-market-tour-done', onTourDone);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('orz-market-tour-done', onTourDone);
+    };
+  }, []);
+
+  useEffect(() => {
+    // 🎯 Only show popup AFTER the tour is done
+    if (!tourDone) return;
+
+    // Bold popup ~8s after first visit (after tour); floating button on return visits
     const seen = sessionStorage.getItem('mkt_app_popup');
     let t: any;
     if (!seen) {
-      t = setTimeout(() => setShowPopup(true), 8000);
+      t = setTimeout(() => setShowPopup(true), 2500); // 2.5s after tour finishes
     } else {
       setShowButton(true);
     }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
       if (t) clearTimeout(t);
     };
-  }, []);
+  }, [tourDone]);
 
   function closePopup() {
     setShowPopup(false);
