@@ -1,6 +1,13 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
   const items = [
     { href: '/dashboard', icon: '📊', label: 'Home' },
     { href: '/dashboard/products', icon: '📦', label: 'Products' },
@@ -13,30 +20,101 @@ export function DashboardSidebar({ merchant, isAdmin }: { merchant: any; isAdmin
 
   if (isAdmin) items.push({ href: '/admin', icon: '👑', label: 'Admin' });
 
+  const external = [
+    { href: '/marketplace', icon: '🏪', label: 'Marketplace' },
+    { href: `/store/${merchant?.store_slug}`, icon: '👀', label: 'View My Store' },
+  ];
+
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 w-14 bg-white border-r border-gray-200 flex flex-col items-center py-3 gap-0.5">
-      <Link href="/dashboard" prefetch={true} className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center text-sm font-extrabold mb-2 shrink-0">
-        O
-      </Link>
+    <>
+      {/* Slim top bar with hamburger */}
+      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-gray-200 flex items-center gap-3 px-4">
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          className="w-10 h-10 rounded-lg hover:bg-gray-100 flex flex-col items-center justify-center gap-1.5 shrink-0"
+        >
+          <span className="block w-5 h-0.5 bg-gray-800 rounded"></span>
+          <span className="block w-5 h-0.5 bg-gray-800 rounded"></span>
+          <span className="block w-5 h-0.5 bg-gray-800 rounded"></span>
+        </button>
+        <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center text-sm font-extrabold shrink-0">
+          O
+        </span>
+        <span className="font-extrabold text-gray-900 truncate">
+          {merchant?.store_name || 'OrizzonCart'}
+        </span>
+      </header>
 
-      {items.map((it) => (
-        <Link key={it.href} href={it.href} prefetch={true} className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors">
-          <span className="text-base leading-none">{it.icon}</span>
-          <span className="text-[9px] font-semibold mt-1 leading-none">{it.label}</span>
-        </Link>
-      ))}
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+      )}
 
-      <div className="mt-auto" />
+      {/* Slide-in drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ${
+          open ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center text-sm font-extrabold shrink-0">
+              O
+            </span>
+            <span className="font-extrabold text-gray-900 truncate">
+              {merchant?.store_name || 'My Store'}
+            </span>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+            className="w-9 h-9 rounded-lg hover:bg-gray-100 text-gray-500 text-lg shrink-0"
+          >
+            ✕
+          </button>
+        </div>
 
-      <Link href="/marketplace" target="_blank" prefetch={false} className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors">
-        <span className="text-base leading-none">🏪</span>
-        <span className="text-[9px] font-semibold mt-1 leading-none">Market</span>
-      </Link>
+        <nav className="p-3 space-y-1 overflow-y-auto">
+          {items.map((it) => {
+            const active = pathname === it.href;
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                  active
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700'
+                }`}
+              >
+                <span className="text-base leading-none">{it.icon}</span>
+                {it.label}
+              </Link>
+            );
+          })}
 
-      <Link href={`/store/${merchant?.store_slug}`} target="_blank" prefetch={false} className="w-12 flex flex-col items-center py-1.5 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-700 transition-colors">
-        <span className="text-base leading-none">👀</span>
-        <span className="text-[9px] font-semibold mt-1 leading-none">Store</span>
-      </Link>
-    </aside>
+          <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
+            {external.map((it) => (
+              <Link
+                key={it.href}
+                href={it.href}
+                target="_blank"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+              >
+                <span className="text-base leading-none">{it.icon}</span>
+                {it.label}
+                <span className="ml-auto text-[10px] text-gray-400">↗</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      </aside>
+    </>
   );
 }
