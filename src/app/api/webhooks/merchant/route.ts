@@ -15,10 +15,27 @@ export async function POST(request: NextRequest) {
         // Update the order status to paid
         await supabase.from('orders').update({
           payment_status: 'paid',
-          status: 'processing', // Move to processing so merchant can fulfill
+          status: 'processing',
           payment_method: 'paystack',
           payment_intent_id: event.data.reference,
         }).eq('id', metadata.order_id);
+
+        // 📦 DROPSHIPPING AUTO-FULFILLMENT
+        const { data: dsOrder } = await supabase
+          .from('orders')
+          .select('id, has_dropship_products, auto_fulfill_enabled')
+          .eq('id', metadata.order_id)
+          .maybeSingle();
+
+        if (dsOrder?.has_dropship_products && dsOrder?.auto_fulfill_enabled !== false) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+          fetch(`${appUrl}/api/dropshipping/fulfill`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: dsOrder.id }),
+          }).catch((err) => console.error('Auto-fulfillment failed:', err));
+        }
+        // -------------------------------
       }
     }
 
