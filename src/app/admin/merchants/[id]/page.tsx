@@ -1,65 +1,81 @@
-import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
-export default async function AdminMerchantDetailPage({ params }: any) {
-  const supabase = await createClient();
+export const dynamic = 'force-dynamic';
+
+export default async function AdminMerchantDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
 
-  // 1. Fetch Merchant Core Details
-  const { data: merchant } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('id', id)
-    .single();
+  // 1) Auth check (user client)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return <div className="p-10 text-center text-red-600 font-bold">Access denied.</div>;
+  }
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (profile?.role !== 'platform_admin' && profile?.role !== 'staff') {
+    return <div className="p-10 text-center text-red-600 font-bold">Access denied.</div>;
+  }
 
-  if (!merchant) return notFound();
+  // 2) 🛠️ FIX: Use the ADMIN client (service role bypasses RLS) for all stats
+  const admin = createAdminClient();
 
-  // 2. Fetch Stats & Store Type Logic
-  const { count: totalProducts } = await supabase
-    .from('products')
-    .select('*', { count: 'exact', head: true })
+  const { data: merchant } = await admin
+    .from('merchants').select('*').eq('id', id).maybeSingle();
+
+  if (!merchant) {
+    return <div className="p-10 text-center text-gray-500">Merchant not found.</div>;
+  }
+
+  const { count: totalProducts } = await admin
+    .from('products').select('*', { count: 'exact', head: true })
     .eq('merchant_id', id);
 
-  const { count: sourcedProducts } = await supabase
-    .from('products')
-    .select('*', { count: 'exact', head: true })
+  const { count: sourcedProducts } = await admin
+    .from('products').select('*', { count: 'exact', head: true })
     .eq('merchant_id', id)
-    .not('catalog_id', 'is', null);
+    .not('supplier', 'is', null);
 
-  const { count: totalOrders } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .eq('merchant_id', id);
+  const { count: totalOrders } = await admin
+    .from('orders').select('*', { count: 'exact', head: true })
+    .eq('merchant_id', id)
+    .eq('payment_status', 'paid');
 
-  const physicalCount = (totalProducts || 0) - (sourcedProducts || 0);
-  const hasDigital = (sourcedProducts || 0) > 0;
-  const hasPhysical = physicalCount > 0;
-  
-  let storeType = 'Physical';
-  if (hasDigital && hasPhysical) storeType = 'Hybrid (Digital + Physical)';
-  else if (hasDigital) storeType = 'Digital Only';
+  const { data: owner } = await admin
+    .from('profiles').select('email').eq('id', merchant.user_id).maybeSingle();
 
-  // 3. Onboarding Checklist Logic
+  const storeType = merchant.merchant_type === 'digital' ? 'Digital' : 'Physical';
+  const email = owner?.email || merchant.business_email || 'N/A';
+  const phone = merchant.business_phone || merchant.whatsapp_number || merchant.phone || 'Not provided';
+
   const checklist = [
-    { label: 'Store Created', done: !!merchant.store_slug },
-    { label: 'Bank Account Linked', done: !!merchant.bank_name && !!merchant.account_number },
-    { label: 'Payment Active', done: merchant.payment_receiving_status === 'ACTIVE' },
-    { label: 'First Product Added', done: (totalProducts || 0) > 0 },
-    { label: 'Sourcing Platform Products', done: (sourcedProducts || 0) > 0 },
-    { label: 'First Sale Completed', done: (totalOrders || 0) > 0 },
+    { done: merchant.payment_receiving_status === 'ACTIVE', label: 'Store activated for payments' },
+    { done: !!(merchant.bank_name && merchant.account_number), label: 'Bank account linked' },
+    { done: !!merchant.payment_activated_at, label: 'Activation fee paid' },
+    { done: (totalProducts || 0) > 0, label: `Products added (${totalProducts || 0})` },
+    { done: (sourcedProducts || 0) > 0, label: `Sourced dropship products (${sourcedProducts || 0})` },
+    { done: (totalOrders || 0) > 0, label: `First order received (${totalOrders || 0})` },
   ];
-
-  const progress = Math.round((checklist.filter(i => i.done).length / checklist.length) * 100);
+  const progress = Math.round((checklist.filter((c) => c.done).length / checklist.length) * 100);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <Link href="/admin" className="text-sm text-purple-600 font-bold hover:underline mb-2 block">← Back to Businesses</Link>
+          <Link href="/admin/businesses" className="text-sm text-purple-600 font-bold hover:underline mb-2 block">
+            ← Back to Businesses
+          </Link>
           <h1 className="text-2xl font-extrabold text-gray-900">{merchant.store_name}</h1>
-          <p className="text-sm text-gray-500">/{merchant.store_slug} • Joined {new Date(merchant.created_at).toLocaleDateString()}</p>
+          <p className="text-sm text-gray-500">
+            /{merchant.store_slug} • Joined {new Date(merchant.created_at).toLocaleDateString()}
+          </p>
         </div>
         <span className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${
           merchant.payment_receiving_status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
@@ -96,12 +112,24 @@ export default async function AdminMerchantDetailPage({ params }: any) {
             <div className="space-y-4 text-sm">
               <div>
                 <p className="text-gray-500 text-xs uppercase font-semibold">Email Address</p>
-                <p className="font-medium text-gray-900 break-all">{merchant.user_email || 'N/A'}</p>
+                <p className="font-medium text-gray-900 break-all">{email}</p>
               </div>
               <div>
                 <p className="text-gray-500 text-xs uppercase font-semibold">Phone Number</p>
-                <p className="font-medium text-gray-900">{merchant.phone || 'Not provided'}</p>
+                <p className="font-medium text-gray-900">{phone}</p>
               </div>
+              {merchant.store_slug && (
+                <div>
+                  <p className="text-gray-500 text-xs uppercase font-semibold">Store URL</p>
+                  <a
+                    href={`https://${merchant.store_slug}.orizzoncart.name.ng`}
+                    target="_blank"
+                    className="font-medium text-purple-700 hover:underline break-all"
+                  >
+                    {merchant.store_slug}.orizzoncart.name.ng
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -137,16 +165,14 @@ export default async function AdminMerchantDetailPage({ params }: any) {
               <h2 className="font-bold text-gray-900">Onboarding Progress</h2>
               <span className="text-sm font-bold text-purple-600">{progress}% Complete</span>
             </div>
-            
-            {/* Progress Bar */}
+
             <div className="w-full bg-gray-100 rounded-full h-2.5 mb-8">
-              <div 
-                className="bg-purple-600 h-2.5 rounded-full transition-all duration-500" 
+              <div
+                className="bg-purple-600 h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
 
-            {/* Checklist */}
             <div className="space-y-4">
               {checklist.map((item, i) => (
                 <div key={i} className="flex items-start gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors">
@@ -154,7 +180,9 @@ export default async function AdminMerchantDetailPage({ params }: any) {
                     item.done ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
                   }`}>
                     {item.done ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
                     ) : (
                       <div className="w-2 h-2 rounded-full bg-gray-400"></div>
                     )}
@@ -163,16 +191,6 @@ export default async function AdminMerchantDetailPage({ params }: any) {
                     <p className={`font-semibold text-sm ${item.done ? 'text-gray-900' : 'text-gray-500'}`}>
                       {item.label}
                     </p>
-                    {!item.done && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {i === 0 && 'Merchant needs to complete store setup.'}
-                        {i === 1 && 'Required for OrizzonPay auto-payouts.'}
-                        {i === 2 && 'Activation fee paid but bank missing?'}
-                        {i === 3 && 'Store is currently empty.'}
-                        {i === 4 && 'Not earning 40% commission yet.'}
-                        {i === 5 && 'No revenue generated so far.'}
-                      </p>
-                    )}
                   </div>
                 </div>
               ))}
