@@ -81,6 +81,32 @@ export async function POST(request: NextRequest) {
 
     await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
 
+    // --- 📦 DROPSHIPPING DETECTION LOGIC ---
+    // Check if any products in this order are sourced from a supplier (CJ, Alibaba, etc.)
+    const productIdsInOrder = orderItems.map((i: any) => i.product_id);
+    if (productIdsInOrder.length > 0) {
+      const { data: orderedProducts } = await supabase
+        .from('products')
+        .select('id, supplier, supplier_product_id')
+        .in('id', productIdsInOrder);
+
+      const hasDropshipItems = (orderedProducts || []).some(
+        (p: any) => p.supplier && p.supplier_product_id
+      );
+
+      if (hasDropshipItems) {
+        // Flag the order so it appears in the Dropshipping Dashboard
+        await supabase
+          .from('orders')
+          .update({
+            has_dropship_products: true,
+            supplier_fulfillment_status: 'pending', // Waiting for payment to fulfill
+          })
+          .eq('id', order.id);
+      }
+    }
+    // ------------------------------------
+
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
     await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
 
@@ -129,7 +155,6 @@ export async function POST(request: NextRequest) {
     });
     let paystackData = await paystackRes.json();
 
-    // SELF-HEAL: stale/invalid split code → wipe, recreate live, retry once
     if (!paystackData.status && /split/i.test(paystackData.message || '')) {
       await supabase.from('merchants').update({ paystack_subaccount_code: null, split_code_platform: null }).eq('id', merchant.id);
       const fresh = await ensureOrizzonPay({ ...merchant, paystack_subaccount_code: null, split_code_platform: null });
