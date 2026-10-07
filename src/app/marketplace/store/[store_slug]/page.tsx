@@ -30,7 +30,6 @@ export default async function SellerProfilePage({
   const eligible =
     m.is_verified && m.payment_receiving_status === 'ACTIVE' && m.is_on_marketplace;
 
-  // Import store reviews for the header rating (only approved ones)
   const { data: reviewRows } = await admin
     .from('store_reviews')
     .select('rating')
@@ -70,13 +69,26 @@ export default async function SellerProfilePage({
           <div className="min-w-0">
             <h1 className="text-xl font-extrabold truncate">{m.store_name}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {/* Step 2: Enhanced verification badges */}
               {m.is_verified ? (
-                <span className="text-[10px] font-extrabold bg-green-500 text-white px-2 py-0.5 rounded-full">
-                  ✅ VERIFIED SELLER
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-extrabold bg-green-500 text-white px-2 py-0.5 rounded-full">
+                    ✅ VERIFIED SELLER
+                  </span>
+                  {locs.length > 0 && (
+                    <span className="text-[10px] font-extrabold bg-white/15 px-2 py-0.5 rounded-full">
+                      📍 {locs.length} verified location{locs.length === 1 ? '' : 's'}
+                    </span>
+                  )}
+                  {m.cac_number && (
+                    <span className="text-[10px] font-extrabold bg-white/15 px-2 py-0.5 rounded-full">
+                      🏛️ CAC: {m.cac_number}
+                    </span>
+                  )}
+                </div>
               ) : (
                 <span className="text-[10px] font-extrabold bg-gray-500 text-white px-2 py-0.5 rounded-full">
-                  UNVERIFIED
+                  UNVERIFIED — Shop at your own risk
                 </span>
               )}
               {reviewCount > 0 && (
@@ -121,7 +133,6 @@ export default async function SellerProfilePage({
           </div>
         </div>
 
-        {/* Imported store reviews */}
         <StoreReviews merchantId={m.id} />
 
         {eligible ? (
