@@ -24,9 +24,11 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { supplier, apiKey, apiSecret } = body;
 
-  if (!supplier || !apiKey) {
-    return NextResponse.json({ error: 'Supplier and API key required' }, { status: 400 });
+  if (!supplier) {
+    return NextResponse.json({ error: 'Supplier required' }, { status: 400 });
   }
+  // CJ needs real keys. Others can start in Estimation Mode with a placeholder.
+  const key = apiKey || 'estimation-mode';
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     .upsert({
       merchant_id: merchant.id,
       supplier: supplier,
-      api_key: apiKey,
+      api_key: key,
       api_secret: apiSecret || null,
       status: 'connected',
     }, { onConflict: 'merchant_id,supplier' });
