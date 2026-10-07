@@ -26,6 +26,23 @@ export async function GET(request: NextRequest) {
         if (ps.status && ps.data?.status === 'success') {
           await admin.from('orders').update({ payment_status: 'paid', status: 'processing', payment_method: order.merchants.preferred_gateway }).eq('id', order.id);
           order = { ...order, payment_status: 'paid', status: 'processing' };
+
+          // 📦 DROPSHIPPING AUTO-FULFILLMENT (safety net if webhook was missed)
+          const { data: dsOrder } = await admin
+            .from('orders')
+            .select('has_dropship_products, auto_fulfill_enabled')
+            .eq('id', order.id)
+            .single();
+
+          if (dsOrder?.has_dropship_products && dsOrder?.auto_fulfill_enabled !== false) {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+            fetch(`${appUrl}/api/dropshipping/fulfill`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: order.id }),
+            }).catch((err) => console.error('Auto-fulfillment failed:', err));
+          }
+          // -------------------------------
         }
       } catch {}
     }
