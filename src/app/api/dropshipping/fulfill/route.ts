@@ -16,28 +16,30 @@ async function placeCJOrder(
   order: any,
   dropshipItems: any[]
 ) {
-  // Build order items for CJ
   const items = dropshipItems.map((item) => ({
     productId: item.supplier_product_id,
     quantity: item.quantity,
-    variantId: item.variant_id || '', // If you store variants
+    variantId: item.variant_id || '',
   }));
+
+  // Flatten shipping address (it's stored as JSONB)
+  const shippingAddr = typeof order.shipping_address === 'string'
+    ? (() => { try { return JSON.parse(order.shipping_address); } catch { return {}; } })()
+    : (order.shipping_address || {});
 
   const params: Record<string, string> = {
     method: 'cjdropshipping.order.create',
     app_key: apiKey,
     timestamp: Math.floor(Date.now() / 1000).toString(),
-    // Customer shipping details
-    receiver_name: order.customer_name,
-    receiver_phone: order.customer_phone,
-    receiver_email: order.customer_email,
-    receiver_country: order.shipping_country || 'Nigeria',
-    receiver_state: order.shipping_state,
-    receiver_city: order.shipping_city,
-    receiver_address: order.shipping_address,
-    receiver_zip: order.shipping_postal_code || '',
-    // Order metadata
-    order_number: order.order_number,
+    receiver_name: order.customer_name || '',
+    receiver_phone: order.customer_phone || '',
+    receiver_email: order.customer_email || '',
+    receiver_country: order.shipping_country || shippingAddr.country || 'Nigeria',
+    receiver_state: order.shipping_state || shippingAddr.state || '',
+    receiver_city: order.shipping_city || shippingAddr.city || '',
+    receiver_address: order.shipping_address_line1 || shippingAddr.address_line1 || '',
+    receiver_zip: order.shipping_postal_code || shippingAddr.postal_code || '',
+    order_number: order.order_number || '',
     items: JSON.stringify(items),
   };
 
@@ -71,7 +73,6 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Fetch order with merchant and items
   const { data: order } = await admin
     .from('orders')
     .select('*, merchants(*), order_items(*)')
@@ -80,6 +81,19 @@ export async function POST(request: Request) {
 
   if (!order) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  }
+
+  // 🛡️ IDEMPOTENCY GUARD: prevent sending the same order to supplier twice
+  if (
+    order.supplier_fulfillment_status &&
+    order.supplier_fulfillment_status !== 'pending' &&
+    order.supplier_fulfillment_status !== 'failed'
+  ) {
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      message: 'Order already forwarded to supplier',
+    });
   }
 
   // Get dropship items details
@@ -133,7 +147,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update order with supplier order ID
     await admin
       .from('orders')
       .update({
@@ -144,7 +157,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, ...result });
   } catch (e: any) {
-    // Mark as failed
     await admin
       .from('orders')
       .update({
