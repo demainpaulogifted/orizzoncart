@@ -3,7 +3,7 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 export async function sendOrderAlert(merchantId: string, order: any, itemsSummary: string) {
   const admin = createAdminClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.vercel.app';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
 
   // 1) PUSH NOTIFICATION
   try {
@@ -34,16 +34,50 @@ export async function sendOrderAlert(merchantId: string, order: any, itemsSummar
       const { data: merchant } = await admin.from('merchants').select('whatsapp_number, store_name').eq('id', merchantId).single();
       if (merchant?.whatsapp_number) {
         const to = merchant.whatsapp_number.replace(/[^0-9]/g, '');
-        const text =
-          `*🛒 NEW ORDER — ${order.order_number}*\n` +
-          `Store: ${merchant.store_name}\n` +
-          `Customer: ${order.customer_name}\n` +
-          `Phone: ${order.customer_phone}\n` +
-          `Items: ${itemsSummary}\n` +
-          `Total: ₦${Number(order.total_amount).toLocaleString()} (PAID)\n` +
-          (order.shipping_address ? `Address: ${order.shipping_address.address_line1}, ${order.shipping_address.city}, ${order.shipping_address.state}\n` : '') +
-          `Tracking: ${order.tracking_number}\n` +
-          `Process now: ${appUrl}/dashboard/orders/${order.id}`;
+        
+        let text = '';
+        
+        // Check if this is a dropship order
+        if (order.has_dropship_products) {
+          // Fetch profit breakdown
+          const { data: orderItems } = await admin
+            .from('order_items')
+            .select('*, products(supplier_cost, supplier_shipping_cost)')
+            .eq('order_id', order.id);
+
+          let supplierCost = 0;
+          for (const item of orderItems || []) {
+            supplierCost += (item.products?.supplier_cost || 0) * item.quantity;
+            supplierCost += (item.products?.supplier_shipping_cost || 0) * item.quantity;
+          }
+          const profit = order.total_amount - supplierCost;
+
+          text =
+            `*🛒 NEW DROPSHIP ORDER — ${order.order_number}*\n` +
+            `Store: ${merchant.store_name}\n` +
+            `Customer: ${order.customer_name}\n` +
+            `Phone: ${order.customer_phone}\n` +
+            `Items: ${itemsSummary}\n\n` +
+            `💵 *Customer Paid:* ₦${Number(order.total_amount).toLocaleString()}\n` +
+            `📦 *Supplier Cost:* ₦${supplierCost.toLocaleString()}\n` +
+            `💰 *YOUR PROFIT:* ₦${profit.toLocaleString()}\n\n` +
+            (order.shipping_address ? `📍 *Ship to:* ${typeof order.shipping_address === 'object' ? `${order.shipping_address.address_line1}, ${order.shipping_address.city}, ${order.shipping_address.state}, ${order.shipping_address.country || 'Nigeria'}` : 'N/A'}\n` : '') +
+            `🔢 *Tracking:* ${order.tracking_number}\n\n` +
+            `👉 *Process:* ${appUrl}/dashboard/orders/dropshipping`;
+        } else {
+          // Regular order
+          text =
+            `*🛒 NEW ORDER — ${order.order_number}*\n` +
+            `Store: ${merchant.store_name}\n` +
+            `Customer: ${order.customer_name}\n` +
+            `Phone: ${order.customer_phone}\n` +
+            `Items: ${itemsSummary}\n` +
+            `Total: ₦${Number(order.total_amount).toLocaleString()} (PAID)\n` +
+            (order.shipping_address ? `Address: ${typeof order.shipping_address === 'object' ? `${order.shipping_address.address_line1}, ${order.shipping_address.city}, ${order.shipping_address.state}` : 'N/A'}\n` : '') +
+            `Tracking: ${order.tracking_number}\n` +
+            `Process now: ${appUrl}/dashboard/orders/${order.id}`;
+        }
+        
         await fetch(`https://api.ultramsg.com/${instance}/messages/chat?token=${token}&to=${to}&body=${encodeURIComponent(text)}`);
       }
     }
