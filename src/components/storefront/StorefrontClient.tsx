@@ -75,11 +75,12 @@ export function StorefrontClient({
       style={styleVars}
       className="min-h-screen bg-[var(--color-bg,#FFFFFF)] text-[var(--color-text,#1A1A1A)]"
     >
+      {/* ✅ AD POLICY: vignette ONLY, after 30 seconds, once per visitor. No push ads here. */}
       <MonetagVignette
         zoneId="11938217"
         storageKey={'store_' + slug + '_vignette'}
-        delay={3000}
-        frequency={3}
+        delay={30000}
+        frequency={1}
       />
       <VisitTracker merchantId={merchant?.id} />
 
@@ -255,7 +256,6 @@ export function StorefrontClient({
                   </div>
                 ))}
               </div>
-              {/* Fix 1: CAC is optional — only shows if provided */}
               <p className="text-[10px] text-stone-400 text-center mt-4">
                 🔒 Verified by OrizzonCart
                 {merchant.cac_number ? ` • CAC: ${merchant.cac_number}` : ''}
