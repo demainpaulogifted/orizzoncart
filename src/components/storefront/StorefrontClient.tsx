@@ -206,7 +206,63 @@ export function StorefrontClient({
         <StoreShop products={products} merchant={merchant} isShowcaseMode={isShowcaseMode} />
       </main>
 
-      {/* ✅ Store Reviews slot — renders ABOVE the footer */}
+      {/* ✅ Verified Business Locations — only shown if merchant is verified */}
+      {merchant?.is_verified &&
+        merchant?.business_locations &&
+        Array.isArray(merchant.business_locations) &&
+        merchant.business_locations.length > 0 && (
+          <section className="bg-white border-t border-stone-200 py-10">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="flex items-center gap-2 mb-5">
+                <span className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm">
+                  ✓
+                </span>
+                <div>
+                  <h2 className="font-extrabold text-lg">Verified Business Locations</h2>
+                  <p className="text-xs text-[var(--color-text-muted,#666666)]">
+                    {merchant.store_name} has been verified by OrizzonCart with these physical
+                    locations
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {merchant.business_locations.map((loc: any, i: number) => (
+                  <div
+                    key={i}
+                    className="border border-stone-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-extrabold flex items-center justify-center shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold uppercase text-stone-500 tracking-wider">
+                          {loc.city || 'City'}, {loc.state || 'State'}
+                        </p>
+                        <p className="text-sm text-[var(--color-text,#1A1A1A)] mt-1">{loc.address}</p>
+                        {merchant.business_phone && (
+                          <a
+                            href={`tel:${merchant.business_phone}`}
+                            className="text-[11px] text-[var(--color-primary,#D4C5B5)] font-bold hover:underline mt-1 inline-block"
+                          >
+                            📞 {merchant.business_phone}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Fix 1: CAC is optional — only shows if provided */}
+              <p className="text-[10px] text-stone-400 text-center mt-4">
+                🔒 Verified by OrizzonCart
+                {merchant.cac_number ? ` • CAC: ${merchant.cac_number}` : ''}
+              </p>
+            </div>
+          </section>
+        )}
+
+      {/* Store Reviews slot — renders ABOVE the footer */}
       {reviewsSlot}
 
       <footer className="border-t border-stone-200 bg-white py-6 mt-10">
