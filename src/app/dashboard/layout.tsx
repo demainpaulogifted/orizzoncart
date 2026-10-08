@@ -24,17 +24,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const cookieStore = await cookies();
   const activeId = cookieStore.get('active_merchant_id')?.value;
 
+  // 🏪 Fetch ALL stores for this account (not just the active one)
   const { data: merchants } = await supabase
     .from('merchants')
     .select('id, store_name, store_slug')
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true });
 
-  const merchant =
-    (merchants || []).find((m: any) => m.id === activeId) || (merchants || [])[0] || null;
+  const list = merchants || [];
+  const merchant = list.find((m: any) => m.id === activeId) || list[0] || null;
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <DashboardSidebar merchant={merchant} isAdmin={isAdmin} />
+      <DashboardSidebar merchant={merchant} merchants={list} isAdmin={isAdmin} />
       <MerchantTour />
       <main className="pt-14 min-w-0">
         <div className="w-full max-w-full px-3 sm:px-5 lg:px-8 py-4 sm:py-6 lg:py-8 min-w-0">
