@@ -19,7 +19,9 @@ export default function AddProductPage() {
     track_inventory: true,
     allow_backorders: false,
   });
-  const [images, setImages] = useState<string[]>([]);
+  
+  // ✅ FIX 1: Use { url: string }[] to match database schema
+  const [images, setImages] = useState<{ url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
@@ -37,17 +39,17 @@ export default function AddProductPage() {
     fetchCategories();
   }, []);
 
-  // ✅ Now supports multiple photos at once
+  // ✅ FIX 2: Corrected string interpolation for fileName
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
 
     try {
-      const uploadedUrls: string[] = [];
+      const uploadedUrls: { url: string }[] = [];
 
       for (const file of Array.from(files)) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error } = await supabase.storage
           .from('product-images')
@@ -62,12 +64,12 @@ export default function AddProductPage() {
           .from('product-images')
           .getPublicUrl(fileName);
 
-        uploadedUrls.push(publicUrl);
+        uploadedUrls.push({ url: publicUrl });
       }
 
       if (uploadedUrls.length > 0) {
         setImages((prev) => [...prev, ...uploadedUrls]);
-        toast.success(`\( {uploadedUrls.length} photo \){uploadedUrls.length > 1 ? 's' : ''} uploaded`);
+        toast.success(`${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''} uploaded`);
       }
     } catch (error: any) {
       toast.error('Upload failed: ' + error.message);
@@ -88,12 +90,21 @@ export default function AddProductPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: merchant } = await supabase
+      // ✅ FIX 3: Multi-store safe merchant lookup (uses active_merchant_id cookie)
+      const activeMerchantId = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('active_merchant_id='))
+        ?.split('=')[1];
+
+      const { data: merchants } = await supabase
         .from('merchants')
         .select('id')
-        .eq('user_id', user.id)
-        .single();
-      if (!merchant) throw new Error('Merchant not found');
+        .eq('user_id', user.id);
+
+      const list = merchants || [];
+      const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
+      
+      if (!merchant) throw new Error('No store found. Please create a store first.');
 
       const slug = generateSlug(form.name);
 
@@ -102,7 +113,7 @@ export default function AddProductPage() {
         price: parseFloat(form.price),
         description: form.description,
         category: form.category,
-        images: images,
+        images: images, // Now correctly { url: string }[]
         slug: slug,
         is_digital: form.is_digital,
         is_active: true,
@@ -117,6 +128,7 @@ export default function AddProductPage() {
 
       toast.success('Product created successfully!');
       router.push('/dashboard/products');
+      router.refresh();
     } catch (error: any) {
       toast.error('Failed to create product: ' + error.message);
     } finally {
@@ -138,13 +150,13 @@ export default function AddProductPage() {
           {/* Thumbnails */}
           {images.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
-              {images.map((url, index) => (
-                <div key={url} className="relative aspect-square rounded-xl overflow-hidden border bg-gray-100">
-                  <Image src={url} alt={`Product ${index + 1}`} fill className="object-cover" />
+              {images.map((img, index) => (
+                <div key={img.url} className="relative aspect-square rounded-xl overflow-hidden border bg-gray-100">
+                  <Image src={img.url} alt={`Product ${index + 1}`} fill className="object-cover" />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold"
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold flex items-center justify-center"
                   >
                     ×
                   </button>
