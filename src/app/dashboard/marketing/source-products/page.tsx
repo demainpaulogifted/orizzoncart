@@ -146,21 +146,53 @@ export default function SourceProductsPage() {
 
   // 🔗 Import by CJ product link — works even while CJ API is upgrading
   async function importByLink() {
-    const url = prompt('Paste the CJ product link (copy it from the CJ app or website):');
+    const url = prompt('Paste the CJ product link (from the CJ app or website):');
     if (!url) return;
-    const sellingPrice = prompt('Enter your selling price (₦):');
+
+    // 1) Fetch + parse real product data
+    setImportingUrl(true);
+    let draft: any = null;
+    try {
+      const res = await fetch('/api/dropshipping/import-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      draft = data.draft;
+    } catch (e: any) {
+      toast.error(e.message);
+      setImportingUrl(false);
+      return;
+    }
+    setImportingUrl(false);
+
+    // 2) Show cost + per-country shipping, THEN let merchant price it
+    const matrix = Object.entries(draft.shipping || {})
+      .map(([c, v]) => `\( {c}: ₦ \){Number(v).toLocaleString()}`)
+      .join('  •  ');
+
+    const sellingPrice = prompt(
+      `📦 ${draft.title}\n\n` +
+      `Supplier cost: \( {draft.currency === 'NGN' ? '₦' : ' \)'}\( {Number(draft.cost).toLocaleString()} (≈ ₦ \){Number(draft.costNgn).toLocaleString()})\n` +
+      `Est. shipping — ${matrix}\n` +
+      `(estimates until CJ API is restored)\n\n` +
+      `Enter your selling price (₦):`
+    );
     if (!sellingPrice) return;
 
+    // 3) Save with the chosen price
     setImportingUrl(true);
     try {
       const res = await fetch('/api/dropshipping/import-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, sellingPrice: Number(sellingPrice) }),
+        body: JSON.stringify({ draft, sellingPrice: Number(sellingPrice) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(`✅ Imported: ${data.title}`);
+      toast.success(`✅ Imported: ${draft.title}`);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
