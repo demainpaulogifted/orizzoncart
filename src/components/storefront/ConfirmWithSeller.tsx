@@ -33,18 +33,19 @@ function formatLastSeen(iso: string | null | undefined): string {
   if (mins < 60) return 'Active now';
   if (hours < 24) return 'Active today';
   if (days === 1) return 'Last seen 1 day ago';
-  if (days < 7) return `Last seen ${days} days ago`;
+  if (days < 7) return 'Last seen ' + days + ' days ago';
   if (days < 14) return 'Inactive for over a week';
-  return `Last seen ${days} days ago`;
+  return 'Last seen ' + days + ' days ago';
 }
 
 function getPublicLocation(merchant: ConfirmWithSellerProps['merchant']): string | null {
-  const loc = Array.isArray(merchant.business_locations) && merchant.business_locations.length > 0
-    ? merchant.business_locations[0]
-    : null;
-  const state = loc?.state || merchant.business_state || '';
-  const lga = loc?.city || merchant.business_lga || '';
-  if (state && lga) return `${state} · ${lga}`;
+  const loc =
+    Array.isArray(merchant.business_locations) && merchant.business_locations.length > 0
+      ? merchant.business_locations[0]
+      : null;
+  const state = (loc && loc.state) || merchant.business_state || '';
+  const lga = (loc && loc.city) || merchant.business_lga || '';
+  if (state && lga) return state + ' · ' + lga;
   if (state) return state;
   if (lga) return lga;
   return null;
@@ -69,20 +70,25 @@ export default function ConfirmWithSeller({ product, merchant }: ConfirmWithSell
   const productUrl =
     typeof window !== 'undefined'
       ? window.location.href
-      : `https://\( {merchant.store_slug}.orizzoncart.name.ng/p/ \){product.slug || product.id}`;
+      : 'https://' + (merchant.store_slug || 'store') + '.orizzoncart.name.ng/p/' + (product.slug || product.id);
 
-  const priceText = product.price != null ? `₦${Number(product.price).toLocaleString()}` : '';
+  const priceText =
+    product.price != null ? '₦' + Number(product.price).toLocaleString() : '';
+  const pricePart = priceText ? ' (' + priceText + ')' : '';
+
   const message =
-    `Hi, I'm interested in *\( {product.name}* \){priceText ? ` (${priceText})` : ''}.\n\n` +
-    `Product link: ${productUrl}\n\n` +
-    `Is it still available?`;
+    "Hi, I'm interested in *" +
+    product.name +
+    '*' +
+    pricePart +
+    '.\n\nProduct link: ' +
+    productUrl +
+    '\n\nIs it still available?';
 
   const waLink = wa
-    ? `https://wa.me/\( {wa}?text= \){encodeURIComponent(message)}`
+    ? 'https://wa.me/' + wa + '?text=' + encodeURIComponent(message)
     : null;
-  const smsLink = wa
-    ? `sms:+\( {wa}?body= \){encodeURIComponent(message)}`
-    : null;
+  const smsLink = wa ? 'sms:+' + wa + '?body=' + encodeURIComponent(message) : null;
 
   return (
     <div className="w-full">
@@ -107,9 +113,7 @@ export default function ConfirmWithSeller({ product, merchant }: ConfirmWithSell
                   </span>
                 )}
               </p>
-              {location && (
-                <p className="text-sm text-gray-600 mt-0.5">📍 {location}</p>
-              )}
+              {location && <p className="text-sm text-gray-600 mt-0.5">📍 {location}</p>}
               <p className="text-sm text-gray-500 mt-0.5">🕒 {lastSeen}</p>
             </div>
             <button
