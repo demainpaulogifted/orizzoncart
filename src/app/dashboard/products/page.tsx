@@ -32,11 +32,23 @@ export default async function ProductsPage() {
           <h1 className="text-2xl font-bold">Products</h1>
           <p className="text-gray-600 text-sm">{products?.length || 0} products in {merchant?.store_name || 'your store'}</p>
         </div>
-        <div className="flex gap-2">
-          {hasDropshipProducts && <SyncDropshipButton />}
-          <Link href="/dashboard/products/add" className="px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 shrink-0">
+
+        {/* Buttons: Add Product is primary, Sync is secondary */}
+        <div className="flex items-center gap-2">
+          {/* Primary button - Add Product */}
+          <Link
+            href="/dashboard/products/add"
+            className="px-5 py-2.5 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 shadow-sm shrink-0"
+          >
             + Add Product
           </Link>
+
+          {/* Secondary button - Sync (only shows if you have dropship products) */}
+          {hasDropshipProducts && (
+            <div className="opacity-70 hover:opacity-100 transition-opacity">
+              <SyncDropshipButton />
+            </div>
+          )}
         </div>
       </div>
 
@@ -45,7 +57,10 @@ export default async function ProductsPage() {
           <p className="text-5xl mb-4">📦</p>
           <h2 className="text-xl font-bold mb-2">No products yet</h2>
           <p className="text-gray-600 mb-6">Add your first product — it only takes a name, a price and a photo.</p>
-          <Link href="/dashboard/products/add" className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700">
+          <Link
+            href="/dashboard/products/add"
+            className="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700"
+          >
             Add Your First Product
           </Link>
         </div>
@@ -57,21 +72,27 @@ export default async function ProductsPage() {
                 <div className="min-w-0">
                   <p className="font-bold text-gray-900 truncate">{p.name}</p>
                   <p className="text-sm font-extrabold text-purple-700 mt-0.5">{formatCurrency(p.price)}</p>
-                  {p.category && <p className="text-[11px] text-gray-500 mt-0.5 uppercase font-bold">{p.category}</p>}
+                  {p.category && (
+                    <p className="text-[11px] text-gray-500 mt-0.5 uppercase font-bold">{p.category}</p>
+                  )}
                   {p.supplier && (
                     <p className="text-[10px] text-blue-600 mt-1 font-bold">
                       📦 Dropshipped from {p.supplier.toUpperCase()}
                     </p>
                   )}
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                <span
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
+                    p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
                   {p.is_active ? 'Active' : 'Hidden'}
                 </span>
               </div>
 
               <div className="flex gap-2 pt-1 border-t">
                 <Link
-                  href={`${storeUrl}/p/${p.slug || p.id}`}
+                  href={`\( {storeUrl}/p/ \){p.slug || p.id}`}
                   target="_blank"
                   className="flex-1 text-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
                 >
