@@ -5,7 +5,6 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { getActiveMerchant } from '@/lib/active-merchant';
 
 const CJ_BASE = 'https://api.cjdropshipping.com';
-const CJ_DEV = 'https://developers.cjdropshipping.com';
 
 async function probe(name: string, url: string, init: RequestInit) {
   try {
@@ -17,6 +16,10 @@ async function probe(name: string, url: string, init: RequestInit) {
   } catch (e: any) {
     return { name, status: 0, data: null, text: String(e.message) };
   }
+}
+
+function H(token: string, extra: Record<string, string> = {}) {
+  return { 'CJ-Access-Token': token, Authorization: `Bearer ${token}`, ...extra };
 }
 
 function extractList(data: any): any[] {
@@ -37,6 +40,14 @@ function normalizeProduct(p: any) {
     cost: Number(p.price ?? p.salePrice ?? p.cost ?? 0),
     shipping_cost: Number(p.shippingCost ?? p.logisticsPrice ?? p.shippingFee ?? 0),
     category: p.categoryNameEn || p.categoryName || p.category || 'General',
+  };
+}
+
+function mcpInit(token: string): RequestInit {
+  return {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...H(token) },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
   };
 }
 
@@ -89,29 +100,38 @@ export async function POST(request: Request) {
   const secret: string = connection.api_secret || '';
   const kw = encodeURIComponent(keyword);
 
-  // 🔬 Probe every known CJ endpoint + auth style; first one that returns products wins
   const candidates: [string, string, RequestInit][] = [
-    ['v2-GET-token', `${CJ_BASE}/api2/v2/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { 'CJ-Access-Token': token } }],
-    ['v2-GET-bearer', `${CJ_BASE}/api2/v2/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { Authorization: `Bearer ${token}` } }],
-    ['v2-POST-token', `${CJ_BASE}/api2/v2/product/productList`, { method: 'POST', headers: { 'CJ-Access-Token': token, 'Content-Type': 'application/json' }, body: JSON.stringify({ keyword, page: 1, limit: 20 }) }],
-    ['v1-GET-token', `${CJ_BASE}/api2/v1/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { 'CJ-Access-Token': token } }],
-    ['dev-GET-token', `${CJ_DEV}/api2/v2/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { 'CJ-Access-Token': token } }],
-    ['legacy-dev', `${CJ_DEV}/api/router.do`, legacyInit(token, secret, keyword)],
+    // MCP discovery — CJ lists its own tools if alive
+    ['mcp', `${CJ_BASE}/mcp`, mcpInit(token)],
+    ['mcp-sse', `${CJ_BASE}/api2/v2/mcp`, mcpInit(token)],
+    // More REST path shapes
+    ['v2-search', `${CJ_BASE}/api2/v2/product/search?keyword=${kw}&page=1&limit=20`, { headers: H(token) }],
+    ['v2-list', `${CJ_BASE}/api2/v2/product/list?keyword=${kw}&page=1&limit=20`, { headers: H(token) }],
+    ['v2-products', `${CJ_BASE}/api2/v2/products?keyword=${kw}&page=1&limit=20`, { headers: H(token) }],
+    ['api-productList', `${CJ_BASE}/api/product/productList?keyword=${kw}&page=1&limit=20`, { headers: H(token) }],
+    ['openapi', `${CJ_BASE}/openapi/product/productList?keyword=${kw}&page=1&limit=20`, { headers: H(token) }],
+    ['legacy-signed', `${CJ_BASE}/api/router.do`, legacyInit(token, secret, keyword)],
   ];
 
   const results: string[] = [];
   for (const [name, url, init] of candidates) {
     const r = await probe(name, url, init);
+
+    // 🎯 MCP alive? CJ just told us its exact tool names
+    const tools = r.data?.result?.tools;
+    if (Array.isArray(tools) && tools.length) {
+      return NextResponse.json(
+        { error: `MCP ALIVE! tools: ${tools.map((t: any) => t.name).join(', ')}` },
+        { status: 500 }
+      );
+    }
+
     const list = extractList(r.data);
     if (list.length) {
       return NextResponse.json({ products: list.map(normalizeProduct), source: name });
     }
-    results.push(`${name}→${r.status}:${r.text.replace(/\s+/g, ' ').slice(0, 70)}`);
+    results.push(`${name}→${r.status}:${r.text.replace(/\s+/g, ' ').slice(0, 60)}`);
   }
 
-  // None worked → show the full probe report so we can lock the right endpoint in one edit
-  return NextResponse.json(
-    { error: `CJ probe report: ${results.join(' | ')}` },
-    { status: 500 }
-  );
+  return NextResponse.json({ error: `CJ probe report: ${results.join(' | ')}` }, { status: 500 });
 }
