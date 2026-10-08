@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 import ProductCard from '@/components/storefront/ProductCard';
+import ConfirmWithSeller from '@/components/storefront/ConfirmWithSeller';
 
 interface ProductDetailClientProps {
   product: any;
@@ -99,7 +100,7 @@ export default function ProductDetailClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ✅ MONETAG VIGNETTE: Shows on product pages every 2nd visit */}
+      
 
       {/* Professional Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b shadow-sm">
@@ -278,6 +279,8 @@ export default function ProductDetailClient({
                 </div>
               </div>
             </div>
+
+            <ConfirmWithSeller product={product} merchant={merchant} />
 
             <div className="grid grid-cols-3 gap-4 pt-6 border-t">
               <div className="text-center p-3 bg-white rounded-xl border">

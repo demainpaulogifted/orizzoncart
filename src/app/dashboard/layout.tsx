@@ -24,7 +24,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const cookieStore = await cookies();
   const activeId = cookieStore.get('active_merchant_id')?.value;
 
-  // 🏪 Fetch ALL stores for this account (not just the active one)
+  // Fetch ALL stores for this account
   const { data: merchants } = await supabase
     .from('merchants')
     .select('id, store_name, store_slug')
@@ -33,6 +33,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const list = merchants || [];
   const merchant = list.find((m: any) => m.id === activeId) || list[0] || null;
+
+  // Heartbeat: mark this merchant as active (last dashboard visit)
+  if (merchant?.id) {
+    await supabase
+      .from('merchants')
+      .update({ last_dashboard_at: new Date().toISOString() })
+      .eq('id', merchant.id);
+  }
 
   return (
     <div className="min-h-screen bg-slate-100">

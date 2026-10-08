@@ -78,13 +78,20 @@ export default async function MarketplacePage() {
   // 🔒 STRICT FILTER: A merchant MUST meet ALL 4 conditions to appear here
   const { data: merchants } = await admin
     .from('merchants')
-    .select('id, store_slug, store_name, logo_url, theme_id')
+    .select('id, store_slug, store_name, logo_url, theme_id, last_dashboard_at')
     .eq('is_on_marketplace', true)          // 1. They toggled it ON in settings
     .eq('payment_receiving_status', 'ACTIVE') // 2. They paid activation
     .eq('is_verified', true)                // 3. They are verified
     .eq('is_active', true);                 // 4. Store is not suspended
+  // 5. Only show merchants active in the last 7 days on homepage rails
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const activeMerchants = (merchants || []).filter(
+    (m: any) => m.last_dashboard_at && m.last_dashboard_at >= sevenDaysAgo
+  );
+  // Prefer active merchants; fall back to all verified if none are active yet
+  const displayMerchants = activeMerchants.length > 0 ? activeMerchants : (merchants || []);
 
-  const merchantIds = merchants?.map((m) => m.id) || [];
+  const merchantIds = displayMerchants.map((m: any) => m.id);
 
   const { data: products } = merchantIds.length
     ? await admin
@@ -96,7 +103,7 @@ export default async function MarketplacePage() {
         .limit(60)
     : { data: [] as any[] };
 
-  const byId = new Map((merchants || []).map((m) => [m.id, m]));
+  const byId = new Map(displayMerchants.map((m: any) => [m.id, m]));
   const all = seededShuffle(
     (products || []).map((p: any) => ({ ...p, merchant: byId.get(p.merchant_id) })),
     seed
@@ -185,11 +192,11 @@ export default async function MarketplacePage() {
           </div>
 
           {/* Featured stores rail */}
-          {(merchants || []).length > 0 && (
+          {displayMerchants.length > 0 && (
             <section>
               <h2 className="font-extrabold text-lg mb-3">🏪 Featured Stores</h2>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-                {(merchants || []).map((m: any) => {
+                {displayMerchants.map((m: any) => {
                   const t = themeFor(m.theme_id);
                   return (
                     <Link
