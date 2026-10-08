@@ -37,6 +37,7 @@ export default function SourceProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState('');
+  const [importingUrl, setImportingUrl] = useState(false);
 
   useEffect(() => {
     fetch('/api/dropshipping/connections')
@@ -143,6 +144,30 @@ export default function SourceProductsPage() {
     }
   }
 
+  // 🔗 Import by CJ product link — works even while CJ API is upgrading
+  async function importByLink() {
+    const url = prompt('Paste the CJ product link (copy it from the CJ app or website):');
+    if (!url) return;
+    const sellingPrice = prompt('Enter your selling price (₦):');
+    if (!sellingPrice) return;
+
+    setImportingUrl(true);
+    try {
+      const res = await fetch('/api/dropshipping/import-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, sellingPrice: Number(sellingPrice) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`✅ Imported: ${data.title}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setImportingUrl(false);
+    }
+  }
+
   const connectedSuppliers = connections.map(c => c.supplier);
 
   return (
@@ -157,6 +182,23 @@ export default function SourceProductsPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900">
         <strong>🌍 Live vs Coming Soon:</strong> CJ Dropshipping connects with a real API key for live search & auto-fulfillment. Alibaba & AliExpress are in official API approval — they'll unlock automatically once access is granted. No fake connections.
+      </div>
+
+      {/* 🔗 Import by CJ Link — works during CJ API migration */}
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-green-900">🔗 CJ API upgrading? No problem.</p>
+          <p className="text-xs text-green-700 mt-0.5">
+            Paste any CJ product link and import it instantly — works even while CJ's API is down.
+          </p>
+        </div>
+        <button
+          onClick={importByLink}
+          disabled={importingUrl}
+          className="px-4 py-2.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 disabled:opacity-50 shrink-0"
+        >
+          {importingUrl ? 'Importing...' : 'Import by Link'}
+        </button>
       </div>
 
       {/* Supplier Connections */}
