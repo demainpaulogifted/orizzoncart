@@ -86,7 +86,7 @@ export default function MarketplaceCartPage() {
                 <div className="p-4 border-t border-gray-100">
                   <Link
                     href={merchantCart.storefrontUrl}
-                    target="_blank" // Open storefront in new tab to keep marketplace open
+                    target="_blank"
                     className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-2.5 rounded-lg font-medium hover:bg-purple-700 transition"
                   >
                     Go to {merchantCart.slug.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase())} Cart
@@ -97,6 +97,20 @@ export default function MarketplaceCartPage() {
             ))}
           </div>
         )}
+
+        {/* ✅ ADDED: Track Past Orders Section */}
+        <div className="mt-12 pt-8 border-t border-gray-200 text-center">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Already purchased something?</h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Enter the email you used at checkout to track your orders and get tracking numbers.
+          </p>
+          <Link 
+            href="/marketplace/orders" 
+            className="inline-flex items-center gap-2 text-purple-600 font-semibold text-sm hover:text-purple-700 hover:underline"
+          >
+            <span>📦</span> Track Past Orders by Email
+          </Link>
+        </div>
       </main>
     </div>
   );
