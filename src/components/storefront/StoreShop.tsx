@@ -2,10 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import ProductCard from './ProductCard';
-import { MonetagInPage } from '@/components/ads/MonetagInPage';
 
 // ⚠️ REPLACE THIS WITH YOUR ACTUAL MONETAG IN-PAGE ZONE ID
-const IN_PAGE_ZONE_ID = "11902740"; 
 
 interface StoreShopProps {
   products: any[];
@@ -31,7 +29,6 @@ export function StoreShop({ products, merchant, isShowcaseMode = false }: StoreS
   });
 
   // Show an in-content ad after every 4th product
-  const adPositions = [4, 8, 12, 16, 20];
 
   return (
     <div className="space-y-6">
@@ -75,15 +72,6 @@ export function StoreShop({ products, merchant, isShowcaseMode = false }: StoreS
               isShowcaseMode={isShowcaseMode}
             />
 
-            {/* Insert In-Content Ad after every 4th product */}
-            {adPositions.includes(index + 1) && (
-              <div className="col-span-2 sm:col-span-3 lg:col-span-4 mt-4">
-                <MonetagInPage
-                  zoneId={IN_PAGE_ZONE_ID}
-                  className="rounded-xl border border-gray-200 bg-white min-h-[100px] flex items-center justify-center"
-                />
-              </div>
-            )}
           </div>
         ))}
       </div>

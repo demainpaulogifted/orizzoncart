@@ -4,7 +4,6 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { THEMES } from '@/lib/themes';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
-import { MarketplaceVignetteTracker } from '@/components/marketplace/MarketplaceVignetteTracker';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
 import { MarketplaceTour } from '@/components/marketplace/MarketplaceTour';
 
@@ -142,7 +141,6 @@ export default async function MarketplacePage() {
 
   return (
     <>
-      <MarketplaceVignetteTracker />
       <MarketplaceAppExperience />
       <MarketplaceTour />
 

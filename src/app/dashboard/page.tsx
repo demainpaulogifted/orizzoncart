@@ -3,9 +3,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
-import { MonetagInPage } from '@/components/ads/MonetagInPage';
-import { AdManager } from '@/lib/ad-manager';
 
 export default function DashboardHome() {
   const [merchant, setMerchant] = useState<any>(null);
@@ -53,14 +50,9 @@ export default function DashboardHome() {
   const complete = progress === 100;
 
   // ✅ Check if we should show vignette (every 3 page triggers)
-  const shouldShowVignette = AdManager.shouldShowDashboardVignette();
 
   return (
     <>
-      {/* ✅ VIGNETTE AD: Shows only every 3rd dashboard page view */}
-      {shouldShowVignette && (
-        <MonetagVignette
-          zoneId="11902705"
           storageKey="dash_views"
           delay={3000}
           frequency={3}
@@ -151,9 +143,6 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* ✅ IN-PAGE PUSH AD: Clean, non-intrusive banner at the very bottom of the dashboard */}
-        <MonetagInPage
-          zoneId="11902709"
           
           className="rounded-xl border border-gray-200 bg-white"
         />

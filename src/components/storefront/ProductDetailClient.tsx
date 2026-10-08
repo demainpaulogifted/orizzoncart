@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 import ProductCard from '@/components/storefront/ProductCard';
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
 
 interface ProductDetailClientProps {
   product: any;
@@ -101,7 +100,6 @@ export default function ProductDetailClient({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ✅ MONETAG VIGNETTE: Shows on product pages every 2nd visit */}
-      <MonetagVignette zoneId="11938217" storageKey={`prod_${storeSlug}_vignette`} delay={4000} frequency={2} />
 
       {/* Professional Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b shadow-sm">

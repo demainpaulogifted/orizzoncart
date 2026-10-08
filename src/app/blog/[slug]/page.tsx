@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/admin';
 import type { Metadata } from 'next';
-import { MonetagReadingTimeVignette } from '@/components/ads/MonetagReadingTimeVignette';
 
 // ✅ DYNAMIC SEO METADATA
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -58,7 +57,6 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   return (
     <>
       {/* ✅ READING TIME AD: Triggers after 60 seconds of reading */}
-      <MonetagReadingTimeVignette zoneId="11938217" triggerSeconds={60} />
 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
       

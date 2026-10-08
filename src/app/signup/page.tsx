@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
 import { MarketplaceReturnBanner } from '@/components/marketplace/MarketplaceReturnBanner';
 
 export default function SignupPage() {
@@ -40,11 +39,6 @@ export default function SignupPage() {
   return (
     <>
       {/* ✅ VIGNETTE AD: Shows once on signup page after 5 seconds */}
-      <MonetagVignette
-        zoneId="11902705"
-        storageKey="signup_vignette"
-        delay={5000}
-        frequency={1}
       />
 
       {/* Escape hatch for shoppers */}
