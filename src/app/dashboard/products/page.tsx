@@ -91,8 +91,9 @@ export default async function ProductsPage() {
               </div>
 
               <div className="flex gap-2 pt-1 border-t">
+                {/* ✅ FIX: Corrected string interpolation for the View link */}
                 <Link
-                  href={`\( {storeUrl}/p/ \){p.slug || p.id}`}
+                  href={`${storeUrl}/p/${p.slug || p.id}`}
                   target="_blank"
                   className="flex-1 text-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200"
                 >
