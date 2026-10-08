@@ -5,14 +5,17 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { getActiveMerchant } from '@/lib/active-merchant';
 
 const CJ_BASE = 'https://api.cjdropshipping.com';
+const CJ_DEV = 'https://developers.cjdropshipping.com';
 
-// Never crash on non-JSON replies — capture raw text for diagnostics
-async function safeJson(res: Response) {
-  const text = await res.text();
+async function probe(name: string, url: string, init: RequestInit) {
   try {
-    return { data: JSON.parse(text), text };
-  } catch {
-    return { data: null, text };
+    const res = await fetch(url, { ...init, cache: 'no-store' });
+    const text = await res.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch {}
+    return { name, status: res.status, data, text };
+  } catch (e: any) {
+    return { name, status: 0, data: null, text: String(e.message) };
   }
 }
 
@@ -37,40 +40,7 @@ function normalizeProduct(p: any) {
   };
 }
 
-// ---------- NEW CJ API (CJ-Access-Token) ----------
-async function cjSearchV2(token: string, keyword: string): Promise<{ list: any[] | null; raw: string }> {
-  // Candidate 1: GET
-  try {
-    const res = await fetch(
-      `${CJ_BASE}/api2/v2/product/productList?keyword=${encodeURIComponent(keyword)}&page=1&limit=20`,
-      { headers: { 'CJ-Access-Token': token }, cache: 'no-store' }
-    );
-    const { data, text } = await safeJson(res);
-    if (data && res.ok) {
-      const list = extractList(data);
-      if (list.length || data.code === 200 || data.success === true) return { list, raw: text };
-    }
-  } catch {}
-
-  // Candidate 2: POST JSON
-  try {
-    const res = await fetch(`${CJ_BASE}/api2/v2/product/productList`, {
-      method: 'POST',
-      headers: { 'CJ-Access-Token': token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword, page: 1, limit: 20 }),
-    });
-    const { data, text } = await safeJson(res);
-    if (data && res.ok) {
-      const list = extractList(data);
-      if (list.length || data.code === 200 || data.success === true) return { list, raw: text };
-    }
-  } catch {}
-
-  return { list: null, raw: '' };
-}
-
-// ---------- LEGACY CJ API (router.do + MD5 sign) ----------
-async function cjSearchLegacy(apiKey: string, apiSecret: string, keyword: string): Promise<{ list: any[] | null; raw: string }> {
+function legacyInit(apiKey: string, apiSecret: string, keyword: string): RequestInit {
   const params: Record<string, string> = {
     method: 'cjdropshipping.product.search',
     app_key: apiKey,
@@ -80,22 +50,17 @@ async function cjSearchLegacy(apiKey: string, apiSecret: string, keyword: string
     page_size: '20',
   };
   const sorted = Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join('&');
-  params.sign = crypto.createHash('md5').update(sorted + (apiSecret || '')).digest('hex');
-
-  const res = await fetch(`${CJ_BASE}/api/router.do`, {
+  params.sign = crypto.createHash('md5').update(sorted + apiSecret).digest('hex');
+  return {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(params),
-  });
-  const { data, text } = await safeJson(res);
-  if (data?.code === 200) return { list: extractList(data), raw: text };
-  return { list: null, raw: text.slice(0, 300) };
+  };
 }
 
-// ---------- MAIN ----------
 export async function POST(request: Request) {
   const body = await request.json();
-  const { supplier, keyword, page = 1 } = body;
+  const { supplier, keyword } = body;
 
   if (!supplier || !keyword) {
     return NextResponse.json({ error: 'Supplier and keyword required' }, { status: 400 });
@@ -117,28 +82,36 @@ export async function POST(request: Request) {
     .eq('status', 'connected')
     .maybeSingle();
 
-  if (!connection) {
-    return NextResponse.json({ error: `Not connected to ${supplier}` }, { status: 400 });
+  if (!connection) return NextResponse.json({ error: `Not connected to ${supplier}` }, { status: 400 });
+  if (supplier !== 'cj') return NextResponse.json({ error: 'Supplier not supported yet' }, { status: 400 });
+
+  const token: string = connection.api_key;
+  const secret: string = connection.api_secret || '';
+  const kw = encodeURIComponent(keyword);
+
+  // 🔬 Probe every known CJ endpoint + auth style; first one that returns products wins
+  const candidates: [string, string, RequestInit][] = [
+    ['v2-GET-token', `${CJ_BASE}/api2/v2/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { 'CJ-Access-Token': token } }],
+    ['v2-GET-bearer', `${CJ_BASE}/api2/v2/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { Authorization: `Bearer ${token}` } }],
+    ['v2-POST-token', `${CJ_BASE}/api2/v2/product/productList`, { method: 'POST', headers: { 'CJ-Access-Token': token, 'Content-Type': 'application/json' }, body: JSON.stringify({ keyword, page: 1, limit: 20 }) }],
+    ['v1-GET-token', `${CJ_BASE}/api2/v1/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { 'CJ-Access-Token': token } }],
+    ['dev-GET-token', `${CJ_DEV}/api2/v2/product/productList?keyword=${kw}&page=1&limit=20`, { headers: { 'CJ-Access-Token': token } }],
+    ['legacy-dev', `${CJ_DEV}/api/router.do`, legacyInit(token, secret, keyword)],
+  ];
+
+  const results: string[] = [];
+  for (const [name, url, init] of candidates) {
+    const r = await probe(name, url, init);
+    const list = extractList(r.data);
+    if (list.length) {
+      return NextResponse.json({ products: list.map(normalizeProduct), source: name });
+    }
+    results.push(`${name}→${r.status}:${r.text.replace(/\s+/g, ' ').slice(0, 70)}`);
   }
 
-  if (supplier !== 'cj') {
-    return NextResponse.json({ error: 'Supplier not supported yet' }, { status: 400 });
-  }
-
-  // 1) Try the NEW token API first
-  const v2 = await cjSearchV2(connection.api_key, keyword);
-  // 2) Fall back to legacy signed API
-  const legacy = v2.list ? { list: null as any[] | null, raw: '' } : await cjSearchLegacy(connection.api_key, connection.api_secret || '', keyword);
-
-  const list = v2.list || legacy.list;
-
-  if (!list) {
-    // Surface CJ's raw reply so we can adapt instantly — no more cryptic JSON crashes
-    return NextResponse.json(
-      { error: `CJ API needs adjustment. Raw reply: ${v2.raw || legacy.raw || 'no response'}` },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ products: list.map(normalizeProduct) });
+  // None worked → show the full probe report so we can lock the right endpoint in one edit
+  return NextResponse.json(
+    { error: `CJ probe report: ${results.join(' | ')}` },
+    { status: 500 }
+  );
 }
