@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { MarketplaceCartButton } from '@/components/MarketplaceCartButton'; // <-- Import the new client component
 
 export async function MarketplaceBottomNav({ active }: { active?: string }) {
   const supabase = await createClient();
@@ -61,10 +62,8 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
           Merchant
         </a>
 
-        <Link href="/marketplace/orders" className={item('orders')}>
-          <span className="text-lg leading-none">📦</span>
-          My Order
-        </Link>
+        {/* NEW: Cart Button with Live Badge */}
+        <MarketplaceCartButton active={active} />
       </div>
     </nav>
   );
