@@ -19,6 +19,8 @@ export default function EditProductPage() {
     category: '',
     is_active: true,
   });
+  
+  // Keep as string[] for UI simplicity, we map to { url } on save
   const [images, setImages] = useState<string[]>([]);
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileName, setDigitalFileName] = useState('');
@@ -76,11 +78,12 @@ export default function EditProductPage() {
         is_active: product.is_active !== false,
       });
 
-      setImages(
-        (product.images || [])
-          .map((i: any) => (typeof i === 'string' ? i : i.url))
-          .filter(Boolean)
-      );
+      // ✅ Safely extract image URLs whether they are strings or { url: string } objects
+      const loadedImages = (product.images || [])
+        .map((i: any) => (typeof i === 'string' ? i : i.url))
+        .filter(Boolean);
+      setImages(loadedImages);
+
       setDigitalFileUrl(product.digital_file_url || '');
       setDigitalFileName(product.digital_file_name || '');
 
@@ -101,6 +104,7 @@ export default function EditProductPage() {
     load();
   }, [productId, router]);
 
+  // ✅ FIX 1: Corrected string interpolation for file paths
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -109,28 +113,38 @@ export default function EditProductPage() {
     const urls: string[] = [];
 
     for (const file of Array.from(files)) {
-      const path = `\( {user?.id}/ \){Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      // Fixed: removed broken \( and \) characters
+      const path = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+      
       const { error } = await supabase.storage
         .from('product-images')
         .upload(path, file, { upsert: false });
+        
       if (!error) {
         const { data } = supabase.storage.from('product-images').getPublicUrl(path);
         urls.push(data.publicUrl);
+      } else {
+        toast.error(`Failed to upload ${file.name}: ${error.message}`);
       }
     }
 
-    setImages((prev) => [...prev, ...urls]);
+    if (urls.length > 0) {
+      setImages((prev) => [...prev, ...urls]);
+      toast.success(`${urls.length} photo(s) uploaded!`);
+    }
     setUploading(false);
-    if (urls.length > 0) toast.success(`${urls.length} photo(s) uploaded!`);
   };
 
+  // ✅ FIX 2: Corrected string interpolation for digital files
   const handleDigitalFileUpload = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const path = `\( {user?.id}/digital/ \){Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    // Fixed: removed broken \( and \) characters
+    const path = `${user?.id}/digital/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+    
     const { error } = await supabase.storage
       .from('digital-products')
       .upload(path, file, { upsert: false });
@@ -168,6 +182,7 @@ export default function EditProductPage() {
         is_digital: form.is_digital,
         category: form.category || null,
         is_active: form.is_active,
+        // ✅ Convert string[] back to { url: string }[] for the database
         images: images.map((url) => ({ url })),
         digital_file_url: form.is_digital ? digitalFileUrl : null,
         digital_file_name: form.is_digital ? digitalFileName : null,
@@ -266,17 +281,22 @@ export default function EditProductPage() {
               <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
                 {images.map((url, i) => (
                   <div
-                    key={i}
-                    className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0"
+                    key={url}
+                    className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0 bg-gray-100"
                   >
                     <Image src={url} alt="" fill className="object-cover" />
                     <button
                       type="button"
-                      onClick={() => setImages(images.filter((_, x) => x !== i))}
+                      onClick={() => setImages(images.filter((_, x) => x !== url))}
                       className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
                     >
                       ✕
                     </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-0 left-0 right-0 bg-purple-600 text-white text-[8px] text-center py-0.5 font-bold">
+                        MAIN
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -377,6 +397,7 @@ export default function EditProductPage() {
         </button>
       </form>
 
+      {/* ✅ LIVE PREVIEW */}
       <div>
         <p className="text-sm font-bold text-gray-500 mb-2">LIVE PREVIEW</p>
         <div className="bg-white rounded-2xl border p-4 sticky top-6">
@@ -395,7 +416,7 @@ export default function EditProductPage() {
                 {form.category}
               </span>
             )}
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-gray-900 line-clamp-2">
               {form.name || 'Product name'}
             </h3>
             <p className="mt-1 text-xl font-bold text-purple-600">
