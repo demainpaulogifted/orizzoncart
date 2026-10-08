@@ -20,7 +20,6 @@ export default function AddProductPage() {
     allow_backorders: false,
   });
   const [images, setImages] = useState<string[]>([]);
-  const [digitalFile, setDigitalFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
@@ -38,23 +37,47 @@ export default function AddProductPage() {
     fetchCategories();
   }, []);
 
+  // ✅ Now supports multiple photos at once
   const handleImageUpload = async (files: FileList | null) => {
-    if (!files) return;
+    if (!files || files.length === 0) return;
     setUploading(true);
+
     try {
-      const file = files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const { data, error } = await supabase.storage.from('product-images').upload(fileName, file);
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
-      setImages((prev) => [...prev, publicUrl]);
-      toast.success('Image uploaded successfully');
+      const uploadedUrls: string[] = [];
+
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { error } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file);
+
+        if (error) {
+          toast.error(`Failed to upload ${file.name}: ${error.message}`);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setImages((prev) => [...prev, ...uploadedUrls]);
+        toast.success(`\( {uploadedUrls.length} photo \){uploadedUrls.length > 1 ? 's' : ''} uploaded`);
+      }
     } catch (error: any) {
-      toast.error('Failed to upload image: ' + error.message);
+      toast.error('Upload failed: ' + error.message);
     } finally {
       setUploading(false);
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +88,11 @@ export default function AddProductPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: merchant } = await supabase.from('merchants').select('id').eq('user_id', user.id).single();
+      const { data: merchant } = await supabase
+        .from('merchants')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
       if (!merchant) throw new Error('Merchant not found');
 
       const slug = generateSlug(form.name);
@@ -102,50 +129,108 @@ export default function AddProductPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Product</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Image Upload */}
+        {/* ========== PRODUCT IMAGES ========== */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Product Images {images.length > 0 && `(${images.length})`}
+          </label>
+
+          {/* Thumbnails */}
+          {images.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
+              {images.map((url, index) => (
+                <div key={url} className="relative aspect-square rounded-xl overflow-hidden border bg-gray-100">
+                  <Image src={url} alt={`Product ${index + 1}`} fill className="object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold"
+                  >
+                    ×
+                  </button>
+                  {index === 0 && (
+                    <span className="absolute bottom-1 left-1 bg-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                      Main
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upload area */}
+          <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 hover:border-purple-400 transition-colors">
             <span className="text-3xl">📷</span>
             <span className="text-sm font-bold text-gray-700 mt-2">
-              {uploading ? 'Uploading...' : 'Tap to add photos'}
+              {uploading ? 'Uploading...' : images.length === 0 ? 'Tap to add photos' : 'Add more photos'}
             </span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleImageUpload(e.target.files)} disabled={uploading} />
+            <span className="text-xs text-gray-500 mt-1">You can select multiple photos at once</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleImageUpload(e.target.files)}
+              disabled={uploading}
+            />
           </label>
         </div>
 
         {/* Category */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Category (Optional)</label>
-          <input list="categories" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="e.g., Summer Sale, VIP..." className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
+          <input
+            list="categories"
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            placeholder="e.g., Men clothes, Summer Sale..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
           <datalist id="categories">
-            {existingCategories.map((cat) => (<option key={cat} value={cat} />))}
+            {existingCategories.map((cat) => (
+              <option key={cat} value={cat} />
+            ))}
           </datalist>
         </div>
 
         {/* Product Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
+          <input
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
         {/* Price */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Price (₦) *</label>
-          <input required type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
+          <input
+            required
+            type="number"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
         {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500" />
+          <textarea
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+          />
         </div>
 
-        {/* ✅ STOCK MANAGEMENT SECTION */}
+        {/* Inventory */}
         <div className="border-t pt-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Inventory Management</h3>
-          
-          {/* Track Inventory Checkbox */}
+
           <div className="flex items-center gap-3 mb-4">
             <input
               type="checkbox"
@@ -161,11 +246,8 @@ export default function AddProductPage() {
 
           {form.track_inventory && (
             <>
-              {/* Stock Quantity */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stock Quantity
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
                 <input
                   type="number"
                   min="0"
@@ -179,7 +261,6 @@ export default function AddProductPage() {
                 </p>
               </div>
 
-              {/* Allow Backorders */}
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -198,30 +279,27 @@ export default function AddProductPage() {
 
         {/* Digital Product */}
         <div className="flex items-center gap-3">
-          <input type="checkbox" id="is_digital" checked={form.is_digital} onChange={(e) => setForm({ ...form, is_digital: e.target.checked })} className="w-5 h-5 text-purple-600 rounded" />
-          <label htmlFor="is_digital" className="font-medium text-gray-700">This is a digital product (download)</label>
+          <input
+            type="checkbox"
+            id="is_digital"
+            checked={form.is_digital}
+            onChange={(e) => setForm({ ...form, is_digital: e.target.checked })}
+            className="w-5 h-5 text-purple-600 rounded"
+          />
+          <label htmlFor="is_digital" className="font-medium text-gray-700">
+            This is a digital product (download)
+          </label>
         </div>
 
-        {/* Submit Button */}
-        <button type="submit" disabled={saving || uploading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50">
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={saving || uploading}
+          className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
+        >
           {saving ? 'Publishing...' : 'Publish Product 🚀'}
         </button>
       </form>
-
-      {/* Live Preview */}
-      {images.length > 0 && (
-        <div className="mt-8 bg-white rounded-2xl border p-4 sticky top-4">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-gray-100 shadow-md">
-            <Image src={images[0]} alt="" fill className="object-cover" />
-          </div>
-          <div className="mt-4 text-center">
-            {form.category && <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full mb-2">{form.category}</span>}
-            <h3 className="text-lg font-medium text-gray-900">{form.name || 'Product name'}</h3>
-            <p className="text-xl font-bold text-purple-600">{Number(form.price || 0).toLocaleString()}</p>
-            {form.is_digital && <p className="text-xs text-blue-600 mt-1">⚡ Instant Digital Download</p>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
