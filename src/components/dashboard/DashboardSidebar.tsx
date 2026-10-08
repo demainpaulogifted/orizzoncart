@@ -157,18 +157,17 @@ export function DashboardSidebar({
             </Link>
           </div>
 
+          {/* External links (same tab to preserve session) */}
           <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
             {external.map((it) => (
               <Link
                 key={it.href}
                 href={it.href}
-                target="_blank"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-purple-50 hover:text-purple-700 transition-colors"
               >
                 <span className="text-base leading-none">{it.icon}</span>
                 {it.label}
-                <span className="ml-auto text-[10px] text-gray-400">↗</span>
               </Link>
             ))}
           </div>
