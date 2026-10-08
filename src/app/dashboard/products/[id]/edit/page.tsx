@@ -20,7 +20,6 @@ export default function EditProductPage() {
     is_active: true,
   });
   
-  // Keep as string[] for UI simplicity, we map to { url } on save
   const [images, setImages] = useState<string[]>([]);
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileName, setDigitalFileName] = useState('');
@@ -78,7 +77,6 @@ export default function EditProductPage() {
         is_active: product.is_active !== false,
       });
 
-      // ✅ Safely extract image URLs whether they are strings or { url: string } objects
       const loadedImages = (product.images || [])
         .map((i: any) => (typeof i === 'string' ? i : i.url))
         .filter(Boolean);
@@ -104,7 +102,6 @@ export default function EditProductPage() {
     load();
   }, [productId, router]);
 
-  // ✅ FIX 1: Corrected string interpolation for file paths
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -113,7 +110,6 @@ export default function EditProductPage() {
     const urls: string[] = [];
 
     for (const file of Array.from(files)) {
-      // Fixed: removed broken \( and \) characters
       const path = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
       
       const { error } = await supabase.storage
@@ -135,14 +131,12 @@ export default function EditProductPage() {
     setUploading(false);
   };
 
-  // ✅ FIX 2: Corrected string interpolation for digital files
   const handleDigitalFileUpload = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Fixed: removed broken \( and \) characters
     const path = `${user?.id}/digital/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
     
     const { error } = await supabase.storage
@@ -182,7 +176,6 @@ export default function EditProductPage() {
         is_digital: form.is_digital,
         category: form.category || null,
         is_active: form.is_active,
-        // ✅ Convert string[] back to { url: string }[] for the database
         images: images.map((url) => ({ url })),
         digital_file_url: form.is_digital ? digitalFileUrl : null,
         digital_file_name: form.is_digital ? digitalFileName : null,
@@ -285,9 +278,10 @@ export default function EditProductPage() {
                     className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0 bg-gray-100"
                   >
                     <Image src={url} alt="" fill className="object-cover" />
+                    {/* ✅ FIX: Compare index (number) with index (number) to satisfy TypeScript */}
                     <button
                       type="button"
-                      onClick={() => setImages(images.filter((_, x) => x !== url))}
+                      onClick={() => setImages((prev) => prev.filter((_, index) => index !== i))}
                       className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-sm"
                     >
                       ✕
@@ -397,7 +391,6 @@ export default function EditProductPage() {
         </button>
       </form>
 
-      {/* ✅ LIVE PREVIEW */}
       <div>
         <p className="text-sm font-bold text-gray-500 mb-2">LIVE PREVIEW</p>
         <div className="bg-white rounded-2xl border p-4 sticky top-6">
