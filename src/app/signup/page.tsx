@@ -38,10 +38,6 @@ export default function SignupPage() {
 
   return (
     <>
-      {/* ✅ VIGNETTE AD: Shows once on signup page after 5 seconds */}
-      />
-
-      {/* Escape hatch for shoppers */}
       <MarketplaceReturnBanner />
 
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100 px-4 py-12">
