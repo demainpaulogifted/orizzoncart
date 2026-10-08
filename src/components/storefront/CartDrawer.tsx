@@ -27,9 +27,22 @@ export function CartDrawer({ slug, open, onClose }: { slug: string; open: boolea
   const update = (id: string, qty: number) => {
     let next: any[] = [];
     try { next = JSON.parse(localStorage.getItem(`orz_cart_${slug}`) || '[]'); } catch {}
-    if (qty <= 0) next = next.filter((c: any) => c.product_id !== id);
-    else next = next.map((c: any) => (c.product_id === id ? { ...c, quantity: qty } : c));
+    
+    if (qty <= 0) {
+      next = next.filter((c: any) => c.product_id !== id);
+    } else {
+      next = next.map((c: any) => (c.product_id === id ? { ...c, quantity: qty } : c));
+    }
+    
     localStorage.setItem(`orz_cart_${slug}`, JSON.stringify(next));
+    
+    // ✅ NEW: Calculate total and set a cross-subdomain cookie
+    const totalCount = next.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+    const domainAttr = isLocalhost ? '' : 'domain=.orizzoncart.name.ng;'; 
+    
+    document.cookie = `orz_cart_total=${totalCount}; ${domainAttr} path=/; max-age=86400; SameSite=Lax`;
+    
     setCart(next);
     window.dispatchEvent(new Event('cart-updated'));
   };
