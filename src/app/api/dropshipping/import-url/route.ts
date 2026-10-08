@@ -43,21 +43,29 @@ function meta(html: string, prop: string): string {
 
 async function fetchPage(url: string): Promise<string> {
   const key = process.env.SCRAPE_API_KEY;
-  const provider = process.env.SCRAPE_PROVIDER || 'scraperapi';
-  const target = key
-    ? provider === 'zenrows'
-      ? `https://api.zenrows.com/v1/?apikey=${key}&url=${encodeURIComponent(url)}`
-      : `https://api.scraperapi.com/?api_key=${key}&url=${encodeURIComponent(url)}`
-    : url;
+  const provider = (process.env.SCRAPE_PROVIDER || 'scraperapi').toLowerCase();
+
+  let target = url;
+
+  if (key) {
+    if (provider === 'zenrows') {
+      // Stronger anti-bot mode for ZenRows
+      target = `https://api.zenrows.com/v1/?apikey=\( {key}&url= \){encodeURIComponent(url)}&js_render=true&antibot=true&premium_proxy=true`;
+    } else {
+      // Stronger mode for ScraperAPI
+      target = `https://api.scraperapi.com/?api_key=\( {key}&url= \){encodeURIComponent(url)}&render=true&premium=true`;
+    }
+  }
 
   const res = await fetch(target, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
       'Accept-Language': 'en-US,en;q=0.9',
       Accept: 'text/html,application/xhtml+xml',
     },
     cache: 'no-store',
   });
+
   return res.text();
 }
 
