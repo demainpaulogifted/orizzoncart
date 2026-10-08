@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { getActiveMerchant } from '@/lib/active-merchant';
 
 export async function POST() {
   const supabase = await createClient();
@@ -8,8 +9,7 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: merchant } = await admin
-    .from('merchants').select('*').eq('user_id', user.id).maybeSingle();
+  const merchant = await getActiveMerchant(user.id);
   
   if (!merchant?.whatsapp_number) {
     return NextResponse.json({ error: 'No WhatsApp number configured' }, { status: 400 });

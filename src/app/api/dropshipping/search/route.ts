@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { getActiveMerchant } from '@/lib/active-merchant';
 
 function signCJRequest(params: Record<string, string>, secret: string): string {
   const sorted = Object.keys(params)
@@ -71,11 +72,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: merchant } = await admin
-    .from('merchants')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const merchant = await getActiveMerchant(user.id);
   if (!merchant) return NextResponse.json({ error: 'No store' }, { status: 404 });
 
   const { data: connection } = await admin
