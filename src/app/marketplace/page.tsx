@@ -76,13 +76,14 @@ export default async function MarketplacePage() {
   const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
   const seed = hashString(`${sessionSeed}:${bucket}`);
 
+  // 🔒 STRICT FILTER: A merchant MUST meet ALL 4 conditions to appear here
   const { data: merchants } = await admin
     .from('merchants')
     .select('id, store_slug, store_name, logo_url, theme_id')
-    .eq('is_on_marketplace', true)
-    .eq('payment_receiving_status', 'ACTIVE')
-    .eq('is_verified', true)
-    .eq('is_active', true);
+    .eq('is_on_marketplace', true)          // 1. They toggled it ON in settings
+    .eq('payment_receiving_status', 'ACTIVE') // 2. They paid activation
+    .eq('is_verified', true)                // 3. They are verified
+    .eq('is_active', true);                 // 4. Store is not suspended
 
   const merchantIds = merchants?.map((m) => m.id) || [];
 
@@ -153,7 +154,7 @@ export default async function MarketplacePage() {
                 Orizzon<span className="text-yellow-300">Cart</span> Marketplace
               </Link>
               <span className="text-[10px] bg-white/15 rounded-full px-2 py-1 font-semibold">
-                🇳 Verified sellers only
+                🇳🇬 Verified sellers only
               </span>
             </div>
             <form action="/marketplace/categories" method="GET">
