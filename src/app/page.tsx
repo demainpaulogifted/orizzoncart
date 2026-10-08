@@ -1,7 +1,5 @@
 import Link from 'next/link';
 import { THEMES } from '@/lib/themes';
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
-import { MonetagPushNotifications } from '@/components/ads/MonetagPushNotifications';
 
 export const metadata = {
   title: 'OrizzonCart — Own Your Sales | Build Your Online Store in Nigeria',
@@ -41,15 +39,6 @@ export default function HomePage() {
 
   return (
     <>
-      <MonetagVignette
-        zoneId="11902705"
-        storageKey="landing_vignette"
-        delay={3000}
-        frequency={1}
-      />
-
-      <MonetagPushNotifications zoneId="11902738" />
-
       <main className="min-h-screen bg-white text-gray-900">
         {/* Navbar */}
         <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100">

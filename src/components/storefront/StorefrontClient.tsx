@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { StoreShop } from '@/components/storefront/StoreShop';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
-import { MonetagVignette } from '@/components/ads/MonetagVignette';
 import { VisitTracker } from '@/components/storefront/VisitTracker';
 
 export function StorefrontClient({
@@ -76,12 +75,6 @@ export function StorefrontClient({
       className="min-h-screen bg-[var(--color-bg,#FFFFFF)] text-[var(--color-text,#1A1A1A)]"
     >
       {/* ✅ AD POLICY: vignette ONLY, after 30 seconds, once per visitor. No push ads here. */}
-      <MonetagVignette
-        zoneId="11938217"
-        storageKey={'store_' + slug + '_vignette'}
-        delay={30000}
-        frequency={1}
-      />
       <VisitTracker merchantId={merchant?.id} />
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-stone-200/80 shadow-sm">
