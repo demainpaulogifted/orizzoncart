@@ -3,82 +3,133 @@ import { createClient } from '@/lib/supabase/admin';
 
 export const revalidate = 3600;
 
+const SITE_URL = (
+process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng'
+).replace(//$/, '');
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createClient();
-  const baseUrl = 'https://orizzoncart.name.ng';
+const supabase = createClient();
 
-  // 1. Static Platform Pages
-  const staticPages: MetadataRoute.Sitemap = [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
-    { url: `${baseUrl}/marketplace`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
-    { url: `${baseUrl}/marketplace/categories`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/marketplace/orders`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.5 },
-    { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.5 },
-  ];
+const staticPages: MetadataRoute.Sitemap = [
+{
+url: SITE_URL,
+changeFrequency: 'daily',
+priority: 1,
+},
+{
+url: "${SITE_URL}/marketplace",
+changeFrequency: 'hourly',
+priority: 0.9,
+},
+{
+url: "${SITE_URL}/marketplace/categories",
+changeFrequency: 'hourly',
+priority: 0.8,
+},
+{
+url: "${SITE_URL}/about",
+changeFrequency: 'monthly',
+priority: 0.8,
+},
+{
+url: "${SITE_URL}/contact",
+changeFrequency: 'monthly',
+priority: 0.7,
+},
+{
+url: "${SITE_URL}/terms",
+changeFrequency: 'yearly',
+priority: 0.5,
+},
+{
+url: "${SITE_URL}/privacy",
+changeFrequency: 'yearly',
+priority: 0.5,
+},
+];
 
-  // 2. Static Blog Posts (the ones that exist in your repo)
-  const staticBlogPages: MetadataRoute.Sitemap = [
-    {
-      url: `${baseUrl}/blog/start-online-store-nigeria`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/blog/whatsapp-automated-store-nigeria`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-  ];
+const staticBlogPages: MetadataRoute.Sitemap = [
+{
+url: "${SITE_URL}/blog/start-online-store-nigeria",
+changeFrequency: 'monthly',
+priority: 0.8,
+},
+{
+url: "${SITE_URL}/blog/whatsapp-automated-store-nigeria",
+changeFrequency: 'monthly',
+priority: 0.8,
+},
+];
 
-  // 3. Active Merchants & Products
-  const { data: activeMerchants } = await supabase
-    .from('merchants')
-    .select('id, store_slug, updated_at')
-    .eq('payment_receiving_status', 'ACTIVE')
-    .eq('is_active', true);
+const { data: activeMerchants, error: merchantsError } = await supabase
+.from('merchants')
+.select('id, store_slug, updated_at')
+.eq('payment_receiving_status', 'ACTIVE')
+.eq('is_active', true)
+.eq('is_verified', true)
+.eq('is_on_marketplace', true);
 
-  const merchantPages: MetadataRoute.Sitemap = [];
-  if (activeMerchants) {
-    for (const merchant of activeMerchants) {
-      const storeUrl = `https://${merchant.store_slug}.orizzoncart.name.ng`;
-      merchantPages.push({
-        url: storeUrl,
-        lastModified: merchant.updated_at ? new Date(merchant.updated_at) : new Date(),
-        changeFrequency: 'daily',
-        priority: 0.9,
-      });
+if (merchantsError) {
+console.error(
+'Failed to load eligible merchants for sitemap:',
+merchantsError.message
+);
+}
 
-      // Add marketplace seller profile page
-      merchantPages.push({
-        url: `${baseUrl}/marketplace/store/${merchant.store_slug}`,
-        lastModified: merchant.updated_at ? new Date(merchant.updated_at) : new Date(),
-        changeFrequency: 'daily',
-        priority: 0.8,
-      });
+const merchantPages: MetadataRoute.Sitemap = [];
 
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, slug, updated_at')
-        .eq('merchant_id', merchant.id)
-        .eq('is_active', true);
+for (const merchant of activeMerchants || []) {
+if (!merchant.store_slug) continue;
 
-      if (products) {
-        for (const product of products) {
-          merchantPages.push({
-            url: `${storeUrl}/p/${product.slug || product.id}`,
-            lastModified: product.updated_at ? new Date(product.updated_at) : new Date(),
-            changeFrequency: 'weekly',
-            priority: 0.7,
-          });
-        }
-      }
-    }
-  }
+const lastModified = merchant.updated_at
+  ? new Date(merchant.updated_at)
+  : undefined;
 
-  return [...staticPages, ...staticBlogPages, ...merchantPages];
+const storeUrl = `https://${merchant.store_slug}.orizzoncart.name.ng`;
+
+merchantPages.push({
+  url: storeUrl,
+  ...(lastModified ? { lastModified } : {}),
+  changeFrequency: 'daily',
+  priority: 0.9,
+});
+
+merchantPages.push({
+  url: `${SITE_URL}/marketplace/store/${merchant.store_slug}`,
+  ...(lastModified ? { lastModified } : {}),
+  changeFrequency: 'daily',
+  priority: 0.8,
+});
+
+const { data: products, error: productsError } = await supabase
+  .from('products')
+  .select('id, slug, updated_at')
+  .eq('merchant_id', merchant.id)
+  .eq('is_active', true);
+
+if (productsError) {
+  console.error(
+    `Failed to load products for merchant ${merchant.id}:`,
+    productsError.message
+  );
+  continue;
+}
+
+for (const product of products || []) {
+  const identifier = product.slug || product.id;
+  if (!identifier) continue;
+
+  merchantPages.push({
+    url: `${storeUrl}/p/${encodeURIComponent(identifier)}`,
+    ...(product.updated_at
+      ? { lastModified: new Date(product.updated_at) }
+      : {}),
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  });
+}
+
+}
+
+return [...staticPages, ...staticBlogPages, ...merchantPages];
 }
