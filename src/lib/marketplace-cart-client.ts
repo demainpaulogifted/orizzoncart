@@ -1,3 +1,4 @@
+"use client";
 
 export interface SharedCartItem {
   id: string;
@@ -13,32 +14,37 @@ export interface SharedCartItem {
   line_total: number;
 }
 
+type CartMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
 async function requestCart(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: CartMethod,
   body?: Record<string, unknown>
 ): Promise<SharedCartItem[]> {
   const response = await fetch("/api/marketplace-cart", {
     method,
     credentials: "include",
+    cache: "no-store",
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-    cache: "no-store",
   });
 
-  const result = await response.json();
+  const result = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(result.error || "Cart request failed.");
   }
 
-  if (typeof window !== "undefined") {
+  const items = Array.isArray(result.items) ? result.items : [];
+
+  // A read must not emit this event; mutations should.
+  if (method !== "GET" && typeof window !== "undefined") {
     window.dispatchEvent(new Event("cart-updated"));
   }
 
-  return result.items || [];
+  return items as SharedCartItem[];
 }
 
-export function getSharedCart() {
+export function getSharedCart(): Promise<SharedCartItem[]> {
   return requestCart("GET");
 }
 
@@ -46,7 +52,7 @@ export function addSharedCartItem(
   slug: string,
   productId: string,
   quantity = 1
-) {
+): Promise<SharedCartItem[]> {
   return requestCart("POST", {
     slug,
     product_id: productId,
@@ -58,7 +64,7 @@ export function updateSharedCartItem(
   merchantId: string,
   productId: string,
   quantity: number
-) {
+): Promise<SharedCartItem[]> {
   return requestCart("PATCH", {
     merchant_id: merchantId,
     product_id: productId,
@@ -69,13 +75,16 @@ export function updateSharedCartItem(
 export function removeSharedCartItem(
   merchantId: string,
   productId: string
-) {
+): Promise<SharedCartItem[]> {
   return requestCart("DELETE", {
     merchant_id: merchantId,
     product_id: productId,
   });
 }
 
-export function getSharedCartCount(items: SharedCartItem[]) {
-  return items.reduce((total, item) => total + item.quantity, 0);
+export function getSharedCartCount(items: SharedCartItem[]): number {
+  return items.reduce(
+    (total, item) => total + Math.max(0, Number(item.quantity) || 0),
+    0
+  );
 }
