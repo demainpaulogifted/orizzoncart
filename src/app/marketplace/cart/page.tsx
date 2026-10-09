@@ -118,7 +118,7 @@ export default function MarketplaceCartPage() {
     item: SharedCartItem,
     quantity: number
   ) => {
-    const key = `${item.merchant_id}:${item.product_id}`;
+    const key = `\( {item.merchant_id}: \){item.product_id}`;
 
     if (busyItems.includes(key)) return;
 
@@ -145,7 +145,7 @@ export default function MarketplaceCartPage() {
   };
 
   const removeItem = async (item: SharedCartItem) => {
-    const key = `${item.merchant_id}:${item.product_id}`;
+    const key = `\( {item.merchant_id}: \){item.product_id}`;
 
     if (busyItems.includes(key)) return;
 
@@ -235,6 +235,26 @@ export default function MarketplaceCartPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6">
+        {/* Track Past Orders — pinned near the top */}
+        <div className="mb-6 rounded-2xl border border-gray-100 bg-white px-4 py-4 shadow-sm">
+          <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Already purchased something?
+              </h3>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Find your previous orders and tracking information.
+              </p>
+            </div>
+            <Link
+              href="/marketplace/orders"
+              className="inline-flex items-center gap-2 rounded-full bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100"
+            >
+              📦 Track Past Orders
+            </Link>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-500">
             <LoaderCircle className="mb-3 animate-spin" size={32} />
@@ -307,7 +327,7 @@ export default function MarketplaceCartPage() {
 
                   <div className="divide-y divide-gray-100">
                     {merchantCart.items.map((item) => {
-                      const key = `${item.merchant_id}:${item.product_id}`;
+                      const key = `\( {item.merchant_id}: \){item.product_id}`;
                       const isBusy = busyItems.includes(key);
                       const imageUrl = getImageUrl(item.image);
 
@@ -444,21 +464,6 @@ export default function MarketplaceCartPage() {
             </section>
           </div>
         )}
-
-        <div className="mt-10 border-t border-gray-200 pt-6 text-center">
-          <h3 className="mb-2 text-sm font-semibold text-gray-900">
-            Already purchased something?
-          </h3>
-          <p className="mb-4 text-xs text-gray-500">
-            Find your previous orders and tracking information.
-          </p>
-          <Link
-            href="/marketplace/orders"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700 hover:underline"
-          >
-            📦 Track Past Orders
-          </Link>
-        </div>
       </main>
     </div>
   );
