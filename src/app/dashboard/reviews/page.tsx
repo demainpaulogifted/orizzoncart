@@ -1,189 +1,343 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+type StoreReview = {
+  id: string;
+  merchant_id: string;
+  reviewer_name: string;
+  rating: number;
+  comment: string | null;
+  status: string;
+  created_at: string;
+};
+
+type ProductReview = {
+  id: string;
+  rating: number;
+  title?: string | null;
+  comment?: string | null;
+  customer_name?: string | null;
+  is_approved: boolean;
+  created_at: string;
+  products?: { name?: string; slug?: string } | null;
+};
+
 export default function MerchantReviewsPage() {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storeSlug, setStoreSlug] = useState('');
   const supabase = createClient();
 
-  useEffect(() => {
-    loadReviews();
-  }, []);
+  const [storeReviews, setStoreReviews] = useState<StoreReview[]>([]);
+  const [productReviews, setProductReviews] = useState<ProductReview[]>([]);
+  const [storeSlug, setStoreSlug] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
-      const { data: merchant } = await supabase
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+
+      if (!user) {
+        toast.error('Please sign in to view reviews.');
+        return;
+      }
+
+      const { data: merchant, error: merchantError } = await supabase
         .from('merchants')
         .select('id, store_slug')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (merchantError) throw merchantError;
 
       if (!merchant) {
-        setLoading(false);
+        toast.error('No merchant store was found for this account.');
         return;
       }
-      
+
       setStoreSlug(merchant.store_slug);
 
-      const { data, error } = await supabase
-        .from('product_reviews')
-        .select('*, products(name, slug)')
-        .eq('merchant_id', merchant.id)
-        .order('created_at', { ascending: false });
+      const [storeResult, productResult] = await Promise.all([
+        supabase
+          .from('store_reviews')
+          .select('id, merchant_id, reviewer_name, rating, comment, status, created_at')
+          .eq('merchant_id', merchant.id)
+          .order('created_at', { ascending: false }),
 
-      if (error) throw error;
-      setReviews(data || []);
-    } catch (err: any) {
-      toast.error('Failed to load reviews: ' + err.message);
+        supabase
+          .from('product_reviews')
+          .select('*, products(name, slug)')
+          .eq('merchant_id', merchant.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (storeResult.error) throw storeResult.error;
+      if (productResult.error) throw productResult.error;
+
+      setStoreReviews((storeResult.data || []) as StoreReview[]);
+      setProductReviews((productResult.data || []) as ProductReview[]);
+    } catch (error) {
+      console.error('Review dashboard load failed:', error);
+      toast.error(
+        'Could not load reviews. Check the store_reviews permissions and database schema.'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
-  const deleteReview = async (id: string) => {
-    if (!confirm('Delete this review?')) return;
-    try {
-      const { error } = await supabase.from('product_reviews').delete().eq('id', id);
-      if (error) throw error;
-      setReviews(reviews.filter(r => r.id !== id));
-      toast.success('Review deleted');
-    } catch (err: any) {
-      toast.error('Failed to delete: ' + err.message);
-    }
-  };
+  useEffect(() => {
+    void loadReviews();
+  }, [loadReviews]);
 
-  const toggleApproval = async (review: any) => {
+  const storeAverage = storeReviews.length
+    ? (
+        storeReviews.reduce((sum, review) => sum + Number(review.rating), 0) /
+        storeReviews.length
+      ).toFixed(1)
+    : '0.0';
+
+  const productAverage = productReviews.length
+    ? (
+        productReviews.reduce((sum, review) => sum + Number(review.rating), 0) /
+        productReviews.length
+      ).toFixed(1)
+    : '0.0';
+
+  const toggleProductApproval = async (review: ProductReview) => {
     try {
       const { error } = await supabase
         .from('product_reviews')
         .update({ is_approved: !review.is_approved })
         .eq('id', review.id);
+
       if (error) throw error;
-      setReviews(reviews.map(r => r.id === review.id ? { ...r, is_approved: !r.is_approved } : r));
-      toast.success(review.is_approved ? 'Review hidden' : 'Review approved');
-    } catch (err: any) {
-      toast.error('Failed: ' + err.message);
+
+      setProductReviews((current) =>
+        current.map((item) =>
+          item.id === review.id
+            ? { ...item, is_approved: !item.is_approved }
+            : item
+        )
+      );
+
+      toast.success(
+        review.is_approved ? 'Product review hidden.' : 'Product review approved.'
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error('Could not update product review.');
     }
   };
 
-  const renderStars = (rating: number) => {
-    return '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
-  };
+  const renderStars = (rating: number) =>
+    '★'.repeat(Math.max(0, Math.min(5, Math.round(rating)))) +
+    '☆'.repeat(5 - Math.max(0, Math.min(5, Math.round(rating))));
 
-  const stats = {
-    total: reviews.length,
-    approved: reviews.filter(r => r.is_approved).length,
-    average: reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-      : '0.0',
-  };
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto p-6 text-center">
+        <p className="text-gray-500">Loading reviews…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+    <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customer Reviews</h1>
-          <p className="text-sm text-gray-500 mt-1">See what customers are saying about your products</p>
+          <h1 className="text-2xl font-extrabold text-gray-900">
+            Customer Reviews
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Store reputation and product feedback, shown separately.
+          </p>
         </div>
-        <Link href="/dashboard/products" className="text-purple-600 hover:text-purple-700 font-medium text-sm">
-          ← Back to Products
-        </Link>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs font-bold text-gray-500 uppercase">Total Reviews</p>
-          <p className="text-3xl font-black text-gray-900 mt-1">{stats.total}</p>
+        <div className="flex gap-3">
+          {storeSlug && (
+            <Link
+              href={`/marketplace/store/${storeSlug}`}
+              className="text-sm font-bold text-purple-700"
+            >
+              View marketplace profile
+            </Link>
+          )}
+          <Link
+            href="/dashboard/products"
+            className="text-sm font-bold text-purple-700"
+          >
+            Products →
+          </Link>
         </div>
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs font-bold text-gray-500 uppercase">Average Rating</p>
-          <p className="text-3xl font-black text-purple-700 mt-1">{stats.average} ⭐</p>
-        </div>
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs font-bold text-gray-500 uppercase">Approved</p>
-          <p className="text-3xl font-black text-green-700 mt-1">{stats.approved}</p>
-        </div>
-      </div>
+      </header>
 
-      {/* Reviews List */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="text-gray-500 mt-3">Loading reviews...</p>
+      {/*
+        STORE REVIEWS
+        Marketplace and individual storefront reviews share store_reviews.
+      */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-extrabold">⭐ Store Reviews</h2>
+          <p className="text-sm text-gray-500">
+            Reviews submitted from the marketplace and your online storefront.
+          </p>
         </div>
-      ) : reviews.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border">
-          <div className="text-5xl mb-3">💬</div>
-          <h3 className="font-bold text-gray-900">No reviews yet</h3>
-          <p className="text-sm text-gray-500 mt-1">Reviews from customers will appear here</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Stat title="Total store reviews" value={storeReviews.length} />
+          <Stat title="Average store rating" value={`${storeAverage} / 5`} />
+          <Stat
+            title="Published store reviews"
+            value={storeReviews.filter((r) => r.status === 'approved').length}
+          />
         </div>
-      ) : (
-        <div className="space-y-4">
-          {reviews.map((review) => (
-            <div key={review.id} className={`bg-white rounded-xl border p-5 ${!review.is_approved ? 'opacity-60 border-dashed' : ''}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-lg">{renderStars(review.rating)}</span>
-                    {!review.is_approved && (
-                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full">Pending</span>
-                    )}
+
+        {storeReviews.length === 0 ? (
+          <Empty text="No store reviews found yet." />
+        ) : (
+          <div className="space-y-3">
+            {storeReviews.map((review) => (
+              <article
+                key={review.id}
+                className="bg-white border rounded-xl p-4 sm:p-5"
+              >
+                <div className="flex flex-wrap justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-gray-900">
+                      {review.reviewer_name}
+                    </p>
+                    <p className="text-yellow-500 mt-1">
+                      {renderStars(review.rating)}
+                      <span className="text-gray-500 text-xs ml-2">
+                        {review.rating}/5
+                      </span>
+                    </p>
                   </div>
-                  {review.title && (
-                    <h4 className="font-bold text-gray-900 mb-1">{review.title}</h4>
-                  )}
-                  <p className="text-gray-700 text-sm leading-relaxed mb-3 whitespace-pre-line">{review.comment}</p>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span className="font-semibold text-gray-700">{review.customer_name}</span>
-                    {review.customer_email && <span>• {review.customer_email}</span>}
-                    <span>• {new Date(review.created_at).toLocaleDateString()}</span>
-                  </div>
-                  {review.products && (
-                    <div className="mt-2">
-                      <Link
-                        href={`https://${storeSlug}.orizzoncart.name.ng/p/${review.products.slug}`}
-                        target="_blank"
-                        className="text-xs text-purple-600 hover:text-purple-700 font-medium inline-flex items-center gap-1"
-                      >
-                        📦 {review.products.name}
-                      </Link>
-                    </div>
-                  )}
+
+                  <span className="text-xs text-gray-500">
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </span>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                {review.comment && (
+                  <p className="text-sm text-gray-700 mt-3 whitespace-pre-line break-words">
+                    {review.comment}
+                  </p>
+                )}
+
+                <p className="text-xs text-gray-500 mt-3">
+                  Status: {review.status}
+                </p>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  You can respond to this review publicly. A negative review
+                  should not be hidden solely because you disagree with it.
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* PRODUCT REVIEWS REMAIN A SEPARATE CATEGORY */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-extrabold">📦 Product Reviews</h2>
+          <p className="text-sm text-gray-500">
+            Feedback about individual products, not the store overall.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Stat title="Total product reviews" value={productReviews.length} />
+          <Stat title="Average product rating" value={`${productAverage} / 5`} />
+          <Stat
+            title="Approved product reviews"
+            value={productReviews.filter((r) => r.is_approved).length}
+          />
+        </div>
+
+        {productReviews.length === 0 ? (
+          <Empty text="No product reviews found yet." />
+        ) : (
+          <div className="space-y-3">
+            {productReviews.map((review) => (
+              <article
+                key={review.id}
+                className="bg-white border rounded-xl p-4 sm:p-5"
+              >
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-gray-900">
+                      {review.customer_name || 'Customer'}
+                    </p>
+                    <p className="text-yellow-500 mt-1">
+                      {renderStars(review.rating)}
+                    </p>
+                  </div>
+
                   <button
-                    onClick={() => toggleApproval(review)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      review.is_approved
-                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                        : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}
+                    type="button"
+                    onClick={() => void toggleProductApproval(review)}
+                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-800 text-xs font-bold"
                   >
-                    {review.is_approved ? '🙈 Hide' : '✅ Approve'}
-                  </button>
-                  <button
-                    onClick={() => deleteReview(review.id)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-800 hover:bg-red-200 transition-colors"
-                  >
-                    🗑️ Delete
+                    {review.is_approved ? 'Hide product review' : 'Approve product review'}
                   </button>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+
+                {review.products?.name && (
+                  <p className="text-xs text-purple-700 mt-2">
+                    Product: {review.products.name}
+                  </p>
+                )}
+
+                {review.title && (
+                  <p className="font-semibold mt-2">{review.title}</p>
+                )}
+
+                {review.comment && (
+                  <p className="text-sm text-gray-700 mt-2 whitespace-pre-line">
+                    {review.comment}
+                  </p>
+                )}
+
+                <p className="text-xs text-gray-500 mt-3">
+                  {new Date(review.created_at).toLocaleDateString()}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function Stat({ title, value }: { title: string; value: string | number }) {
+  return (
+    <div className="bg-white rounded-xl border p-4">
+      <p className="text-xs font-bold uppercase text-gray-500">{title}</p>
+      <p className="text-2xl sm:text-3xl font-black text-gray-900 mt-2">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="bg-white rounded-xl border p-8 text-center">
+      <p className="font-bold text-gray-800">No reviews to show</p>
+      <p className="text-sm text-gray-500 mt-1">{text}</p>
     </div>
   );
 }
