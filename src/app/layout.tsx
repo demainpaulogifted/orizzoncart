@@ -25,7 +25,6 @@ export const metadata: Metadata = {
     'service booking platform', 'online course platform', 'sell ebooks online'
   ],
   applicationName: 'OrizzonCart',
-  alternates: { canonical: '/' },
   icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
   openGraph: {
     title: 'OrizzonCart — Build Your Global Online Store in Minutes',
