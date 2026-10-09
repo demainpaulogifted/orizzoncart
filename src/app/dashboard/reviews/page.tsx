@@ -26,16 +26,25 @@ type ProductReview = {
   products?: { name?: string; slug?: string } | null;
 };
 
-export default function MerchantReviewsPage() {
-  const supabase = createClient();
+type LoadError = {
+  section: 'authentication' | 'merchant' | 'store_reviews' | 'product_reviews' | 'unknown';
+  message: string;
+  code?: string;
+};
 
+export default function MerchantReviewsPage() {
   const [storeReviews, setStoreReviews] = useState<StoreReview[]>([]);
   const [productReviews, setProductReviews] = useState<ProductReview[]>([]);
   const [storeSlug, setStoreSlug] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<LoadError | null>(null);
+  const [updatingProductReviewId, setUpdatingProductReviewId] = useState<string | null>(null);
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
+
+    const supabase = createClient();
 
     try {
       const {
@@ -43,10 +52,21 @@ export default function MerchantReviewsPage() {
         error: authError,
       } = await supabase.auth.getUser();
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('[Reviews dashboard authentication]', authError);
+        setLoadError({
+          section: 'authentication',
+          message: authError.message,
+          code: authError.code,
+        });
+        return;
+      }
 
       if (!user) {
-        toast.error('Please sign in to view reviews.');
+        setLoadError({
+          section: 'authentication',
+          message: 'You are not signed in. Please sign in and try again.',
+        });
         return;
       }
 
@@ -56,43 +76,92 @@ export default function MerchantReviewsPage() {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (merchantError) throw merchantError;
-
-      if (!merchant) {
-        toast.error('No merchant store was found for this account.');
+      if (merchantError) {
+        console.error('[Reviews dashboard merchant lookup]', merchantError);
+        setLoadError({
+          section: 'merchant',
+          message: merchantError.message,
+          code: merchantError.code,
+        });
         return;
       }
 
-      setStoreSlug(merchant.store_slug);
+      if (!merchant) {
+        setLoadError({
+          section: 'merchant',
+          message: 'No merchant store was found for this account.',
+        });
+        return;
+      }
 
-      const [storeResult, productResult] = await Promise.all([
-        supabase
-          .from('store_reviews')
-          .select('id, merchant_id, reviewer_name, rating, comment, status, created_at')
-          .eq('merchant_id', merchant.id)
-          .order('created_at', { ascending: false }),
+      setStoreSlug(merchant.store_slug || '');
 
-        supabase
-          .from('product_reviews')
-          .select('*, products(name, slug)')
-          .eq('merchant_id', merchant.id)
-          .order('created_at', { ascending: false }),
-      ]);
+      // Load store reviews independently so the failing query is identifiable.
+      const storeResult = await supabase
+        .from('store_reviews')
+        .select(
+          'id, merchant_id, reviewer_name, rating, comment, status, created_at'
+        )
+        .eq('merchant_id', merchant.id)
+        .order('created_at', { ascending: false });
 
-      if (storeResult.error) throw storeResult.error;
-      if (productResult.error) throw productResult.error;
+      if (storeResult.error) {
+        console.error('[Store reviews query failed]', {
+          code: storeResult.error.code,
+          message: storeResult.error.message,
+          details: storeResult.error.details,
+          hint: storeResult.error.hint,
+        });
+
+        setLoadError({
+          section: 'store_reviews',
+          message: storeResult.error.message,
+          code: storeResult.error.code,
+        });
+        return;
+      }
 
       setStoreReviews((storeResult.data || []) as StoreReview[]);
+
+      // Load product reviews separately; their failure won't be mistaken
+      // for a store_reviews permissions or schema error.
+      const productResult = await supabase
+        .from('product_reviews')
+        .select('*, products(name, slug)')
+        .eq('merchant_id', merchant.id)
+        .order('created_at', { ascending: false });
+
+      if (productResult.error) {
+        console.error('[Product reviews query failed]', {
+          code: productResult.error.code,
+          message: productResult.error.message,
+          details: productResult.error.details,
+          hint: productResult.error.hint,
+        });
+
+        setLoadError({
+          section: 'product_reviews',
+          message: productResult.error.message,
+          code: productResult.error.code,
+        });
+        return;
+      }
+
       setProductReviews((productResult.data || []) as ProductReview[]);
     } catch (error) {
-      console.error('Review dashboard load failed:', error);
-      toast.error(
-        'Could not load reviews. Check the store_reviews permissions and database schema.'
-      );
+      console.error('[Reviews dashboard unexpected error]', error);
+
+      setLoadError({
+        section: 'unknown',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred while loading reviews.',
+      });
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     void loadReviews();
@@ -113,7 +182,44 @@ export default function MerchantReviewsPage() {
     : '0.0';
 
   const toggleProductApproval = async (review: ProductReview) => {
+    if (updatingProductReviewId) return;
+
+    setUpdatingProductReviewId(review.id);
+
     try {
+      const supabase = createClient();
+
+      const { data: { user }, error: authError } =
+        await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!user) throw new Error('Please sign in again.');
+
+      // Confirm that this review belongs to a product owned by this merchant.
+      const { data: merchant, error: merchantError } = await supabase
+        .from('merchants')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (merchantError) throw merchantError;
+      if (!merchant) throw new Error('No merchant store was found.');
+
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', (review as ProductReview & { product_id?: string }).product_id || '')
+        .eq('merchant_id', merchant.id)
+        .maybeSingle();
+
+      if (productError) throw productError;
+
+      if (!product) {
+        throw new Error(
+          'Could not verify that this review belongs to your store.'
+        );
+      }
+
       const { error } = await supabase
         .from('product_reviews')
         .update({ is_approved: !review.is_approved })
@@ -124,17 +230,25 @@ export default function MerchantReviewsPage() {
       setProductReviews((current) =>
         current.map((item) =>
           item.id === review.id
-            ? { ...item, is_approved: !item.is_approved }
+            ? { ...item, is_approved: !review.is_approved }
             : item
         )
       );
 
       toast.success(
-        review.is_approved ? 'Product review hidden.' : 'Product review approved.'
+        review.is_approved
+          ? 'Product review hidden.'
+          : 'Product review approved.'
       );
     } catch (error) {
-      console.error(error);
-      toast.error('Could not update product review.');
+      console.error('[Product review update failed]', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Could not update product review.'
+      );
+    } finally {
+      setUpdatingProductReviewId(null);
     }
   };
 
@@ -150,6 +264,51 @@ export default function MerchantReviewsPage() {
     );
   }
 
+  if (loadError && loadError.section !== 'product_reviews') {
+    const sectionLabel = {
+      authentication: 'Sign-in check',
+      merchant: 'Merchant lookup',
+      store_reviews: 'Store reviews query',
+      product_reviews: 'Product reviews query',
+      unknown: 'Unexpected error',
+    }[loadError.section];
+
+    return (
+      <main className="max-w-3xl mx-auto p-4 sm:p-6">
+        <section className="rounded-xl border border-red-200 bg-white p-5 space-y-4">
+          <h1 className="text-xl font-extrabold text-gray-900">
+            Could not load reviews
+          </h1>
+
+          <p className="text-sm text-gray-700">
+            The dashboard encountered an error while loading your reviews.
+            Your existing review records have not been deleted by this page.
+          </p>
+
+          <div className="rounded-lg bg-red-50 p-3 space-y-1">
+            <p className="text-sm font-bold text-red-800">{sectionLabel}</p>
+            <p className="text-sm text-red-700 break-words">
+              {loadError.message}
+            </p>
+            {loadError.code && (
+              <p className="text-xs text-red-700">
+                Error code: {loadError.code}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void loadReviews()}
+            className="rounded-lg bg-purple-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-purple-800"
+          >
+            Retry loading
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-5xl mx-auto p-4 sm:p-6 space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -162,7 +321,7 @@ export default function MerchantReviewsPage() {
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {storeSlug && (
             <Link
               href={`/marketplace/store/${storeSlug}`}
@@ -177,13 +336,32 @@ export default function MerchantReviewsPage() {
           >
             Products →
           </Link>
+          <button
+            type="button"
+            onClick={() => void loadReviews()}
+            className="text-sm font-bold text-purple-700"
+          >
+            Refresh reviews
+          </button>
         </div>
       </header>
 
-      {/*
-        STORE REVIEWS
-        Marketplace and individual storefront reviews share store_reviews.
-      */}
+      {loadError?.section === 'product_reviews' && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+          <h2 className="font-bold text-amber-900">
+            Product reviews could not be loaded
+          </h2>
+          <p className="text-sm text-amber-800 break-words">
+            {loadError.message}
+            {loadError.code ? ` (code: ${loadError.code})` : ''}
+          </p>
+          <p className="text-xs text-amber-800">
+            Store reviews loaded separately. The product-review error does not
+            mean your store reviews are missing.
+          </p>
+        </section>
+      )}
+
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-extrabold">⭐ Store Reviews</h2>
@@ -237,18 +415,12 @@ export default function MerchantReviewsPage() {
                 <p className="text-xs text-gray-500 mt-3">
                   Status: {review.status}
                 </p>
-
-                <p className="text-xs text-gray-500 mt-2">
-                  You can respond to this review publicly. A negative review
-                  should not be hidden solely because you disagree with it.
-                </p>
               </article>
             ))}
           </div>
         )}
       </section>
 
-      {/* PRODUCT REVIEWS REMAIN A SEPARATE CATEGORY */}
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-extrabold">📦 Product Reviews</h2>
@@ -287,10 +459,15 @@ export default function MerchantReviewsPage() {
 
                   <button
                     type="button"
+                    disabled={updatingProductReviewId === review.id}
                     onClick={() => void toggleProductApproval(review)}
-                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-800 text-xs font-bold"
+                    className="px-3 py-2 rounded-lg bg-gray-100 text-gray-800 text-xs font-bold disabled:opacity-50"
                   >
-                    {review.is_approved ? 'Hide product review' : 'Approve product review'}
+                    {updatingProductReviewId === review.id
+                      ? 'Updating…'
+                      : review.is_approved
+                        ? 'Hide product review'
+                        : 'Approve product review'}
                   </button>
                 </div>
 
