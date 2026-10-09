@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
 import ProductCard from '@/components/storefront/ProductCard';
 import ConfirmWithSeller from '@/components/storefront/ConfirmWithSeller';
+import ReviewList from '@/components/reviews/ReviewList';
+import ReviewForm from '@/components/reviews/ReviewForm';
 import { addSharedCartItem } from '@/lib/marketplace-cart-client';
 
 interface ProductDetailClientProps {
@@ -43,14 +45,20 @@ export default function ProductDetailClient({
   const [selectedTab, setSelectedTab] = useState<
     'description' | 'reviews' | 'shipping'
   >('description');
+  const [reviewRefresh, setReviewRefresh] = useState(0);
 
   const storeSlug = merchant?.store_slug || '';
+  const productId = product?.id ? String(product.id) : '';
+  const merchantId = merchant?.id ? String(merchant.id) : '';
 
   const imageUrls: string[] = (() => {
     const raw = product.images;
 
     if (!raw) return [];
-    if (typeof raw === 'string') return [raw];
+    if (typeof raw === 'string') {
+      const url = extractImageUrl(raw);
+      return url ? [url] : [];
+    }
 
     if (Array.isArray(raw)) {
       return raw
@@ -82,7 +90,7 @@ export default function ProductDetailClient({
       return;
     }
 
-    if (!storeSlug || !product?.id) {
+    if (!storeSlug || !productId) {
       toast.error('Could not identify this store or product.');
       return;
     }
@@ -95,7 +103,7 @@ export default function ProductDetailClient({
     setIsAddingToCart(true);
 
     try {
-      await addSharedCartItem(storeSlug, String(product.id), quantity);
+      await addSharedCartItem(storeSlug, productId, quantity);
       toast.success('Added to your OrizzonCart! 🛒');
     } catch (error) {
       console.error('Add to shared cart failed:', error);
@@ -111,12 +119,16 @@ export default function ProductDetailClient({
 
   const shareProduct = (platform: string) => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
-    const text = `Check out ${product.name} at ${merchant?.store_name || 'this store'}`;
+    const text = `Check out ${product.name} at ${
+      merchant?.store_name || 'this store'
+    }`;
 
     const shareUrls: Record<string, string> = {
       whatsapp: `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        text
+      )}&url=${encodeURIComponent(url)}`,
     };
 
     if (platform === 'copy') {
@@ -138,6 +150,10 @@ export default function ProductDetailClient({
   const totalPrice = (
     Number(product.price || 0) * quantity
   ).toLocaleString('en-NG');
+
+  const handleReviewSuccess = () => {
+    setReviewRefresh((current) => current + 1);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -469,12 +485,13 @@ export default function ProductDetailClient({
 
         <div className="mt-12">
           <div className="border-b border-gray-200">
-            <div className="flex gap-8">
+            <div className="flex gap-8 overflow-x-auto">
               {(['description', 'reviews', 'shipping'] as const).map((tab) => (
                 <button
                   key={tab}
+                  type="button"
                   onClick={() => setSelectedTab(tab)}
-                  className={`pb-4 px-2 font-semibold capitalize transition-colors relative ${
+                  className={`pb-4 px-2 font-semibold capitalize transition-colors relative whitespace-nowrap ${
                     selectedTab === tab
                       ? 'text-purple-600'
                       : 'text-gray-500 hover:text-gray-700'
@@ -504,8 +521,38 @@ export default function ProductDetailClient({
             )}
 
             {selectedTab === 'reviews' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="text-gray-500 italic">Reviews loading...</div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <section className="min-w-0 bg-white rounded-2xl border border-gray-200 p-5 sm:p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-5">
+                    Customer Reviews
+                  </h2>
+
+                  {productId ? (
+                    <ReviewList
+                      key={`${productId}-${reviewRefresh}`}
+                      productId={productId}
+                    />
+                  ) : (
+                    <p className="text-sm text-red-600">
+                      Reviews cannot load because this product has no valid ID.
+                    </p>
+                  )}
+                </section>
+
+                <section className="min-w-0">
+                  {productId && merchantId ? (
+                    <ReviewForm
+                      productId={productId}
+                      merchantId={merchantId}
+                      onSuccess={handleReviewSuccess}
+                    />
+                  ) : (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                      The review form is unavailable because the product or
+                      store information is missing.
+                    </div>
+                  )}
+                </section>
               </div>
             )}
 
