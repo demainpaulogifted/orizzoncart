@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type Review = {
   id: string;
@@ -8,12 +8,27 @@ type Review = {
   rating: number;
   comment: string | null;
   created_at: string;
+  helpful_count?: number;
+  replies?: {
+    id: string;
+    author_role: 'merchant' | 'reviewer';
+    author_name: string;
+    body: string;
+    created_at: string;
+  }[];
 };
 
-export function Stars({ value, className = 'text-sm' }: { value: number; className?: string }) {
-  const full = Math.round(value);
+export function Stars({
+  value,
+  className = 'text-sm',
+}: {
+  value: number;
+  className?: string;
+}) {
+  const full = Math.max(0, Math.min(5, Math.round(value)));
+
   return (
-    <span className={`${className} leading-none`}>
+    <span className={`${className} leading-none`} aria-label={`${value} out of 5 stars`}>
       <span className="text-yellow-500">{'★'.repeat(full)}</span>
       <span className="text-gray-300">{'★'.repeat(5 - full)}</span>
     </span>
@@ -27,144 +42,278 @@ export function StoreReviews({ merchantId }: { merchantId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(5);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [msgError, setMsgError] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/reviews/store?merchant_id=${merchantId}`);
-      const d = await res.json();
-      setReviews(d.reviews || []);
-      setAvg(d.average || 0);
-      setCount(d.count || 0);
-    } catch {}
-  }
+      const res = await fetch(
+        `/api/reviews/store?merchant_id=${encodeURIComponent(merchantId)}`,
+        { cache: 'no-store' }
+      );
 
-  useEffect(() => {
-    load();
+      if (!res.ok) throw new Error('Unable to load reviews.');
+
+      const data = await res.json();
+      setReviews(Array.isArray(data.reviews) ? data.reviews : []);
+      setAvg(Number(data.average) || 0);
+      setCount(Number(data.count) || 0);
+    } catch (error) {
+      console.error('Store reviews load failed:', error);
+    }
   }, [merchantId]);
 
-  async function submit(e: React.FormEvent) {
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     setMsg('');
+    setMsgError(false);
+
     try {
       const res = await fetch('/api/reviews/store', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchant_id: merchantId, reviewer_name: name, rating, comment }),
+        body: JSON.stringify({
+          merchant_id: merchantId,
+          reviewer_name: name.trim(),
+          reviewer_email: email.trim(),
+          rating,
+          comment: comment.trim(),
+        }),
       });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'Failed to submit');
-      setMsg('✅ Thank you! Your review was submitted and will appear once the store approves it.');
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not submit your review.');
+      }
+
+      setMsg('✅ Thank you! Your review has been published.');
       setName('');
+      setEmail('');
       setComment('');
       setRating(5);
       setOpenForm(false);
-    } catch (e2: any) {
-      setMsg('❌ ' + e2.message);
+
+      await load();
+    } catch (error) {
+      setMsgError(true);
+      setMsg(
+        error instanceof Error
+          ? error.message
+          : 'Could not submit your review. Please try again.'
+      );
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="bg-white border rounded-2xl p-4 space-y-4 shadow-sm">
-      {/* Summary row — always visible, placed high on the page */}
+    <section
+      id="store-reviews"
+      className="scroll-mt-24 bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm"
+      aria-labelledby="store-reviews-heading"
+    >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="font-bold text-sm">⭐ Store Reviews</h2>
-          <div className="flex items-center gap-2 mt-1">
+          <h2 id="store-reviews-heading" className="font-extrabold text-base">
+            ⭐ Store Reviews
+          </h2>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             <Stars value={avg} />
-            <span className="text-xs text-gray-500 font-semibold">
-              {count ? `${avg} / 5 • ${count} review${count === 1 ? '' : 's'}` : 'No reviews yet'}
+            <span className="text-sm text-gray-600 font-semibold">
+              {count ? `${avg.toFixed(1)} / 5 · ${count} review${count === 1 ? '' : 's'}` : 'No reviews yet'}
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex gap-2 flex-wrap">
           {count > 0 && (
             <button
-              onClick={() => setExpanded(!expanded)}
-              className="px-3 py-2 bg-white border border-purple-200 text-purple-700 text-xs font-bold rounded-lg hover:bg-purple-50"
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className="px-3 py-2 border border-purple-200 text-purple-700 text-sm font-bold rounded-lg hover:bg-purple-50"
             >
-              {expanded ? 'Hide Reviews ▲' : `View All Reviews (${count}) ▼`}
+              {expanded ? 'Hide Reviews' : `Read Reviews (${count})`}
             </button>
           )}
+
           <button
-            onClick={() => setOpenForm(!openForm)}
-            className="px-3 py-2 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700"
+            type="button"
+            onClick={() => {
+              setMsg('');
+              setOpenForm((value) => !value);
+            }}
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-bold rounded-lg hover:bg-purple-700"
           >
             {openForm ? 'Close' : 'Write a Review'}
           </button>
         </div>
       </div>
 
-      {/* Expandable list of ALL approved reviews */}
+      {msg && (
+        <p
+          role="status"
+          className={`rounded-lg p-3 text-sm ${
+            msgError
+              ? 'bg-red-50 text-red-700'
+              : 'bg-green-50 text-green-700'
+          }`}
+        >
+          {msg}
+        </p>
+      )}
+
       {expanded && (
-        <div className="space-y-3 bg-gray-50 border rounded-xl p-4">
+        <div className="space-y-4 bg-gray-50 border rounded-xl p-4">
           {reviews.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-4">No approved reviews yet.</p>
+            <p className="text-sm text-gray-500 text-center py-4">
+              No reviews yet.
+            </p>
           ) : (
-            reviews.map((r) => (
-              <div key={r.id} className="border-b border-gray-200 last:border-0 pb-3 last:pb-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold">{r.reviewer_name}</p>
-                  <Stars value={r.rating} className="text-xs" />
+            reviews.map((review) => (
+              <article
+                key={review.id}
+                className="border-b border-gray-200 last:border-0 pb-4 last:pb-0"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-sm break-words">
+                      {review.reviewer_name}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Stars value={review.rating} />
                 </div>
-                {r.comment && <p className="text-xs text-gray-600 mt-1">{r.comment}</p>}
-                <p className="text-[10px] text-gray-400 mt-1">
-                  {new Date(r.created_at).toLocaleDateString()}
+
+                {review.comment && (
+                  <p className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
+                    {review.comment}
+                  </p>
+                )}
+
+                {(review.replies || []).map((reply) => (
+                  <div
+                    key={reply.id}
+                    className="mt-3 ml-2 border-l-2 border-purple-200 pl-3"
+                  >
+                    <p className="text-xs font-bold">
+                      {reply.author_role === 'merchant'
+                        ? 'Official store response'
+                        : reply.author_name}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">
+                      {reply.body}
+                    </p>
+                  </div>
+                ))}
+
+                <p className="text-xs text-gray-500 mt-3">
+                  Helpful votes: {review.helpful_count || 0}
                 </p>
-              </div>
+              </article>
             ))
           )}
         </div>
       )}
 
-      {/* Review form */}
       {openForm && (
-        <form onSubmit={submit} className="bg-gray-50 border rounded-xl p-4 space-y-3">
+        <form
+          onSubmit={submit}
+          className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-5 space-y-4"
+        >
           <div>
-            <label className="text-xs font-bold text-gray-600">Your rating</label>
-            <div className="flex gap-1 mt-1">
+            <label className="block text-sm font-bold text-gray-700">
+              Your rating
+            </label>
+            <div className="flex gap-2 mt-2" role="group" aria-label="Choose a rating">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
                   type="button"
+                  aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                  aria-pressed={rating === n}
                   onClick={() => setRating(n)}
-                  className={`text-2xl ${n <= rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                  className={`text-3xl ${
+                    n <= rating ? 'text-yellow-500' : 'text-gray-300'
+                  }`}
                 >
                   ★
                 </button>
               ))}
             </div>
           </div>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            placeholder="Your name"
-            className="w-full px-3 py-2 border rounded-lg text-sm"
-          />
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            rows={3}
-            placeholder="How was your experience with this store? (optional)"
-            className="w-full px-3 py-2 border rounded-lg text-sm"
-          />
-          {msg && <p className="text-xs text-gray-600">{msg}</p>}
+
+          <div>
+            <label htmlFor="store-review-name" className="block text-sm font-semibold text-gray-700 mb-1">
+              Your name
+            </label>
+            <input
+              id="store-review-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              maxLength={100}
+              autoComplete="name"
+              placeholder="Enter your name"
+              className="w-full min-w-0 px-3 py-3 border border-gray-300 rounded-lg text-base"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="store-review-email" className="block text-sm font-semibold text-gray-700 mb-1">
+              Your email (private)
+            </label>
+            <input
+              id="store-review-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              maxLength={254}
+              autoComplete="email"
+              placeholder="you@example.com"
+              className="w-full min-w-0 px-3 py-3 border border-gray-300 rounded-lg text-base"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Your email is for review administration and will not appear publicly.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="store-review-comment" className="block text-sm font-semibold text-gray-700 mb-1">
+              Your review
+            </label>
+            <textarea
+              id="store-review-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              rows={5}
+              maxLength={3000}
+              placeholder="Share your experience with this store..."
+              className="w-full min-w-0 resize-y px-3 py-3 border border-gray-300 rounded-lg text-base"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-2.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 disabled:opacity-50"
+            className="w-full py-3 bg-green-600 text-white text-base font-extrabold rounded-lg hover:bg-green-700 disabled:opacity-50"
           >
             {saving ? 'Submitting…' : 'Submit Review'}
           </button>
         </form>
       )}
-    </div>
+    </section>
   );
 }
