@@ -1,21 +1,53 @@
+
 'use client';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getSharedCart } from '@/lib/marketplace-cart-client';
 
-export function MerchantHeader({ merchant, isShowcaseMode }: { merchant: any; isShowcaseMode: boolean }) {
+export function MerchantHeader({
+  merchant,
+  isShowcaseMode,
+}: {
+  merchant: any;
+  isShowcaseMode: boolean;
+}) {
   const slug = merchant?.store_slug || '';
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const read = () => {
+    let active = true;
+
+    const read = async () => {
+      if (!slug) {
+        if (active) setCount(0);
+        return;
+      }
+
       try {
-        const cart = JSON.parse(localStorage.getItem(`orz_cart_${slug}`) || '[]');
-        setCount(cart.reduce((a: number, c: any) => a + (c.quantity || 0), 0));
-      } catch { setCount(0); }
+        const items = await getSharedCart();
+        if (!active) return;
+
+        setCount(
+          items
+            .filter((item) => item.merchant_slug === slug)
+            .reduce(
+              (sum, item) => sum + Math.max(0, Number(item.quantity) || 0),
+              0
+            )
+        );
+      } catch (error) {
+        console.error('Could not refresh merchant cart count:', error);
+      }
     };
-    read();
+
+    void read();
     window.addEventListener('cart-updated', read);
-    return () => window.removeEventListener('cart-updated', read);
+
+    return () => {
+      active = false;
+      window.removeEventListener('cart-updated', read);
+    };
   }, [slug]);
 
   return (
@@ -23,12 +55,13 @@ export function MerchantHeader({ merchant, isShowcaseMode }: { merchant: any; is
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <span className="w-10 h-10 rounded-xl bg-[var(--color-primary)] text-white font-extrabold flex items-center justify-center shrink-0 font-[var(--font-heading)]">
-            {merchant.store_name?.[0]?.toUpperCase() || 'S'}
+            {merchant?.store_name?.[0]?.toUpperCase() || 'S'}
           </span>
           <span className="text-lg font-bold text-[var(--color-text)] truncate font-[var(--font-heading)]">
-            {merchant.store_name}
+            {merchant?.store_name}
           </span>
         </div>
+
         <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/marketplace"
@@ -36,17 +69,26 @@ export function MerchantHeader({ merchant, isShowcaseMode }: { merchant: any; is
           >
             🛍️ <span>Marketplace</span>
           </Link>
+
           <div className="flex flex-col items-end gap-1">
             <button
-              onClick={() => window.dispatchEvent(new Event('cart-open-request'))}
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(new Event('cart-open-request'))
+              }
+              aria-label={`Open cart, ${count} items`}
               className="relative flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-primary)] text-white text-sm font-extrabold shadow-md hover:opacity-90"
             >
               🛒 Cart
               <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center border-2 border-white">
-                {count}
+                {count > 99 ? '99+' : count}
               </span>
             </button>
-            <Link href="/track-order" className="text-xs font-bold text-[var(--color-primary)] hover:underline">
+
+            <Link
+              href="/track-order"
+              className="text-xs font-bold text-[var(--color-primary)] hover:underline"
+            >
               📦 Track Order
             </Link>
           </div>
