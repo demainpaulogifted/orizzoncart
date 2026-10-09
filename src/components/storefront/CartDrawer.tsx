@@ -88,7 +88,7 @@ export function CartDrawer({
     item: SharedCartItem,
     quantity: number
   ) => {
-    const key = `${item.merchant_id}:${item.product_id}`;
+    const key = `\( {item.merchant_id}: \){item.product_id}`;
     if (busyItems.includes(key)) return;
 
     setBusyItems((current) => [...current, key]);
@@ -162,17 +162,10 @@ export function CartDrawer({
               <p className="mt-1 text-sm text-gray-500">
                 Add a product from this store to get started.
               </p>
-              <Link
-                href="/marketplace/cart"
-                onClick={onClose}
-                className="mt-4 inline-block font-bold text-purple-700 hover:underline"
-              >
-                View your marketplace cart
-              </Link>
             </div>
           ) : (
             cart.map((item) => {
-              const key = `${item.merchant_id}:${item.product_id}`;
+              const key = `\( {item.merchant_id}: \){item.product_id}`;
               const imageUrl = getImageUrl(item.image);
               const busy = busyItems.includes(key);
 
@@ -277,14 +270,6 @@ export function CartDrawer({
               className="block w-full rounded-xl bg-green-600 py-4 text-center font-extrabold text-white shadow-lg hover:bg-green-700"
             >
               Proceed to Checkout →
-            </Link>
-
-            <Link
-              href="/marketplace/cart"
-              onClick={onClose}
-              className="block text-center text-sm font-bold text-purple-700 hover:underline"
-            >
-              View all store carts
             </Link>
           </div>
         )}
