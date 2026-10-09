@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -16,30 +17,41 @@ export async function generateMetadata({
   const { store_slug } = await params;
   const admin = createAdminClient();
 
-  const { data: merchant } = await admin
+  // Request only the columns needed for storefront metadata.
+  const { data: merchant, error } = await admin
     .from('merchants')
     .select(
-      'store_name, store_description, tagline, description, is_active, payment_receiving_status'
+      'store_name, store_description, tagline, payment_receiving_status'
     )
     .eq('store_slug', store_slug)
     .maybeSingle();
 
-  if (!merchant) {
-    return {
-      title: 'Store Not Found',
-      description: 'This store does not exist or is no longer active.',
-      robots: { index: false, follow: false },
-    };
+  if (error) {
+    console.error('[Store metadata query error]', {
+      store_slug,
+      message: error.message,
+      code: error.code,
+    });
   }
 
-  const storeName = merchant.store_name || 'Online Store';
-  const storeDesc =
-    merchant.store_description ||
-    merchant.tagline ||
-    merchant.description ||
-    'Shop at ' + storeName + ' - Quality products, fast delivery, and secure payments.';
+  // Keep the browser title meaningful even if metadata lookup returns no row.
+  const fallbackName =
+    store_slug
+      .split('-')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ') || 'Online Store';
 
-  const storeUrl = 'https://' + store_slug + '.orizzoncart.name.ng';
+  const storeName = merchant?.store_name || fallbackName;
+
+  const storeDesc =
+    merchant?.store_description ||
+    merchant?.tagline ||
+    'Shop at ' +
+      storeName +
+      ' - Quality products, fast delivery, and secure payments.';
+
+  const storeUrl = `https://${store_slug}.orizzoncart.name.ng`;
 
   return {
     title: {
@@ -61,25 +73,53 @@ export async function generateMetadata({
       description: storeDesc,
     },
     robots: {
-      index: merchant.payment_receiving_status === 'ACTIVE',
+      index: merchant?.payment_receiving_status === 'ACTIVE',
       follow: true,
     },
   };
 }
 
-export default async function StorePage({ params, searchParams }: any) {
+export default async function StorePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ store_slug: string }>;
+  searchParams: Promise<
+    Record<string, string | string[] | undefined>
+  >;
+}) {
   const { store_slug } = await params;
 
   const host = (await headers()).get('host') || '';
-  const qs = new URLSearchParams(await searchParams).toString();
-  redirectToSubdomain(host, store_slug, '', qs);
+  const search = await searchParams;
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(search)) {
+    if (typeof value === 'string') {
+      query.set(key, value);
+    } else if (Array.isArray(value)) {
+      value.forEach((item) => query.append(key, item));
+    }
+  }
+
+  redirectToSubdomain(host, store_slug, '', query.toString());
 
   const admin = createAdminClient();
-  const { data: merchant } = await admin
+
+  const { data: merchant, error: merchantError } = await admin
     .from('merchants')
     .select('*')
     .eq('store_slug', store_slug)
     .maybeSingle();
+
+  if (merchantError) {
+    console.error('[Storefront merchant query error]', {
+      store_slug,
+      message: merchantError.message,
+      code: merchantError.code,
+    });
+    throw new Error('Unable to load this storefront.');
+  }
 
   if (!merchant || !merchant.is_active) {
     notFound();
@@ -95,21 +135,36 @@ export default async function StorePage({ params, searchParams }: any) {
     merchant.payment_receiving_status !== 'ACTIVE' ||
     !!expired;
 
-  const { data: products } = await admin
+  const { data: products, error: productsError } = await admin
     .from('products')
     .select('*')
     .eq('merchant_id', merchant.id)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  const { data: pages } = await admin
+  if (productsError) {
+    console.error('[Storefront products query error]', {
+      store_slug,
+      message: productsError.message,
+      code: productsError.code,
+    });
+  }
+
+  const { data: pages, error: pagesError } = await admin
     .from('store_pages')
     .select('title, slug')
     .eq('merchant_id', merchant.id)
     .eq('is_active', true)
     .order('created_at');
 
-  // Luxe Minimal default theme
+  if (pagesError) {
+    console.error('[Storefront pages query error]', {
+      store_slug,
+      message: pagesError.message,
+      code: pagesError.code,
+    });
+  }
+
   const styleVars = {
     '--color-primary': '#D4C5B5',
     '--color-secondary': '#8B7355',
@@ -123,7 +178,7 @@ export default async function StorePage({ params, searchParams }: any) {
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: merchant.store_name,
-    url: 'https://' + store_slug + '.orizzoncart.name.ng',
+    url: `https://${store_slug}.orizzoncart.name.ng`,
     description:
       merchant.store_description ||
       merchant.tagline ||
@@ -134,7 +189,9 @@ export default async function StorePage({ params, searchParams }: any) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(storeSchema) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(storeSchema),
+        }}
       />
       <StorefrontClient
         merchant={merchant}
