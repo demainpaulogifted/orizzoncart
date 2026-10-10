@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
+import { TrackStoreView } from '@/components/marketplace/TrackStoreView';
 import { StoreReviews, Stars } from '@/components/reviews/StoreReviews';
 
 export const dynamic = 'force-dynamic';
@@ -57,6 +58,7 @@ export default async function SellerProfilePage({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
+      <TrackStoreView merchantId={m.id} />
       <div className="bg-gradient-to-r from-purple-700 to-blue-700 text-white">
         <div className="max-w-3xl mx-auto px-4 py-6 flex items-center gap-4">
           {m.logo_url ? (
@@ -69,7 +71,6 @@ export default async function SellerProfilePage({
           <div className="min-w-0">
             <h1 className="text-xl font-extrabold truncate">{m.store_name}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {/* Step 2: Enhanced verification badges */}
               {m.is_verified ? (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-extrabold bg-green-500 text-white px-2 py-0.5 rounded-full">
@@ -142,7 +143,7 @@ export default async function SellerProfilePage({
               {products.map((p) => (
                 <a
                   key={p.id}
-                  href={`https://${m.store_slug}.orizzoncart.name.ng/p/${p.slug}`}
+                  href={`https://\( {m.store_slug}.orizzoncart.name.ng/p/ \){p.slug}`}
                   target="_blank"
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
                 >
