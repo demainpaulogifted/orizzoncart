@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export function MarketplaceAppExperience() {
   const [deferred, setDeferred] = useState<any>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
   const [tourDone, setTourDone] = useState<boolean>(() => {
     // Check if tour was already completed on a previous visit
     try {
@@ -18,6 +20,11 @@ export function MarketplaceAppExperience() {
 
   useEffect(() => {
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
+    setIsStandalone(
+      window.matchMedia('(display-mode: standalone)').matches ||
+        // @ts-expect-error iOS Safari
+        window.navigator.standalone === true
+    );
 
     const onPrompt = (e: any) => {
       e.preventDefault();
@@ -29,6 +36,16 @@ export function MarketplaceAppExperience() {
     const onTourDone = () => setTourDone(true);
     window.addEventListener('orz-market-tour-done', onTourDone);
 
+    // Open install sheet when coming from dashboard (?install=1)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('install') === '1') {
+      setTourDone(true);
+      setShowPopup(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('install');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('orz-market-tour-done', onTourDone);
@@ -37,9 +54,9 @@ export function MarketplaceAppExperience() {
 
   useEffect(() => {
     // 🎯 Only show popup AFTER the tour is done
-    if (!tourDone) return;
+    if (!tourDone || isStandalone) return;
 
-    // Bold popup ~8s after first visit (after tour); floating button on return visits
+    // Bold popup after first visit (after tour); floating button on return visits
     const seen = sessionStorage.getItem('mkt_app_popup');
     let t: any;
     if (!seen) {
@@ -51,7 +68,7 @@ export function MarketplaceAppExperience() {
     return () => {
       if (t) clearTimeout(t);
     };
-  }, [tourDone]);
+  }, [tourDone, isStandalone]);
 
   function closePopup() {
     setShowPopup(false);
@@ -60,16 +77,29 @@ export function MarketplaceAppExperience() {
   }
 
   async function install() {
+    if (isStandalone) {
+      toast.success('Marketplace App is already installed');
+      closePopup();
+      return;
+    }
+
     if (deferred) {
       deferred.prompt();
       try {
-        await deferred.userChoice;
+        const choice = await deferred.userChoice;
+        if (choice?.outcome === 'accepted') {
+          toast.success('Marketplace App installed!');
+        }
       } catch {}
       closePopup();
-    } else {
-      closePopup();
+      return;
     }
+
+    // No native prompt — keep popup open so user can follow the steps
   }
+
+  // Don't show anything if already running as installed app
+  if (isStandalone) return null;
 
   return (
     <>
@@ -91,17 +121,37 @@ export function MarketplaceAppExperience() {
                 <li>📦 Track every order & tracking number in one place</li>
                 <li>⚡ Flash deal alerts before they sell out</li>
               </ul>
+
               <button
                 onClick={install}
                 className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-extrabold rounded-xl shadow-lg"
               >
                 📲 Install App Free
               </button>
-              {isIOS && (
+
+              {/* Show steps when browser has no native install prompt */}
+              {!deferred && (
+                isIOS ? (
+                  <ol className="text-left text-xs text-gray-600 space-y-1.5">
+                    <li>1. Tap the <strong>Share</strong> button in Safari</li>
+                    <li>2. Tap <strong>Add to Home Screen</strong></li>
+                    <li>3. Tap <strong>Add</strong></li>
+                  </ol>
+                ) : (
+                  <ol className="text-left text-xs text-gray-600 space-y-1.5">
+                    <li>1. Open the browser menu (⋮ or ⋯)</li>
+                    <li>2. Tap <strong>Install app</strong> or <strong>Add to Home screen</strong></li>
+                    <li>3. Confirm to add Marketplace to your home screen</li>
+                  </ol>
+                )
+              )}
+
+              {isIOS && deferred && (
                 <p className="text-[10px] text-gray-400 text-center">
-                  iPhone: tap Share → "Add to Home Screen"
+                  iPhone: tap Share → &quot;Add to Home Screen&quot;
                 </p>
               )}
+
               <button
                 onClick={closePopup}
                 className="w-full py-2 text-xs font-bold text-gray-400 hover:text-gray-600"
@@ -113,13 +163,13 @@ export function MarketplaceAppExperience() {
         </div>
       )}
 
-      {/* Floating download button (appears after popup is dismissed or on return visits) */}
+      {/* Floating install button (appears after popup is dismissed or on return visits) */}
       {showButton && !showPopup && (
         <button
           onClick={() => setShowPopup(true)}
-          className="fixed right-3 bottom-20 z-[60] px-4 py-2.5 rounded-full bg-gray-900 text-white text-[11px] font-bold shadow-xl hover:bg-gray-700 border border-white/20"
+          className="fixed right-3 bottom-20 z-[60] px-4 py-2.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold shadow-xl hover:bg-blue-700 border border-white/20"
         >
-          📲 Get App
+          📲 Install App
         </button>
       )}
     </>
