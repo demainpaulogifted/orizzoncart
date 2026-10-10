@@ -17,11 +17,21 @@ export function DashboardSidebar({
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [installSheet, setInstallSheet] = useState<'merchant' | 'marketplace' | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
+    setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
+    setIsStandalone(
+      window.matchMedia('(display-mode: standalone)').matches ||
+        // @ts-expect-error iOS Safari
+        window.navigator.standalone === true
+    );
+
     const onPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -31,17 +41,34 @@ export function DashboardSidebar({
   }, []);
 
   async function installMerchantApp() {
+    if (isStandalone) {
+      toast.success('Merchant App is already installed on this device');
+      return;
+    }
+
     if (deferredPrompt) {
       deferredPrompt.prompt();
       try {
-        await deferredPrompt.userChoice;
+        const choice = await deferredPrompt.userChoice;
+        if (choice?.outcome === 'accepted') {
+          toast.success('Merchant App installed!');
+        }
       } catch {
-        /* user dismissed */
+        /* dismissed */
       }
       setDeferredPrompt(null);
       return;
     }
-    toast.info('Use your browser menu → "Add to Home Screen" to install the Merchant App');
+
+    setInstallSheet('merchant');
+  }
+
+  function openMarketplaceInstall() {
+    if (isStandalone) {
+      window.open('/marketplace', '_blank');
+      return;
+    }
+    setInstallSheet('marketplace');
   }
 
   const items = [
@@ -86,13 +113,9 @@ export function DashboardSidebar({
     setSwitching(true);
     setOpen(false);
 
-    // Update the store selection before requesting fresh
-    // server-rendered dashboard content.
     document.cookie =
       `active_merchant_id=${encodeURIComponent(id)}; path=/; max-age=31536000; SameSite=Lax`;
 
-    // The dashboard layout reads this cookie and changes
-    // the key on <main>, remounting store-specific pages.
     router.refresh();
   }
 
@@ -131,27 +154,132 @@ export function DashboardSidebar({
           )}
         </button>
 
-        {/* Top-right: Merchant App + Marketplace App */}
+        {/* Top-right: Install App CTAs */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
           <button
             type="button"
             onClick={() => void installMerchantApp()}
-            className="inline-flex items-center gap-1 rounded-full bg-purple-600 px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-white shadow-sm hover:bg-purple-700"
-            title="Install Merchant App"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-purple-700 shadow-sm hover:bg-purple-100 active:scale-95 transition"
+            title="Install Merchant App to Home Screen"
           >
-            <span>📲</span>
-            <span className="hidden sm:inline">Merchant</span>
+            <span className="text-sm leading-none">📲</span>
+            <span className="hidden sm:inline">Install Merchant</span>
+            <span className="sm:hidden">Merchant</span>
           </button>
-          <Link
-            href="/marketplace"
-            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-white shadow-sm hover:bg-blue-700"
-            title="Open Marketplace App"
+          <button
+            type="button"
+            onClick={openMarketplaceInstall}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-[11px] sm:text-xs font-extrabold text-blue-700 shadow-sm hover:bg-blue-100 active:scale-95 transition"
+            title="Install Marketplace App to Home Screen"
           >
-            <span>🏪</span>
-            <span className="hidden sm:inline">Market</span>
-          </Link>
+            <span className="text-sm leading-none">🏪</span>
+            <span className="hidden sm:inline">Install Market</span>
+            <span className="sm:hidden">Market</span>
+          </button>
         </div>
       </header>
+
+      {/* Install instructions sheet */}
+      {installSheet && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden">
+            <div
+              className={`p-5 text-center text-white ${
+                installSheet === 'merchant'
+                  ? 'bg-gradient-to-br from-purple-600 to-violet-700'
+                  : 'bg-gradient-to-br from-blue-600 to-indigo-700'
+              }`}
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-3xl">
+                {installSheet === 'merchant' ? '📲' : '🏪'}
+              </div>
+              <h2 className="mt-3 text-lg font-extrabold">
+                {installSheet === 'merchant'
+                  ? 'Install Merchant App'
+                  : 'Install Marketplace App'}
+              </h2>
+              <p className="mt-1 text-xs text-white/80">
+                {installSheet === 'merchant'
+                  ? 'Manage orders & products from your home screen'
+                  : 'Shop verified stores & track orders as an app'}
+              </p>
+            </div>
+
+            <div className="space-y-3 p-5">
+              {isIOS ? (
+                <ol className="space-y-2 text-left text-sm text-gray-700">
+                  <li className="flex gap-2">
+                    <span className="font-extrabold text-purple-600">1.</span>
+                    <span>
+                      Tap the <strong>Share</strong> button in Safari (square with arrow)
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-extrabold text-purple-600">2.</span>
+                    <span>
+                      Scroll and tap <strong>Add to Home Screen</strong>
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-extrabold text-purple-600">3.</span>
+                    <span>
+                      Tap <strong>Add</strong> — the app icon will appear on your home screen
+                    </span>
+                  </li>
+                </ol>
+              ) : (
+                <ol className="space-y-2 text-left text-sm text-gray-700">
+                  <li className="flex gap-2">
+                    <span className="font-extrabold text-purple-600">1.</span>
+                    <span>Open the browser menu (⋮ or ⋯)</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-extrabold text-purple-600">2.</span>
+                    <span>
+                      Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-extrabold text-purple-600">3.</span>
+                    <span>Confirm — the app opens full-screen like a native app</span>
+                  </li>
+                </ol>
+              )}
+
+              {installSheet === 'marketplace' && (
+                <Link
+                  href="/marketplace"
+                  onClick={() => setInstallSheet(null)}
+                  className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-extrabold text-white hover:bg-blue-700"
+                >
+                  Open Marketplace → then install
+                </Link>
+              )}
+
+              {installSheet === 'merchant' && deferredPrompt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInstallSheet(null);
+                    void installMerchantApp();
+                  }}
+                  className="block w-full rounded-xl bg-purple-600 py-3 text-center text-sm font-extrabold text-white hover:bg-purple-700"
+                >
+                  📲 Install now
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setInstallSheet(null)}
+                className="w-full py-2 text-xs font-bold text-gray-400 hover:text-gray-600"
+              >
+                Not now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div
@@ -192,9 +320,7 @@ export function DashboardSidebar({
                   : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700'
               }`}
             >
-              <span className="text-base leading-none">
-                {item.icon}
-              </span>
+              <span className="text-base leading-none">{item.icon}</span>
               {item.label}
             </Link>
           ))}
@@ -222,15 +348,9 @@ export function DashboardSidebar({
                   <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 text-white text-xs font-extrabold flex items-center justify-center shrink-0">
                     {(store.store_name?.[0] || 'S').toUpperCase()}
                   </span>
-
-                  <span className="truncate flex-1 text-left">
-                    {store.store_name}
-                  </span>
-
+                  <span className="truncate flex-1 text-left">{store.store_name}</span>
                   {isActive && (
-                    <span className="text-green-600 text-xs shrink-0">
-                      ✓ Active
-                    </span>
+                    <span className="text-green-600 text-xs shrink-0">✓ Active</span>
                   )}
                 </button>
               );
@@ -253,9 +373,7 @@ export function DashboardSidebar({
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-purple-50 hover:text-purple-700 transition-colors"
               >
-                <span className="text-base leading-none">
-                  {item.icon}
-                </span>
+                <span className="text-base leading-none">{item.icon}</span>
                 {item.label}
               </Link>
             ))}
