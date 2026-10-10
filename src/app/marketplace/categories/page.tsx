@@ -6,15 +6,17 @@ import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottom
 export const dynamic = 'force-dynamic';
 
 const themeList: any[] = Object.values(THEMES);
-function themeFor(themeId: string | null) {
+function themeFor(themeId: string | null | undefined) {
   return (THEMES as any)[themeId as any] || themeList[0];
 }
 
+/** Homepage chips — always shown so Shop is never empty of navigation */
 const CATEGORY_CHIPS = [
   'Fashion', 'Tech', 'Home', 'Beauty', 'Foods', 'Digital', 'Health',
   'Kids', 'Sports', 'Automotive', 'Books', 'Crafts', 'Pets', 'Garden', 'Jewelry',
 ];
 
+/** Extra keywords so "Tech" also matches phones, laptops, etc. */
 const CATEGORY_ALIASES: Record<string, string[]> = {
   fashion: ['fashion', 'cloth', 'wear', 'dress', 'shirt', 'shoe', 'bag', 'apparel', 'style', 'coat', 'top'],
   tech: ['tech', 'phone', 'laptop', 'gadget', 'electronic', 'computer', 'accessory', 'cable'],
@@ -99,7 +101,7 @@ export default async function ShopPage({
   const title = cat
     ? `${cat} on Marketplace`
     : q
-      ? `Results for “${params.q}”`
+      ? `Results for "${params.q}"`
       : 'Shop Marketplace';
 
   return (
@@ -140,9 +142,7 @@ export default async function ShopPage({
             {CATEGORY_CHIPS.map((c) => (
               <Link
                 key={c}
-                href={`/marketplace/categories?cat=\( {encodeURIComponent(c)} \){
-                  q ? `&q=${encodeURIComponent(params.q || '')}` : ''
-                }`}
+                href={`/marketplace/categories?cat=\( {encodeURIComponent(c)} \){q ? `&q=${encodeURIComponent(params.q || '')}` : ''}`}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border ${
                   cat === c
                     ? 'bg-purple-600 text-white border-purple-600'
@@ -159,8 +159,8 @@ export default async function ShopPage({
       <main className="max-w-3xl mx-auto px-4 pt-4">
         <p className="text-xs text-gray-500 mb-3">
           {list.length} product{list.length === 1 ? '' : 's'}
-          {cat ? ` in “${cat}”` : ''}
-          {q ? ` matching “${params.q}”` : ''}
+          {cat ? ` in "${cat}"` : ''}
+          {q ? ` matching "${params.q}"` : ''}
           {!cat && !q ? ' from active verified stores' : ''}
         </p>
 
