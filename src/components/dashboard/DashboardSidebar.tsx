@@ -32,6 +32,11 @@ export function DashboardSidebar({
         window.navigator.standalone === true
     );
 
+    // Register service worker — needed for Chrome install prompt
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     const onPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -65,7 +70,7 @@ export function DashboardSidebar({
 
   function openMarketplaceInstall() {
     if (isStandalone) {
-      window.open('/marketplace', '_blank');
+      window.open('/marketplace?install=1', '_blank');
       return;
     }
     setInstallSheet('marketplace');
@@ -248,7 +253,7 @@ export function DashboardSidebar({
 
               {installSheet === 'marketplace' && (
                 <Link
-                  href="/marketplace"
+                  href="/marketplace?install=1"
                   onClick={() => setInstallSheet(null)}
                   className="block w-full rounded-xl bg-blue-600 py-3 text-center text-sm font-extrabold text-white hover:bg-blue-700"
                 >
