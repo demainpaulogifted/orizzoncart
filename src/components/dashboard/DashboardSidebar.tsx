@@ -1,9 +1,9 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function DashboardSidebar({
   merchant,
@@ -16,9 +16,33 @@ export function DashboardSidebar({
 }) {
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const onPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+  }, []);
+
+  async function installMerchantApp() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      try {
+        await deferredPrompt.userChoice;
+      } catch {
+        /* user dismissed */
+      }
+      setDeferredPrompt(null);
+      return;
+    }
+    toast.info('Use your browser menu → "Add to Home Screen" to install the Merchant App');
+  }
 
   const items = [
     { href: '/dashboard', icon: '📊', label: 'Home' },
@@ -74,7 +98,7 @@ export function DashboardSidebar({
 
   return (
     <>
-      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-gray-200 flex items-center gap-3 px-4">
+      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-gray-200 flex items-center gap-2 sm:gap-3 px-3 sm:px-4">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -89,7 +113,7 @@ export function DashboardSidebar({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 min-w-0 hover:opacity-80"
+          className="flex items-center gap-2 min-w-0 flex-1 hover:opacity-80"
           aria-label="Switch store"
         >
           <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 text-white flex items-center justify-center text-sm font-extrabold shrink-0">
@@ -106,6 +130,27 @@ export function DashboardSidebar({
             <span className="text-gray-400 text-xs shrink-0">⌄</span>
           )}
         </button>
+
+        {/* Top-right: Merchant App + Marketplace App */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+          <button
+            type="button"
+            onClick={() => void installMerchantApp()}
+            className="inline-flex items-center gap-1 rounded-full bg-purple-600 px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-white shadow-sm hover:bg-purple-700"
+            title="Install Merchant App"
+          >
+            <span>📲</span>
+            <span className="hidden sm:inline">Merchant</span>
+          </button>
+          <Link
+            href="/marketplace"
+            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1.5 text-[10px] sm:text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+            title="Open Marketplace App"
+          >
+            <span>🏪</span>
+            <span className="hidden sm:inline">Market</span>
+          </Link>
+        </div>
       </header>
 
       {open && (
