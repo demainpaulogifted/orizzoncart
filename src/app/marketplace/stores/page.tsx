@@ -15,7 +15,7 @@ export const metadata = {
 };
 
 const themeList: any[] = Object.values(THEMES);
-function themeFor(themeId: string | null) {
+function themeFor(themeId: string | null | undefined) {
   return (THEMES as any)[themeId as any] || themeList[0];
 }
 
@@ -103,7 +103,11 @@ export default async function ActiveStoresPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-extrabold text-gray-900">{m.store_name}</p>
-                  <p className={`text-xs font-bold ${isHot ? 'text-green-600' : 'text-gray-400'}`}>
+                  <p
+                    className={`text-xs font-bold ${
+                      isHot ? 'text-green-600' : 'text-gray-400'
+                    }`}
+                  >
                     {label}
                   </p>
                 </div>
