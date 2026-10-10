@@ -10,13 +10,24 @@ function themeFor(themeId: string | null | undefined) {
   return (THEMES as any)[themeId as any] || themeList[0];
 }
 
-/** Homepage chips — always shown so Shop is never empty of navigation */
 const CATEGORY_CHIPS = [
-  'Fashion', 'Tech', 'Home', 'Beauty', 'Foods', 'Digital', 'Health',
-  'Kids', 'Sports', 'Automotive', 'Books', 'Crafts', 'Pets', 'Garden', 'Jewelry',
+  'Fashion',
+  'Tech',
+  'Home',
+  'Beauty',
+  'Foods',
+  'Digital',
+  'Health',
+  'Kids',
+  'Sports',
+  'Automotive',
+  'Books',
+  'Crafts',
+  'Pets',
+  'Garden',
+  'Jewelry',
 ];
 
-/** Extra keywords so "Tech" also matches phones, laptops, etc. */
 const CATEGORY_ALIASES: Record<string, string[]> = {
   fashion: ['fashion', 'cloth', 'wear', 'dress', 'shirt', 'shoe', 'bag', 'apparel', 'style', 'coat', 'top'],
   tech: ['tech', 'phone', 'laptop', 'gadget', 'electronic', 'computer', 'accessory', 'cable'],
@@ -39,22 +50,20 @@ function matchesCategory(product: any, cat: string): boolean {
   if (!cat) return true;
   const key = cat.toLowerCase();
   const aliases = CATEGORY_ALIASES[key] || [key];
-  const hay = `${product.category || ''} ${product.name || ''}`.toLowerCase();
+  const hay = (String(product.category || '') + ' ' + String(product.name || '')).toLowerCase();
   return aliases.some((a) => hay.includes(a));
 }
 
 function matchesSearch(product: any, merchant: any, q: string): boolean {
   if (!q) return true;
-  const hay = [
+  const parts = [
     product.name,
     product.category,
     product.description,
-    merchant?.store_name,
-    merchant?.store_slug,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
+    merchant && merchant.store_name,
+    merchant && merchant.store_slug,
+  ];
+  const hay = parts.filter(Boolean).join(' ').toLowerCase();
   const tokens = q.split(/\s+/).filter(Boolean);
   return tokens.every((t) => hay.includes(t));
 }
@@ -77,7 +86,7 @@ export default async function ShopPage({
     .eq('is_verified', true)
     .eq('is_active', true);
 
-  const ids = merchants?.map((m) => m.id) || [];
+  const ids = (merchants || []).map((m) => m.id);
   const byId = new Map((merchants || []).map((m) => [m.id, m]));
 
   let list: any[] = [];
@@ -99,10 +108,18 @@ export default async function ShopPage({
   }
 
   const title = cat
-    ? `${cat} on Marketplace`
+    ? cat + ' on Marketplace'
     : q
-      ? `Results for "${params.q}"`
+      ? 'Results for "' + (params.q || '') + '"'
       : 'Shop Marketplace';
+
+  function categoryHref(chip: string) {
+    let href = '/marketplace/categories?cat=' + encodeURIComponent(chip);
+    if (q) {
+      href = href + '&q=' + encodeURIComponent(params.q || '');
+    }
+    return href;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -125,7 +142,10 @@ export default async function ShopPage({
               placeholder="Search products, stores, categories…"
               className="flex-1 rounded-full px-4 py-2 text-sm border border-gray-300 outline-none focus:ring-2 focus:ring-purple-500"
             />
-            <button type="submit" className="px-4 py-2 bg-purple-600 text-white text-sm font-bold rounded-full">
+            <button
+              type="submit"
+              className="px-4 py-2 bg-purple-600 text-white text-sm font-bold rounded-full"
+            >
               🔍
             </button>
           </form>
@@ -133,21 +153,23 @@ export default async function ShopPage({
           <div className="flex gap-2 overflow-x-auto pb-1">
             <Link
               href="/marketplace/categories"
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border ${
-                !cat ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-gray-200'
-              }`}
+              className={
+                !cat
+                  ? 'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-purple-600 text-white border-purple-600'
+                  : 'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white text-gray-600 border-gray-200'
+              }
             >
               All
             </Link>
             {CATEGORY_CHIPS.map((c) => (
               <Link
                 key={c}
-                href={`/marketplace/categories?cat=\( {encodeURIComponent(c)} \){q ? `&q=${encodeURIComponent(params.q || '')}` : ''}`}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border ${
+                href={categoryHref(c)}
+                className={
                   cat === c
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-white text-gray-600 border-gray-200'
-                }`}
+                    ? 'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-purple-600 text-white border-purple-600'
+                    : 'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border bg-white text-gray-600 border-gray-200'
+                }
               >
                 {c}
               </Link>
@@ -159,8 +181,8 @@ export default async function ShopPage({
       <main className="max-w-3xl mx-auto px-4 pt-4">
         <p className="text-xs text-gray-500 mb-3">
           {list.length} product{list.length === 1 ? '' : 's'}
-          {cat ? ` in "${cat}"` : ''}
-          {q ? ` matching "${params.q}"` : ''}
+          {cat ? ' in "' + cat + '"' : ''}
+          {q ? ' matching "' + (params.q || '') + '"' : ''}
           {!cat && !q ? ' from active verified stores' : ''}
         </p>
 
@@ -179,12 +201,15 @@ export default async function ShopPage({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {list.map((p: any) => {
               const merchant = byId.get(p.merchant_id);
-              const t = themeFor(merchant?.theme_id || null);
-              const img = p.images?.[0]?.url;
+              const t = themeFor(merchant ? merchant.theme_id : null);
+              const img = p.images && p.images[0] ? p.images[0].url : null;
+              const storeUrl = merchant
+                ? 'https://' + merchant.store_slug + '.orizzoncart.name.ng/p/' + p.slug
+                : '#';
               return (
                 <a
                   key={p.id}
-                  href={`https://\( {merchant?.store_slug}.orizzoncart.name.ng/p/ \){p.slug}`}
+                  href={storeUrl}
                   target="_blank"
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                 >
@@ -206,10 +231,10 @@ export default async function ShopPage({
                       ₦{Number(p.price).toLocaleString()}
                     </p>
                     <Link
-                      href={`/marketplace/store/${merchant?.store_slug}`}
+                      href={'/marketplace/store/' + (merchant ? merchant.store_slug : '')}
                       className="block text-[10px] text-gray-400 truncate hover:text-purple-600"
                     >
-                      🏪 {merchant?.store_name} • View profile
+                      🏪 {merchant ? merchant.store_name : ''} • View profile
                     </Link>
                   </div>
                 </a>
