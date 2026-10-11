@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
-import { MarketplaceCartButton } from '@/components/MarketplaceCartButton'; // <-- Import the new client component
+import { MarketplaceCartButton } from '@/components/MarketplaceCartButton';
 
 export async function MarketplaceBottomNav({ active }: { active?: string }) {
   const supabase = await createClient();
@@ -9,6 +9,7 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // True only if this browser already has a logged-in user who owns a store
   let isMerchant = false;
   if (user) {
     const admin = createAdminClient();
@@ -21,9 +22,14 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
   }
 
   const item = (key: string) =>
-    `flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ${
-      active === key ? 'text-purple-600' : 'text-gray-400'
-    }`;
+    'flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold ' +
+    (active === key ? 'text-purple-600' : 'text-gray-400');
+
+  // Logged-in merchant → dashboard. Otherwise → login (then dashboard after sign-in)
+  const publishHref = isMerchant
+    ? '/dashboard/products/add'
+    : '/login?next=/dashboard/products/add';
+  const merchantHref = isMerchant ? '/dashboard' : '/login?next=/dashboard';
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)]">
@@ -38,31 +44,21 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
           Shop
         </Link>
 
-        {/* Publish: Opens in new tab so shopper doesn't lose the app */}
-        <a
-          href={isMerchant ? '/dashboard/products/add' : '/signup'}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href={publishHref}
           className="flex flex-col items-center justify-end pb-1 -mt-5"
         >
           <span className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-2xl font-extrabold flex items-center justify-center shadow-lg border-4 border-white">
             +
           </span>
           <span className="text-[9px] font-bold text-purple-600 mt-0.5">Publish</span>
-        </a>
+        </Link>
 
-        {/* Merchant: Opens in new tab */}
-        <a
-          href={isMerchant ? '/dashboard' : '/login'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={item('merchant')}
-        >
+        <Link href={merchantHref} className={item('merchant')}>
           <span className="text-lg leading-none">🏪</span>
           Merchant
-        </a>
+        </Link>
 
-        {/* NEW: Cart Button with Live Badge */}
         <MarketplaceCartButton active={active} />
       </div>
     </nav>
