@@ -8,7 +8,8 @@ export default function VerificationPage() {
   const [merchant, setMerchant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+  const [justSaved, setJustSaved] = useState(false);
+
   const [form, setForm] = useState({
     business_state: '',
     business_lga: '',
@@ -24,20 +25,27 @@ export default function VerificationPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    
-    const { data: m } = await supabase
+
+    const activeMerchantId = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('active_merchant_id='))
+      ?.split('=')[1];
+
+    const { data: merchants } = await supabase
       .from('merchants')
       .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-      
+      .eq('user_id', user.id);
+
+    const list = merchants || [];
+    const m = list.find((item: any) => item.id === activeMerchantId) || list[0];
+
     if (m) {
       setMerchant(m);
-      // Safely extract existing data (handles both new array format and old flat columns)
-      const loc = Array.isArray(m.business_locations) && m.business_locations.length > 0 
-        ? m.business_locations[0] 
-        : {};
-        
+      const loc =
+        Array.isArray(m.business_locations) && m.business_locations.length > 0
+          ? m.business_locations[0]
+          : {};
+
       setForm({
         business_state: loc.state || m.business_state || '',
         business_lga: loc.city || m.business_lga || '',
@@ -54,33 +62,47 @@ export default function VerificationPage() {
     }
 
     setSaving(true);
+    setJustSaved(false);
+
     const supabase = createClient();
-    
+
     const { error } = await supabase
       .from('merchants')
       .update({
         business_state: form.business_state.trim(),
         business_lga: form.business_lga.trim(),
         business_address: form.business_address.trim(),
-        // Save as a 1-item array for storefront display compatibility
-        business_locations: [{ 
-          state: form.business_state.trim(), 
-          city: form.business_lga.trim(), 
-          address: form.business_address.trim() 
-        }],
+        business_locations: [
+          {
+            state: form.business_state.trim(),
+            city: form.business_lga.trim(),
+            address: form.business_address.trim(),
+          },
+        ],
         cac_number: form.cac_number.trim() || null,
+        // Keep is_verified as false until admin approves
       })
       .eq('id', merchant.id);
 
     setSaving(false);
-    if (error) return toast.error(error.message);
-    
-    toast.success('✅ Submitted! Admin will review and verify your business shortly.');
-    // Refresh data to show pending state
-    load(); 
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setJustSaved(true);
+    toast.success('✅ Location saved! Waiting for admin approval.');
+    load(); // refresh to show pending state
   }
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading...</div>;
+  if (loading) {
+    return <div className="p-10 text-center text-gray-500">Loading...</div>;
+  }
+
+  const hasSubmitted =
+    !!(merchant?.business_state || merchant?.business_address ||
+      (Array.isArray(merchant?.business_locations) && merchant.business_locations.length > 0));
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -88,33 +110,42 @@ export default function VerificationPage() {
         <Link href="/dashboard/settings" className="text-purple-600 text-sm hover:underline">
           ← Back to Settings
         </Link>
-        <h1 className="text-2xl font-bold mt-2">✅ Business Verification</h1>
+        <h1 className="text-2xl font-bold mt-2">📍 Business Location</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Provide your business location so customers can trust you. An admin will review and approve this.
+          Provide your business location so customers can trust you. An admin will review and approve it.
         </p>
       </div>
 
-      {/* 1. Already Verified: Leave them alone, just show success */}
+      {/* Already fully verified */}
       {merchant?.is_verified ? (
         <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
           <p className="text-4xl mb-3">🎉</p>
-          <h2 className="text-xl font-bold text-green-900">Your business is already VERIFIED</h2>
+          <h2 className="text-xl font-bold text-green-900">Your business is VERIFIED</h2>
           <p className="text-green-700 mt-2">
-            You are good to go! Your store is trusted and ready to be listed on the Marketplace.
+            Your location is now visible on the Marketplace and your storefront.
           </p>
-          <Link 
-            href="/dashboard/settings/marketplace" 
+          <Link
+            href="/dashboard/settings/marketplace"
             className="inline-block mt-4 px-6 py-2.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700"
           >
             Go to Marketplace Settings →
           </Link>
         </div>
       ) : (
-        /* 2. Not Verified Yet: Show the simple 1-location form (pre-filled if they already started) */
         <div className="bg-white border rounded-xl p-6 space-y-4">
-          {merchant?.business_state && !merchant?.is_verified && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-4">
-              ℹ️ Your details are currently <strong>pending admin review</strong>. You can update them below if needed.
+          {/* Pending state */}
+          {hasSubmitted && !merchant?.is_verified && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+              <p className="font-bold">✅ Details saved — waiting for admin approval</p>
+              <p className="mt-1">
+                An admin will review your location shortly. Once approved, it will appear on your Marketplace profile and storefront.
+              </p>
+            </div>
+          )}
+
+          {justSaved && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800 font-medium">
+              Location saved successfully. Waiting for admin approval.
             </div>
           )}
 
@@ -166,7 +197,7 @@ export default function VerificationPage() {
             disabled={saving}
             className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : (merchant?.business_state ? 'Update Details' : 'Submit for Admin Verification')}
+            {saving ? 'Saving...' : hasSubmitted ? 'Update Location' : 'Submit for Admin Approval'}
           </button>
         </div>
       )}
