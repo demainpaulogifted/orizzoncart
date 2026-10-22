@@ -8,7 +8,7 @@ export default async function AdminVerificationsPage() {
   // Fetch merchants who are NOT verified but have submitted location data
   const { data: merchants } = await admin
     .from('merchants')
-    .select('id, store_name, store_slug, business_state, business_lga, business_address, cac_number, created_at')
+    .select('id, store_name, store_slug, business_state, business_lga, business_address, cac_number, created_at, business_locations')
     .eq('is_verified', false)
     .not('business_state', 'is', null)
     .order('created_at', { ascending: false });
@@ -17,8 +17,10 @@ export default async function AdminVerificationsPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <Link href="/admin" className="text-purple-600 text-sm hover:underline">← Back to Admin</Link>
-        <h1 className="text-2xl font-bold mt-2">⏳ Pending Verifications</h1>
-        <p className="text-gray-500 text-sm">Review business locations and approve trusted sellers.</p>
+        <h1 className="text-2xl font-bold mt-2">⏳ Pending Location Verifications</h1>
+        <p className="text-gray-500 text-sm">
+          Review business locations and approve them. Once approved, the location appears on the merchant’s Marketplace profile and storefront.
+        </p>
       </div>
 
       {!merchants || merchants.length === 0 ? (
@@ -48,7 +50,9 @@ export default async function AdminVerificationsPage() {
                   </div>
                 </div>
                 {m.cac_number && (
-                  <p className="text-xs text-gray-500 mt-3">CAC: <span className="font-mono font-bold">{m.cac_number}</span></p>
+                  <p className="text-xs text-gray-500 mt-3">
+                    CAC: <span className="font-mono font-bold">{m.cac_number}</span>
+                  </p>
                 )}
               </div>
 
