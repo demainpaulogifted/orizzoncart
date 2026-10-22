@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,8 +8,19 @@ import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils';
 import Image from 'next/image';
 
+type ProductImage = {
+  url: string;
+};
+
+type Merchant = {
+  id: string;
+  merchant_type: string | null;
+};
+
 export default function AddProductPage() {
   const router = useRouter();
+  const supabase = createClient();
+
   const [form, setForm] = useState({
     name: '',
     price: '',
@@ -20,151 +32,250 @@ export default function AddProductPage() {
     allow_backorders: false,
   });
 
-  const [images, setImages] = useState<{ url: string }[]>([]);
+  const [images, setImages] = useState<ProductImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [merchantType, setMerchantType] = useState<string | null>(null);
-
-  const supabase = createClient();
+  const [merchantId, setMerchantId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
-      // Load categories
-      const { data } = await supabase
-        .from('products')
-        .select('category')
-        .not('category', 'is', null);
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      if (data) {
-        const cats = [...new Set(data.map((p: any) => p.category).filter(Boolean))];
-        setExistingCategories(cats);
-      }
+        if (authError) throw authError;
+        if (!user) return;
 
-      // Load merchant type (physical / digital)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+        const activeMerchantId = document.cookie
+          .split('; ')
+          .find((row) => row.startsWith('active_merchant_id='))
+          ?.split('=')[1];
 
-      const activeMerchantId = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('active_merchant_id='))
-        ?.split('=')[1];
+        const { data: merchants, error: merchantError } = await supabase
+          .from('merchants')
+          .select('id, merchant_type')
+          .eq('user_id', user.id);
 
-      const { data: merchants } = await supabase
-        .from('merchants')
-        .select('id, merchant_type')
-        .eq('user_id', user.id);
+        if (merchantError) throw merchantError;
 
-      const list = merchants || [];
-      const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
+        const list = (merchants || []) as Merchant[];
+        const merchant =
+          list.find((m) => m.id === activeMerchantId) || list[0];
 
-      if (merchant) {
-        setMerchantType(merchant.merchant_type || 'physical');
+        if (!cancelled && merchant) {
+          setMerchantId(merchant.id);
+          setMerchantType(merchant.merchant_type || 'physical');
+        }
+
+        const { data: products, error: categoryError } = await supabase
+          .from('products')
+          .select('category')
+          .not('category', 'is', null);
+
+        if (categoryError) throw categoryError;
+
+        if (!cancelled && products) {
+          const categories = [
+            ...new Set(
+              products
+                .map((product: { category: string | null }) => product.category)
+                .filter((category): category is string => Boolean(category))
+            ),
+          ];
+
+          setExistingCategories(categories);
+        }
+      } catch (error) {
+        console.error('Failed to load product form:', error);
       }
     };
 
     load();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+
     setUploading(true);
 
     try {
-      const uploadedUrls: { url: string }[] = [];
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) throw authError;
+      if (!user) throw new Error('Please sign in before uploading images.');
+
+      const uploadedImages: ProductImage[] = [];
+      const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'image/gif',
+        'image/avif',
+      ];
 
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
-        // ✅ Correct filename generation
-        const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(7)}.${fileExt}`;
+        if (!allowedTypes.includes(file.type)) {
+          toast.error(`${file.name}: Please select a supported image file.`);
+          continue;
+        }
 
-        const { error } = await supabase.storage
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name}: Image must be 5 MB or smaller.`);
+          continue;
+        }
+
+        const fileExt = file.name.split('.').pop()?.toLowerCase();
+
+        if (!fileExt || !/^[a-z0-9]+$/.test(fileExt)) {
+          toast.error(`${file.name}: Invalid image filename.`);
+          continue;
+        }
+
+        // Generate a valid, unique storage key.
+        const fileName = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            contentType: file.type,
+            cacheControl: '3600',
+            upsert: false,
+          });
 
-        if (error) {
-          toast.error(`Failed to upload ${file.name}: ${error.message}`);
+        if (uploadError) {
+          console.error('Product image upload failed:', uploadError);
+          toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
           continue;
         }
 
         const {
           data: { publicUrl },
-        } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
 
-        uploadedUrls.push({ url: publicUrl });
+        uploadedImages.push({ url: publicUrl });
       }
 
-      if (uploadedUrls.length > 0) {
-        setImages((prev) => [...prev, ...uploadedUrls]);
+      if (uploadedImages.length > 0) {
+        setImages((previous) => [...previous, ...uploadedImages]);
+
         toast.success(
-          `\( {uploadedUrls.length} photo \){uploadedUrls.length > 1 ? 's' : ''} uploaded`
+          `${uploadedImages.length} photo${
+            uploadedImages.length === 1 ? '' : 's'
+          } uploaded successfully.`
         );
       }
-    } catch (error: any) {
-      toast.error('Upload failed: ' + error.message);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'An unexpected error occurred.';
+
+      toast.error(`Image upload failed: ${message}`);
     } finally {
       setUploading(false);
     }
   };
 
   const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((previous) => previous.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (saving || uploading) return;
+
+    const productName = form.name.trim();
+    const price = Number(form.price);
+
+    if (!productName) {
+      toast.error('Please enter a product name.');
+      return;
+    }
+
+    if (form.price.trim() === '' || !Number.isFinite(price) || price < 0) {
+      toast.error('Please enter a valid product price.');
+      return;
+    }
+
     setSaving(true);
 
     try {
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+
+      if (authError) throw authError;
+      if (!user) throw new Error('You must be signed in to publish a product.');
 
       const activeMerchantId = document.cookie
         .split('; ')
         .find((row) => row.startsWith('active_merchant_id='))
         ?.split('=')[1];
 
-      const { data: merchants } = await supabase
+      const { data: merchants, error: merchantError } = await supabase
         .from('merchants')
         .select('id, merchant_type')
         .eq('user_id', user.id);
 
-      const list = merchants || [];
-      const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
+      if (merchantError) throw merchantError;
 
-      if (!merchant) throw new Error('No store found. Please create a store first.');
+      const list = (merchants || []) as Merchant[];
+      const merchant =
+        list.find((m) => m.id === activeMerchantId) || list[0];
 
-      const slug = generateSlug(form.name);
+      if (!merchant) {
+        throw new Error('No store found. Please create a store first.');
+      }
 
-      // Force is_digital = false for physical stores
       const isDigital =
         merchant.merchant_type === 'digital' ? form.is_digital : false;
 
       const productData = {
-        name: form.name,
-        price: parseFloat(form.price),
-        description: form.description,
-        category: form.category,
-        images: images,
-        slug: slug,
+        name: productName,
+        price,
+        description: form.description.trim(),
+        category: form.category.trim() || null,
+        images,
+        slug: generateSlug(productName),
         is_digital: isDigital,
         is_active: true,
         merchant_id: merchant.id,
-        stock: form.track_inventory ? parseInt(form.stock.toString()) || 0 : 999999,
+        stock: form.track_inventory
+          ? Math.max(0, parseInt(form.stock.toString(), 10) || 0)
+          : 999999,
         track_inventory: form.track_inventory,
         allow_backorders: form.allow_backorders,
       };
 
-      const { error } = await supabase.from('products').insert(productData);
-      if (error) throw error;
+      const { error: insertError } = await supabase
+        .from('products')
+        .insert(productData);
+
+      if (insertError) throw insertError;
 
       toast.success('Product created successfully!');
       router.push('/dashboard/products');
       router.refresh();
-    } catch (error: any) {
-      toast.error('Failed to create product: ' + error.message);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'An unexpected error occurred.';
+
+      toast.error(`Failed to create product: ${message}`);
     } finally {
       setSaving(false);
     }
@@ -173,38 +284,44 @@ export default function AddProductPage() {
   const showDigitalOption = merchantType === 'digital';
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add New Product</h1>
+    <div className="mx-auto max-w-4xl p-6">
+      <h1 className="mb-6 text-2xl font-bold text-gray-900">
+        Add New Product
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ========== PRODUCT IMAGES ========== */}
+        {/* Product Images */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="mb-2 block text-sm font-medium text-gray-700">
             Product Images {images.length > 0 && `(${images.length})`}
           </label>
 
           {images.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
+            <div className="mb-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
               {images.map((img, index) => (
                 <div
                   key={img.url}
-                  className="relative aspect-square rounded-xl overflow-hidden border bg-gray-100"
+                  className="relative aspect-square overflow-hidden rounded-xl border bg-gray-100"
                 >
                   <Image
                     src={img.url}
                     alt={`Product ${index + 1}`}
                     fill
+                    sizes="(max-width: 640px) 33vw, 25vw"
                     className="object-cover"
                   />
+
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs font-bold flex items-center justify-center"
+                    aria-label={`Remove product image ${index + 1}`}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white"
                   >
                     ×
                   </button>
+
                   {index === 0 && (
-                    <span className="absolute bottom-1 left-1 bg-purple-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                    <span className="absolute bottom-1 left-1 rounded bg-purple-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       Main
                     </span>
                   )}
@@ -213,105 +330,150 @@ export default function AddProductPage() {
             </div>
           )}
 
-          <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 hover:border-purple-400 transition-colors">
+          <label className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-300 bg-gray-50 transition-colors hover:border-purple-500 hover:bg-gray-100">
             <span className="text-3xl">📷</span>
-            <span className="text-sm font-bold text-gray-700 mt-2">
+
+            <span className="mt-2 text-sm font-bold text-gray-700">
               {uploading
                 ? 'Uploading...'
                 : images.length === 0
-                ? 'Tap to add photos'
-                : 'Add more photos'}
+                  ? 'Tap to add photos'
+                  : 'Add more photos'}
             </span>
-            <span className="text-xs text-gray-500 mt-1">
+
+            <span className="mt-1 text-xs text-gray-500">
               You can select multiple photos at once
             </span>
+
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
               multiple
               className="hidden"
-              onChange={(e) => handleImageUpload(e.target.files)}
+              onChange={(e) => {
+                void handleImageUpload(e.target.files);
+                e.target.value = '';
+              }}
               disabled={uploading}
             />
           </label>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Supported formats: JPG, PNG, WebP, GIF and AVIF. Maximum 5 MB per
+            image.
+          </p>
         </div>
 
         {/* Category */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="category"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
             Category (Optional)
           </label>
+
           <input
+            id="category"
             list="categories"
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, category: e.target.value })
+            }
             placeholder="e.g., Men clothes, Summer Sale..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
+
           <datalist id="categories">
-            {existingCategories.map((cat) => (
-              <option key={cat} value={cat} />
+            {existingCategories.map((category) => (
+              <option key={category} value={category} />
             ))}
           </datalist>
         </div>
 
         {/* Product Name */}
         <div>
-          <label className="block text-sm font--medium text-gray-700 mb-1">
+          <label
+            htmlFor="productName"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
             Product Name *
           </label>
+
           <input
+            id="productName"
             required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 
         {/* Price */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="price"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
             Price (₦) *
           </label>
+
           <input
+            id="price"
             required
             type="number"
+            min="0"
+            step="0.01"
             value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="description"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
             Description
           </label>
+
           <textarea
-            rows={3}
+            id="description"
+            rows={4}
             value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
+            className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
 
         {/* Inventory */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">
+          <h3 className="mb-4 text-lg font-bold text-gray-900">
             Inventory Management
           </h3>
 
-          <div className="flex items-center gap-3 mb-4">
+          <div className="mb-4 flex items-center gap-3">
             <input
               type="checkbox"
               id="trackInventory"
               checked={form.track_inventory}
               onChange={(e) =>
-                setForm({ ...form, track_inventory: e.target.checked })
+                setForm({
+                  ...form,
+                  track_inventory: e.target.checked,
+                })
               }
-              className="w-5 h-5 text-purple-600 rounded"
+              className="h-5 w-5 rounded text-purple-600"
             />
-            <label htmlFor="trackInventory" className="font-medium text-gray-700">
+
+            <label
+              htmlFor="trackInventory"
+              className="font-medium text-gray-700"
+            >
               Track inventory for this product
             </label>
           </div>
@@ -319,20 +481,30 @@ export default function AddProductPage() {
           {form.track_inventory && (
             <>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="stock"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Stock Quantity
                 </label>
+
                 <input
+                  id="stock"
                   type="number"
                   min="0"
+                  step="1"
                   value={form.stock}
                   onChange={(e) =>
-                    setForm({ ...form, stock: parseInt(e.target.value) || 0 })
+                    setForm({
+                      ...form,
+                      stock: Math.max(0, parseInt(e.target.value, 10) || 0),
+                    })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="How many units available?"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+
+                <p className="mt-1 text-xs text-gray-500">
                   {form.stock === 0
                     ? '⚠️ Product will show as Out of Stock'
                     : `${form.stock} units available`}
@@ -345,10 +517,14 @@ export default function AddProductPage() {
                   id="allowBackorders"
                   checked={form.allow_backorders}
                   onChange={(e) =>
-                    setForm({ ...form, allow_backorders: e.target.checked })
+                    setForm({
+                      ...form,
+                      allow_backorders: e.target.checked,
+                    })
                   }
-                  className="w-5 h-5 text-purple-600 rounded"
+                  className="h-5 w-5 rounded text-purple-600"
                 />
+
                 <label
                   htmlFor="allowBackorders"
                   className="font-medium text-gray-700"
@@ -360,7 +536,7 @@ export default function AddProductPage() {
           )}
         </div>
 
-        {/* Digital Product - only show for digital stores */}
+        {/* Digital Product */}
         {showDigitalOption && (
           <div className="flex items-center gap-3">
             <input
@@ -370,9 +546,13 @@ export default function AddProductPage() {
               onChange={(e) =>
                 setForm({ ...form, is_digital: e.target.checked })
               }
-              className="w-5 h-5 text-purple-600 rounded"
+              className="h-5 w-5 rounded text-purple-600"
             />
-            <label htmlFor="is_digital" className="font-medium text-gray-700">
+
+            <label
+              htmlFor="is_digital"
+              className="font-medium text-gray-700"
+            >
               This is a digital product (download)
             </label>
           </div>
@@ -381,10 +561,16 @@ export default function AddProductPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={saving || uploading}
-          className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
+          disabled={saving || uploading || !merchantId}
+          className="w-full rounded-xl bg-purple-600 py-3 font-bold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? 'Publishing...' : 'Publish Product 🚀'}
+          {saving
+            ? 'Publishing...'
+            : uploading
+              ? 'Uploading images...'
+              : !merchantId
+                ? 'Loading store...'
+                : 'Publish Product 🚀'}
         </button>
       </form>
     </div>
