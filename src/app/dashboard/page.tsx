@@ -39,9 +39,7 @@ function getActiveMerchantCookie(): string | null {
     .find((item) => item.startsWith('active_merchant_id='));
 
   if (!cookie) return null;
-
   const value = cookie.slice('active_merchant_id='.length);
-
   try {
     return decodeURIComponent(value);
   } catch {
@@ -52,13 +50,9 @@ function getActiveMerchantCookie(): string | null {
 export default function DashboardHome() {
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [counts, setCounts] = useState({
-    products: 0,
-    pages: 0,
-    orders: 0,
-  });
+  const [counts, setCounts] = useState({ products: 0, pages: 0, orders: 0 });
   const [showSteps, setShowSteps] = useState(false);
-  const [showMarketplaceSteps, setShowMarketplaceSteps] = useState(false);
+  const [showMarketplaceSteps, setShowMarketplaceSteps] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,47 +60,31 @@ export default function DashboardHome() {
 
     async function loadDashboard() {
       const supabase = createClient();
-
-      // Clear previous store data while the selected store loads.
       setMerchant(null);
       setStats(null);
       setCounts({ products: 0, pages: 0, orders: 0 });
 
       try {
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (cancelled) return;
         if (authError) throw authError;
-
         if (!user) {
           setMerchant(null);
           return;
         }
 
         const cookieId = getActiveMerchantCookie();
-
-        const { data: merchants, error: merchantsError } =
-          await supabase
-            .from('merchants')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: true });
+        const { data: merchants, error: merchantsError } = await supabase
+          .from('merchants')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true });
 
         if (cancelled) return;
         if (merchantsError) throw merchantsError;
 
         const merchantList = merchants || [];
-
-        const active =
-          merchantList.find(
-            (item: Merchant) => item.id === cookieId
-          ) ||
-          merchantList[0] ||
-          null;
-
+        const active = merchantList.find((item: Merchant) => item.id === cookieId) || merchantList[0] || null;
         if (!active) {
           setMerchant(null);
           return;
@@ -115,39 +93,16 @@ export default function DashboardHome() {
         setMerchant(active);
 
         const [
-          { count: products, error: productsError },
-          { count: pages, error: pagesError },
-          { count: orders, error: ordersError },
+          { count: products },
+          { count: pages },
+          { count: orders },
         ] = await Promise.all([
-          supabase
-            .from('products')
-            .select('id', { count: 'exact', head: true })
-            .eq('merchant_id', active.id),
-
-          supabase
-            .from('store_pages')
-            .select('id', { count: 'exact', head: true })
-            .eq('merchant_id', active.id),
-
-          supabase
-            .from('orders')
-            .select('id', { count: 'exact', head: true })
-            .eq('merchant_id', active.id),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('merchant_id', active.id),
+          supabase.from('store_pages').select('id', { count: 'exact', head: true }).eq('merchant_id', active.id),
+          supabase.from('orders').select('id', { count: 'exact', head: true }).eq('merchant_id', active.id),
         ]);
 
         if (cancelled) return;
-
-        if (productsError) {
-          console.error('Failed to load product count:', productsError);
-        }
-
-        if (pagesError) {
-          console.error('Failed to load page count:', pagesError);
-        }
-
-        if (ordersError) {
-          console.error('Failed to load order count:', ordersError);
-        }
 
         setCounts({
           products: products || 0,
@@ -155,40 +110,23 @@ export default function DashboardHome() {
           orders: orders || 0,
         });
 
-        // The analytics endpoint reads active_merchant_id too.
         const response = await fetch('/api/analytics', {
           cache: 'no-store',
           signal: controller.signal,
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
+          headers: { 'Cache-Control': 'no-cache' },
         });
 
-        if (!response.ok) {
-          throw new Error(
-            `Analytics request failed (${response.status})`
-          );
-        }
-
-        const analytics: DashboardStats = await response.json();
-
-        if (!cancelled) {
-          setStats(analytics);
+        if (response.ok) {
+          const analytics: DashboardStats = await response.json();
+          if (!cancelled) setStats(analytics);
         }
       } catch (error) {
-        if (
-          cancelled ||
-          (error instanceof Error && error.name === 'AbortError')
-        ) {
-          return;
-        }
-
+        if (cancelled || (error instanceof Error && error.name === 'AbortError')) return;
         console.error('Dashboard data failed to load:', error);
       }
     }
 
     void loadDashboard();
-
     return () => {
       cancelled = true;
       controller.abort();
@@ -196,11 +134,7 @@ export default function DashboardHome() {
   }, []);
 
   if (!merchant) {
-    return (
-      <div className="p-10 text-center text-gray-500">
-        Loading dashboard...
-      </div>
-    );
+    return <div className="p-10 text-center text-gray-500">Loading dashboard...</div>;
   }
 
   const storeUrl = merchant.store_slug
@@ -216,79 +150,40 @@ export default function DashboardHome() {
 
   // ========== STORE SETUP (80%) ==========
   const storeSteps = [
-    {
-      done: true,
-      title: 'Create your store',
-      tip: 'Done! Your store is live on OrizzonCart.',
-      href: storeUrl,
-      cta: 'View Store',
-    },
-    {
-      done: counts.products > 0,
-      title: 'Add your first product',
-      tip: 'Stores with 3+ products and real photos sell 4x more.',
-      href: '/dashboard/products/add',
-      cta: 'Add Product',
-    },
-    {
-      done: !!merchant.shipping_mode,
-      title: 'Set shipping or pickup',
-      tip: 'Digital products skip shipping automatically — set this for physical items.',
-      href: '/dashboard/settings/shipping',
-      cta: 'Set Shipping',
-    },
-    {
-      done: counts.pages > 0,
-      title: 'Add a trust page',
-      tip: 'A Refund Policy or About page can lift conversion by up to 30%.',
-      href: '/dashboard/pages',
-      cta: 'Create Page',
-    },
-    {
-      done: merchant.payment_receiving_status === 'ACTIVE',
-      title: 'Activate payments',
-      tip: 'Pay the one-time activation fee, then choose: your own keys (0% fee) or OrizzonPay (5% fee).',
-      href: '/dashboard/settings/payment',
-      cta: 'Activate',
-    },
-    {
-      done: hasPayout,
-      title: 'Connect your payout method',
-      tip: 'Own keys = money lands in your Paystack directly. OrizzonPay = we route sales to your bank.',
-      href: '/dashboard/settings/payment',
-      cta: 'Connect',
-    },
+    { done: true, title: 'Create your store', tip: 'Done! Your store is live.', href: storeUrl, cta: 'View Store' },
+    { done: counts.products > 0, title: 'Add your first product', tip: 'Stores with 3+ products sell more.', href: '/dashboard/products/add', cta: 'Add Product' },
+    { done: !!merchant.shipping_mode, title: 'Set delivery zones', tip: 'Customers choose a delivery zone at checkout.', href: '/dashboard/settings/shipping', cta: 'Set Delivery' },
+    { done: counts.pages > 0, title: 'Add a trust page', tip: 'Refund Policy or About page builds trust.', href: '/dashboard/pages', cta: 'Create Page' },
+    { done: merchant.payment_receiving_status === 'ACTIVE', title: 'Activate payments', tip: 'Activate to start receiving money.', href: '/dashboard/settings/payment', cta: 'Activate' },
+    { done: hasPayout, title: 'Connect payout method', tip: 'So we can send your money.', href: '/dashboard/settings/payment', cta: 'Connect' },
   ];
 
-  const storeDoneCount = storeSteps.filter((step) => step.done).length;
-  // Each of the 6 steps = \~13.33%. Cap store progress at 80%
-  const storeProgress = Math.min(
-    Math.round((storeDoneCount / storeSteps.length) * 80),
-    80
-  );
+  const storeDoneCount = storeSteps.filter((s) => s.done).length;
+  const storeProgress = Math.min(Math.round((storeDoneCount / storeSteps.length) * 80), 80);
   const storeComplete = storeDoneCount === storeSteps.length;
 
-  // ========== MARKETPLACE JOURNEY (20%) ==========
-  // Location is considered submitted if any of these exist
-  const hasLocation =
-    !!(
-      merchant.business_state ||
-      merchant.business_address ||
-      (Array.isArray(merchant.business_locations) &&
-        merchant.business_locations.length > 0)
-    );
+  // ========== MARKETPLACE (20%) ==========
+  // Location is only considered present if real data exists
+  const hasLocation = !!(
+    (merchant.business_state && merchant.business_state.trim()) ||
+    (merchant.business_address && merchant.business_address.trim()) ||
+    (Array.isArray(merchant.business_locations) && merchant.business_locations.length > 0)
+  );
 
-  const isVerified = !!merchant.is_verified;
+  // Admin verification only counts if location was actually submitted
+  const isVerified = !!merchant.is_verified && hasLocation;
   const isOnMarketplace = !!merchant.is_on_marketplace;
 
-  // Marketplace is complete only when location is present AND verified
-  // (even if already on marketplace, we restore the 20% until location is filled)
-  const marketplaceDone = hasLocation && isVerified;
-  const marketplaceProgress = marketplaceDone ? 20 : 0;
+  // Progress calculation for the 20%
+  let marketplaceProgress = 0;
+  if (hasLocation) marketplaceProgress += 7;
+  if (isVerified) marketplaceProgress += 7;
+  if (isOnMarketplace && isVerified) marketplaceProgress += 6;
+  // Cap at 20
+  marketplaceProgress = Math.min(marketplaceProgress, 20);
 
-  // Total progress
+  const marketplaceDone = marketplaceProgress === 20;
   const totalProgress = storeProgress + marketplaceProgress;
-  const everythingComplete = totalProgress === 100;
 
   const visitors = stats?.visitors || 0;
   const analyticsOrders = stats?.orders || 0;
@@ -298,51 +193,30 @@ export default function DashboardHome() {
     <div className="space-y-4 max-w-4xl mx-auto pb-12">
       {merchant.payment_receiving_status !== 'ACTIVE' && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
-          <p className="font-bold text-yellow-900">
-            ⚠️ Showcase Mode — activate to start selling
-          </p>
-
-          <Link
-            href="/dashboard/settings/payment"
-            className="inline-block mt-3 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700"
-          >
+          <p className="font-bold text-yellow-900">⚠️ Showcase Mode — activate to start selling</p>
+          <Link href="/dashboard/settings/payment" className="inline-block mt-3 px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700">
             Activate Store
           </Link>
         </div>
       )}
 
-      {/* ========== STORE SETUP (80%) ========== */}
+      {/* STORE SETUP 80% */}
       <div className="bg-white rounded-2xl border p-5">
         {storeComplete ? (
           <div className="flex items-center justify-between gap-3">
-            <p className="font-extrabold text-green-700">
-              ✅ Store setup complete (80%)
-            </p>
-
-            <button
-              onClick={() => setShowSteps(!showSteps)}
-              className="text-xs font-bold text-purple-600 shrink-0"
-            >
+            <p className="font-extrabold text-green-700">✅ Store setup complete (80%)</p>
+            <button onClick={() => setShowSteps(!showSteps)} className="text-xs font-bold text-purple-600">
               {showSteps ? 'Hide steps' : 'View steps'}
             </button>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-extrabold text-gray-900">
-                🚀 Store Setup
-              </h2>
-
-              <span className="text-sm font-bold text-purple-600">
-                {storeProgress}% / 80%
-              </span>
+              <h2 className="font-extrabold text-gray-900">🚀 Store Setup</h2>
+              <span className="text-sm font-bold text-purple-600">{storeProgress}% / 80%</span>
             </div>
-
             <div className="w-full bg-gray-100 rounded-full h-2.5 mb-4">
-              <div
-                className="bg-purple-600 h-2.5 rounded-full transition-all"
-                style={{ width: `${(storeProgress / 80) * 100}%` }}
-              />
+              <div className="bg-purple-600 h-2.5 rounded-full transition-all" style={{ width: `${(storeProgress / 80) * 100}%` }} />
             </div>
           </>
         )}
@@ -350,51 +224,16 @@ export default function DashboardHome() {
         {(showSteps || !storeComplete) && (
           <div className="space-y-2 mt-4">
             {storeSteps.map((step, index) => (
-              <div
-                key={step.title}
-                className={`flex items-center gap-3 p-3 rounded-xl ${
-                  step.done ? 'bg-green-50' : 'bg-gray-50'
-                }`}
-              >
-                <span
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
-                    step.done
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-200 text-gray-500'
-                  }`}
-                >
+              <div key={step.title} className={`flex items-center gap-3 p-3 rounded-xl ${step.done ? 'bg-green-50' : 'bg-gray-50'}`}>
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${step.done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
                   {step.done ? '✓' : index + 1}
                 </span>
-
                 <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm font-bold ${
-                      step.done ? 'text-green-800' : 'text-gray-800'
-                    }`}
-                  >
-                    {step.title}
-                  </p>
-
-                  {!step.done && (
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      💡 {step.tip}
-                    </p>
-                  )}
+                  <p className={`text-sm font-bold ${step.done ? 'text-green-800' : 'text-gray-800'}`}>{step.title}</p>
+                  {!step.done && <p className="text-xs text-gray-500 mt-0.5">💡 {step.tip}</p>}
                 </div>
-
                 {!step.done && (
-                  <Link
-                    href={step.href}
-                    target={
-                      step.href.startsWith('http') ? '_blank' : undefined
-                    }
-                    rel={
-                      step.href.startsWith('http')
-                        ? 'noreferrer'
-                        : undefined
-                    }
-                    className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700"
-                  >
+                  <Link href={step.href} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">
                     {step.cta}
                   </Link>
                 )}
@@ -404,266 +243,93 @@ export default function DashboardHome() {
         )}
       </div>
 
-      {/* ========== MARKETPLACE JOURNEY (20%) ========== */}
-      <div className="bg-white rounded-2xl border p-5">
-        {marketplaceDone ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="font-extrabold text-green-700">
-              🛒 Marketplace complete (20%) — Total {totalProgress}%
-            </p>
+      {/* MARKETPLACE 20% - Compact */}
+      <div className="bg-white rounded-2xl border p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-extrabold text-gray-900 text-base">🛒 Progress to Marketplace</h2>
+          <span className="text-sm font-bold text-purple-600">{marketplaceProgress}% / 20%</span>
+        </div>
 
-            <button
-              onClick={() => setShowMarketplaceSteps(!showMarketplaceSteps)}
-              className="text-xs font-bold text-purple-600 shrink-0"
-            >
-              {showMarketplaceSteps ? 'Hide' : 'View'}
-            </button>
+        <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
+          <div className="bg-orange-500 h-2 rounded-full transition-all" style={{ width: `${(marketplaceProgress / 20) * 100}%` }} />
+        </div>
+
+        <p className="text-xs text-gray-500 mb-3">
+          Optional. Completing this shows your location on Marketplace and storefront. You can still sell on your own store.
+        </p>
+
+        <div className="space-y-1.5">
+          {/* Step 1 */}
+          <div className={`flex items-center gap-2.5 p-2.5 rounded-lg ${hasLocation ? 'bg-green-50' : 'bg-gray-50'}`}>
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0 ${hasLocation ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              {hasLocation ? '✓' : '1'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-bold ${hasLocation ? 'text-green-800' : 'text-gray-800'}`}>Add business location</p>
+            </div>
+            {!hasLocation && (
+              <Link href="/dashboard/settings/verification" className="px-2.5 py-1 bg-purple-600 text-white rounded-md text-xs font-bold">
+                Add
+              </Link>
+            )}
           </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-extrabold text-gray-900">
-                🛒 Progress to Marketplace
-              </h2>
 
-              <span className="text-sm font-bold text-purple-600">
-                {marketplaceProgress}% / 20%
-              </span>
-            </div>
-
-            <div className="w-full bg-gray-100 rounded-full h-2.5 mb-4">
-              <div
-                className="bg-orange-500 h-2.5 rounded-full transition-all"
-                style={{ width: `${(marketplaceProgress / 20) * 100}%` }}
-              />
-            </div>
-
-            <p className="text-xs text-gray-500 mb-4">
-              Optional. Completing this puts your products on the OrizzonCart Marketplace and shows your location on your store profile. You can still sell on your own storefront without it.
-            </p>
-          </>
-        )}
-
-        {(showMarketplaceSteps || !marketplaceDone) && (
-          <div className="space-y-2 mt-2">
-            {/* Step 1: Submit Location */}
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl ${
-                hasLocation ? 'bg-green-50' : 'bg-gray-50'
-              }`}
-            >
-              <span
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
-                  hasLocation
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                }`}
-              >
-                {hasLocation ? '✓' : '1'}
-              </span>
-
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`text-sm font-bold ${
-                    hasLocation ? 'text-green-800' : 'text-gray-800'
-                  }`}
-                >
-                  Add business location
-                </p>
-                {!hasLocation && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    💡 Required so customers see your location under “Contact & Locations” on the marketplace.
-                  </p>
-                )}
-              </div>
-
-              {!hasLocation && (
-                <Link
-                  href="/dashboard/settings/verification"
-                  className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700"
-                >
-                  Add Location
-                </Link>
-              )}
-            </div>
-
-            {/* Step 2: Admin Approval */}
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl ${
-                isVerified ? 'bg-green-50' : 'bg-gray-50'
-              }`}
-            >
-              <span
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
-                  isVerified
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                }`}
-              >
-                {isVerified ? '✓' : '2'}
-              </span>
-
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`text-sm font-bold ${
-                    isVerified ? 'text-green-800' : 'text-gray-800'
-                  }`}
-                >
-                  Admin verification
-                </p>
-                {!isVerified && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    💡 After you submit location, an admin will review and approve it.
-                    {hasLocation && ' (Currently pending)'}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Step 3: Sync / List on Marketplace */}
-            <div
-              className={`flex items-center gap-3 p-3 rounded-xl ${
-                isOnMarketplace && marketplaceDone ? 'bg-green-50' : 'bg-gray-50'
-              }`}
-            >
-              <span
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
-                  isOnMarketplace && marketplaceDone
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                }`}
-              >
-                {isOnMarketplace && marketplaceDone ? '✓' : '3'}
-              </span>
-
-              <div className="flex-1 min-w-0">
-                <p
-                  className={`text-sm font-bold ${
-                    isOnMarketplace && marketplaceDone
-                      ? 'text-green-800'
-                      : 'text-gray-800'
-                  }`}
-                >
-                  List & sync products to Marketplace
-                </p>
-                {!(isOnMarketplace && marketplaceDone) && (
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    💡 Go to Marketing → Marketplace tools to turn on listing and sync your products.
-                  </p>
-                )}
-              </div>
-
-              {!(isOnMarketplace && marketplaceDone) && (
-                <Link
-                  href="/dashboard/settings/marketplace"
-                  className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700"
-                >
-                  Marketplace
-                </Link>
-              )}
+          {/* Step 2 */}
+          <div className={`flex items-center gap-2.5 p-2.5 rounded-lg ${isVerified ? 'bg-green-50' : 'bg-gray-50'}`}>
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0 ${isVerified ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              {isVerified ? '✓' : '2'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-bold ${isVerified ? 'text-green-800' : 'text-gray-800'}`}>
+                Admin verification {hasLocation && !isVerified ? '(pending)' : ''}
+              </p>
             </div>
           </div>
+
+          {/* Step 3 */}
+          <div className={`flex items-center gap-2.5 p-2.5 rounded-lg ${isOnMarketplace && isVerified ? 'bg-green-50' : 'bg-gray-50'}`}>
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0 ${isOnMarketplace && isVerified ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              {isOnMarketplace && isVerified ? '✓' : '3'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-bold ${isOnMarketplace && isVerified ? 'text-green-800' : 'text-gray-800'}`}>
+                List & sync products
+              </p>
+            </div>
+            {!(isOnMarketplace && isVerified) && (
+              <Link href="/dashboard/settings/marketplace" className="px-2.5 py-1 bg-purple-600 text-white rounded-md text-xs font-bold">
+                Marketplace
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {marketplaceDone && (
+          <p className="text-center text-sm font-bold text-green-700 mt-3">🎉 Marketplace 20% complete!</p>
         )}
       </div>
 
-      {/* Total progress summary */}
-      {everythingComplete && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-          <p className="font-extrabold text-green-800">
-            🎉 100% complete — Store + Marketplace ready!
-          </p>
-        </div>
-      )}
-
-      {/* STATS + QUICK ACTIONS */}
+      {/* STATS */}
       <div className="bg-white rounded-2xl border p-5 space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl p-4 text-white">
-            <p className="text-white/80 text-[11px] font-bold uppercase">
-              Visitors
-            </p>
-            <p className="text-2xl font-extrabold mt-1">
-              {visitors}
-            </p>
+            <p className="text-white/80 text-[11px] font-bold uppercase">Visitors</p>
+            <p className="text-2xl font-extrabold mt-1">{visitors}</p>
           </div>
-
           <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 text-white">
-            <p className="text-white/80 text-[11px] font-bold uppercase">
-              Orders
-            </p>
-            <p className="text-2xl font-extrabold mt-1">
-              {counts.orders}
-            </p>
+            <p className="text-white/80 text-[11px] font-bold uppercase">Orders</p>
+            <p className="text-2xl font-extrabold mt-1">{counts.orders}</p>
           </div>
-
           <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl p-4 text-white">
-            <p className="text-white/80 text-[11px] font-bold uppercase">
-              Sales
-            </p>
-            <p className="text-2xl font-extrabold mt-1">
-              {formatCurrency(revenue)}
-            </p>
+            <p className="text-white/80 text-[11px] font-bold uppercase">Sales</p>
+            <p className="text-2xl font-extrabold mt-1">{formatCurrency(revenue)}</p>
           </div>
-
           <div className="bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl p-4 text-white">
-            <p className="text-white/80 text-[11px] font-bold uppercase">
-              Conv.
-            </p>
+            <p className="text-white/80 text-[11px] font-bold uppercase">Conv.</p>
             <p className="text-2xl font-extrabold mt-1">
-              {visitors
-                ? ((analyticsOrders / visitors) * 100).toFixed(1)
-                : '0.0'}
-              %
+              {visitors ? ((analyticsOrders / visitors) * 100).toFixed(1) : '0.0'}%
             </p>
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 border-t">
-          <Link
-            href="/dashboard/products/add"
-            className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center"
-          >
-            ➕ Add Product
-          </Link>
-
-          <Link
-            href="/dashboard/pages"
-            className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center"
-          >
-            📄 Trust Page
-          </Link>
-
-          <Link
-            href="/dashboard/settings/payment"
-            className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center"
-          >
-            💳 Payment
-          </Link>
-
-          <Link
-            href="/dashboard/settings/theme"
-            className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center"
-          >
-            🎨 Theme
-          </Link>
-
-          <Link
-            href="/dashboard/settings/shipping"
-            className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center"
-          >
-            🚚 Shipping
-          </Link>
-
-          <Link
-            href={storeUrl}
-            target={storeUrl.startsWith('http') ? '_blank' : undefined}
-            rel={
-              storeUrl.startsWith('http') ? 'noreferrer' : undefined
-            }
-            className="rounded-xl border p-3.5 hover:border-purple-400 font-bold text-sm text-center"
-          >
-            👀 View Store
-          </Link>
         </div>
       </div>
     </div>
