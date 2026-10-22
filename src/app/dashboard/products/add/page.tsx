@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils';
 import Image from 'next/image';
+import { isPhysicalStore } from '@/lib/store-rules';
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -25,18 +26,49 @@ export default function AddProductPage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [merchantType, setMerchantType] = useState<'physical' | 'digital' | null>(null);
+  const [loadingMerchant, setLoadingMerchant] = useState(true);
 
   const supabase = createClient();
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchCategoriesAndMerchant = async () => {
+      // Categories
       const { data } = await supabase.from('products').select('category').not('category', 'is', null);
       if (data) {
         const cats = [...new Set(data.map((p: any) => p.category).filter(Boolean))];
         setExistingCategories(cats);
       }
+
+      // Merchant type (so we can hide digital option for physical stores)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const activeMerchantId = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('active_merchant_id='))
+          ?.split('=')[1];
+
+        const { data: merchants } = await supabase
+          .from('merchants')
+          .select('id, merchant_type')
+          .eq('user_id', user.id);
+
+        const list = merchants || [];
+        const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
+
+        if (merchant) {
+          setMerchantType(merchant.merchant_type === 'digital' ? 'digital' : 'physical');
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingMerchant(false);
+      }
     };
-    fetchCategories();
+
+    fetchCategoriesAndMerchant();
   }, []);
 
   // ✅ FIX 2: Corrected string interpolation for fileName
@@ -49,7 +81,7 @@ export default function AddProductPage() {
 
       for (const file of Array.from(files)) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error } = await supabase.storage
           .from('product-images')
@@ -69,7 +101,7 @@ export default function AddProductPage() {
 
       if (uploadedUrls.length > 0) {
         setImages((prev) => [...prev, ...uploadedUrls]);
-        toast.success(`${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''} uploaded`);
+        toast.success(`\( {uploadedUrls.length} photo \){uploadedUrls.length > 1 ? 's' : ''} uploaded`);
       }
     } catch (error: any) {
       toast.error('Upload failed: ' + error.message);
@@ -98,7 +130,7 @@ export default function AddProductPage() {
 
       const { data: merchants } = await supabase
         .from('merchants')
-        .select('id')
+        .select('id, merchant_type')
         .eq('user_id', user.id);
 
       const list = merchants || [];
@@ -108,6 +140,9 @@ export default function AddProductPage() {
 
       const slug = generateSlug(form.name);
 
+      // Force is_digital = false for physical stores
+      const isDigital = isPhysicalStore(merchant) ? false : form.is_digital;
+
       const productData = {
         name: form.name,
         price: parseFloat(form.price),
@@ -115,7 +150,7 @@ export default function AddProductPage() {
         category: form.category,
         images: images, // Now correctly { url: string }[]
         slug: slug,
-        is_digital: form.is_digital,
+        is_digital: isDigital,
         is_active: true,
         merchant_id: merchant.id,
         stock: form.track_inventory ? parseInt(form.stock.toString()) || 0 : 999999,
@@ -135,6 +170,9 @@ export default function AddProductPage() {
       setSaving(false);
     }
   };
+
+  // Hide digital option completely for physical stores
+  const showDigitalOption = merchantType === 'digital';
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -289,24 +327,26 @@ export default function AddProductPage() {
           )}
         </div>
 
-        {/* Digital Product */}
-        <div className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            id="is_digital"
-            checked={form.is_digital}
-            onChange={(e) => setForm({ ...form, is_digital: e.target.checked })}
-            className="w-5 h-5 text-purple-600 rounded"
-          />
-          <label htmlFor="is_digital" className="font-medium text-gray-700">
-            This is a digital product (download)
-          </label>
-        </div>
+        {/* Digital Product — ONLY shown for Digital stores */}
+        {showDigitalOption && (
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_digital"
+              checked={form.is_digital}
+              onChange={(e) => setForm({ ...form, is_digital: e.target.checked })}
+              className="w-5 h-5 text-purple-600 rounded"
+            />
+            <label htmlFor="is_digital" className="font-medium text-gray-700">
+              This is a digital product (download)
+            </label>
+          </div>
+        )}
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={saving || uploading}
+          disabled={saving || uploading || loadingMerchant}
           className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
         >
           {saving ? 'Publishing...' : 'Publish Product 🚀'}
