@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ type Merchant = {
 export default function AddProductPage() {
   const router = useRouter();
   const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -84,7 +85,7 @@ export default function AddProductPage() {
             ...new Set(
               products
                 .map((p: { category: string | null }) => p.category)
-                .filter((c): c is string => Boolean(c))
+                .filter((category): category is string => Boolean(category))
             ),
           ];
 
@@ -103,7 +104,10 @@ export default function AddProductPage() {
   }, [supabase]);
 
   const handleImageUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      toast.error('No photo was selected. Please try again.');
+      return;
+    }
 
     setUploading(true);
 
@@ -114,6 +118,7 @@ export default function AddProductPage() {
       } = await supabase.auth.getUser();
 
       if (authError) throw authError;
+
       if (!user) {
         throw new Error('Please sign in before uploading images.');
       }
@@ -129,7 +134,9 @@ export default function AddProductPage() {
 
       for (const file of Array.from(files)) {
         if (!allowedTypes.includes(file.type)) {
-          toast.error(`${file.name}: Please select a supported image file.`);
+          toast.error(
+            `${file.name}: Unsupported image format. Choose JPG, PNG, WebP, GIF or AVIF.`
+          );
           continue;
         }
 
@@ -139,8 +146,6 @@ export default function AddProductPage() {
         }
 
         const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-
-        // Use a valid, unique filename. Keep it at the bucket root.
         const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
@@ -153,7 +158,9 @@ export default function AddProductPage() {
 
         if (uploadError) {
           console.error('Supabase image upload failed:', uploadError);
-          toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
+          toast.error(
+            `Failed to upload ${file.name}: ${uploadError.message}`
+          );
           continue;
         }
 
@@ -166,17 +173,20 @@ export default function AddProductPage() {
           continue;
         }
 
-        // Save the permanent public URL with the product.
         uploadedImages.push({ url: data.publicUrl });
       }
 
       if (uploadedImages.length > 0) {
-        setImages((prev) => [...prev, ...uploadedImages]);
+        setImages((previous) => [...previous, ...uploadedImages]);
 
         toast.success(
           `${uploadedImages.length} photo${
             uploadedImages.length === 1 ? '' : 's'
           } uploaded successfully.`
+        );
+      } else {
+        toast.error(
+          'No photos were uploaded. Check the file format, file size and Supabase Storage settings.'
         );
       }
     } catch (error: unknown) {
@@ -193,7 +203,7 @@ export default function AddProductPage() {
   };
 
   const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((previous) => previous.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -223,6 +233,7 @@ export default function AddProductPage() {
       } = await supabase.auth.getUser();
 
       if (authError) throw authError;
+
       if (!user) {
         throw new Error('You must be signed in to publish a product.');
       }
@@ -347,7 +358,7 @@ export default function AddProductPage() {
                     type="button"
                     onClick={() => removeImage(index)}
                     aria-label={`Remove product image ${index + 1}`}
-                    className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white"
+                    className="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white"
                   >
                     ×
                   </button>
@@ -362,7 +373,33 @@ export default function AddProductPage() {
             </div>
           )}
 
-          <label className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-300 bg-gray-50 transition-colors hover:border-purple-500 hover:bg-gray-100">
+          <input
+            ref={fileInputRef}
+            id="product-image-upload"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            multiple
+            className="sr-only"
+            disabled={uploading}
+            onChange={(event) => {
+              const selectedFiles = event.currentTarget.files;
+
+              if (selectedFiles && selectedFiles.length > 0) {
+                void handleImageUpload(selectedFiles);
+              } else {
+                toast.error('No photo was selected. Please try again.');
+              }
+
+              event.currentTarget.value = '';
+            }}
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-300 bg-gray-50 transition-colors hover:border-purple-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
             <span className="text-3xl">📷</span>
             <span className="mt-2 text-sm font-bold text-gray-700">
               {uploading
@@ -372,21 +409,9 @@ export default function AddProductPage() {
                   : 'Add more photos'}
             </span>
             <span className="mt-1 text-xs text-gray-500">
-              You can select multiple photos at once
+              Select one or more photos from your phone
             </span>
-
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                void handleImageUpload(e.target.files);
-                e.target.value = '';
-              }}
-              disabled={uploading}
-            />
-          </label>
+          </button>
 
           <p className="mt-2 text-xs text-gray-500">
             Supported formats: JPG, PNG, WebP, GIF and AVIF. Maximum 5 MB per
@@ -402,13 +427,15 @@ export default function AddProductPage() {
           <input
             list="categories"
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, category: e.target.value })
+            }
             placeholder="e.g., Men clothes, Summer Sale..."
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
           <datalist id="categories">
-            {existingCategories.map((cat) => (
-              <option key={cat} value={cat} />
+            {existingCategories.map((category) => (
+              <option key={category} value={category} />
             ))}
           </datalist>
         </div>
@@ -450,7 +477,9 @@ export default function AddProductPage() {
           <textarea
             rows={3}
             value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -467,11 +496,17 @@ export default function AddProductPage() {
               id="trackInventory"
               checked={form.track_inventory}
               onChange={(e) =>
-                setForm({ ...form, track_inventory: e.target.checked })
+                setForm({
+                  ...form,
+                  track_inventory: e.target.checked,
+                })
               }
               className="h-5 w-5 rounded text-purple-600"
             />
-            <label htmlFor="trackInventory" className="font-medium text-gray-700">
+            <label
+              htmlFor="trackInventory"
+              className="font-medium text-gray-700"
+            >
               Track inventory for this product
             </label>
           </div>
@@ -503,7 +538,10 @@ export default function AddProductPage() {
                   id="allowBackorders"
                   checked={form.allow_backorders}
                   onChange={(e) =>
-                    setForm({ ...form, allow_backorders: e.target.checked })
+                    setForm({
+                      ...form,
+                      allow_backorders: e.target.checked,
+                    })
                   }
                   className="h-5 w-5 rounded text-purple-600"
                 />
@@ -518,7 +556,7 @@ export default function AddProductPage() {
           )}
         </div>
 
-        {/* Digital Product - only for digital stores */}
+        {/* Digital Product */}
         {showDigitalOption && (
           <div className="flex items-center gap-3">
             <input
