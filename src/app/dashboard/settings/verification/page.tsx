@@ -8,7 +8,7 @@ type Location = {
   state: string;
   city: string;
   address: string;
-  verified?: boolean; // we will mark verified ones
+  verified?: boolean;
 };
 
 export default function VerificationPage() {
@@ -48,8 +48,6 @@ export default function VerificationPage() {
 
     if (m) {
       setMerchant(m);
-
-      // Pre-fill CAC if exists
       setForm((prev) => ({
         ...prev,
         cac_number: m.cac_number || '',
@@ -58,30 +56,28 @@ export default function VerificationPage() {
     setLoading(false);
   }
 
-  // Build the list of locations (support both old flat fields and new array)
   function getLocations(): Location[] {
     if (!merchant) return [];
 
     const locations: Location[] = [];
 
-    // From the array field (preferred)
     if (Array.isArray(merchant.business_locations) && merchant.business_locations.length > 0) {
       merchant.business_locations.forEach((loc: any) => {
         locations.push({
           state: loc.state || '',
           city: loc.city || '',
           address: loc.address || '',
-          verified: merchant.is_verified, // if merchant is verified, treat existing locations as verified
+          verified: !!merchant.is_verified,
         });
       });
     }
 
-    // Fallback to old flat columns (for stores that only have the old fields)
-    if (locations.length === 0 && (merchant.business_state || merchant.business_address)) {
+    // Fallback for very old data
+    if (locations.length === 0 && (merchant.business_state || merchant.business_lga)) {
       locations.push({
         state: merchant.business_state || '',
         city: merchant.business_lga || '',
-        address: merchant.business_address || '',
+        address: '',
         verified: !!merchant.is_verified,
       });
     }
@@ -91,8 +87,6 @@ export default function VerificationPage() {
 
   const locations = getLocations();
   const hasAnyLocation = locations.length > 0;
-  const hasVerifiedLocation = locations.some((l) => l.verified);
-  const hasPendingLocation = locations.some((l) => !l.verified);
 
   async function addLocation() {
     if (!form.business_state.trim() || !form.business_lga.trim() || !form.business_address.trim()) {
@@ -102,7 +96,6 @@ export default function VerificationPage() {
     setSaving(true);
     const supabase = createClient();
 
-    // Build new locations array
     const currentLocations = getLocations().map((l) => ({
       state: l.state,
       city: l.city,
@@ -117,18 +110,14 @@ export default function VerificationPage() {
 
     const updatedLocations = [...currentLocations, newLocation];
 
-    // Also keep the first location in the old flat columns for backward compatibility
-    const first = updatedLocations[0];
-
+    // Only update columns that actually exist
     const { error } = await supabase
       .from('merchants')
       .update({
         business_locations: updatedLocations,
-        business_state: first.state,
-        business_lga: first.city,
-        business_address: first.address,
+        business_state: updatedLocations[0].state,
+        business_lga: updatedLocations[0].city,
         cac_number: form.cac_number.trim() || null,
-        // Do NOT touch is_verified here. New locations stay pending.
       })
       .eq('id', merchant.id);
 
@@ -175,25 +164,19 @@ export default function VerificationPage() {
             <div
               key={index}
               className={`rounded-xl border p-4 ${
-                loc.verified
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-yellow-50 border-yellow-200'
+                loc.verified ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-bold text-gray-900">
-                    {loc.address}
-                  </p>
+                  <p className="font-bold text-gray-900">{loc.address || 'No address'}</p>
                   <p className="text-sm text-gray-600 mt-0.5">
                     {loc.city}, {loc.state}
                   </p>
                 </div>
                 <span
                   className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${
-                    loc.verified
-                      ? 'bg-green-600 text-white'
-                      : 'bg-yellow-500 text-white'
+                    loc.verified ? 'bg-green-600 text-white' : 'bg-yellow-500 text-white'
                   }`}
                 >
                   {loc.verified ? 'Verified' : 'Pending'}
@@ -209,7 +192,7 @@ export default function VerificationPage() {
         </div>
       )}
 
-      {/* Add new location form */}
+      {/* Add new location */}
       {!showAddForm ? (
         <button
           onClick={() => setShowAddForm(true)}
@@ -221,10 +204,7 @@ export default function VerificationPage() {
         <div className="bg-white border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-bold">New Location</h3>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="text-sm text-gray-500"
-            >
+            <button onClick={() => setShowAddForm(false)} className="text-sm text-gray-500">
               Cancel
             </button>
           </div>
@@ -282,13 +262,12 @@ export default function VerificationPage() {
         </div>
       )}
 
-      {/* Info box */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
         <p className="font-bold mb-1">How it works</p>
         <ul className="list-disc pl-4 space-y-1">
           <li>New locations stay <strong>Pending</strong> until an admin approves them.</li>
           <li>Once approved, a location becomes <strong>Verified</strong> and is locked.</li>
-          <li>You can always add more locations later (new branch, new address, etc.).</li>
+          <li>You can always add more locations later.</li>
           <li>Verified locations appear on your Marketplace profile and storefront.</li>
         </ul>
       </div>
