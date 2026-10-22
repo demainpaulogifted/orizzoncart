@@ -62,7 +62,11 @@ export default async function SellerProfilePage({
       <div className="bg-gradient-to-r from-purple-700 to-blue-700 text-white">
         <div className="max-w-3xl mx-auto px-4 py-6 flex items-center gap-4">
           {m.logo_url ? (
-            <img src={m.logo_url} className="w-16 h-16 rounded-2xl object-cover border-2 border-white/40" alt="" />
+            <img
+              src={m.logo_url}
+              className="w-16 h-16 rounded-2xl object-cover border-2 border-white/40"
+              alt=""
+            />
           ) : (
             <span className="w-16 h-16 rounded-2xl bg-white/20 text-2xl font-extrabold flex items-center justify-center">
               {m.store_name?.[0]?.toUpperCase()}
@@ -116,12 +120,18 @@ export default async function SellerProfilePage({
         <div className="bg-white border rounded-2xl p-4 space-y-2">
           <h2 className="font-bold text-sm">Contact & Locations</h2>
           {m.business_phone && (
-            <a href={`tel:${m.business_phone}`} className="block text-sm text-purple-700 font-semibold">
+            <a
+              href={`tel:${m.business_phone}`}
+              className="block text-sm text-purple-700 font-semibold"
+            >
               📞 {m.business_phone}
             </a>
           )}
           {m.business_email && (
-            <a href={`mailto:${m.business_email}`} className="block text-sm text-purple-700 font-semibold">
+            <a
+              href={`mailto:${m.business_email}`}
+              className="block text-sm text-purple-700 font-semibold"
+            >
               ✉️ {m.business_email}
             </a>
           )}
@@ -149,14 +159,22 @@ export default async function SellerProfilePage({
                 >
                   <div className="aspect-square bg-gray-100">
                     {p.images?.[0]?.url ? (
-                      <img src={p.images[0].url} alt={p.name} className="w-full h-full object-cover" />
+                      <img
+                        src={p.images[0].url}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">📦</div>
+                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">
+                        📦
+                      </div>
                     )}
                   </div>
                   <div className="p-2">
                     <p className="text-xs font-medium line-clamp-1">{p.name}</p>
-                    <p className="text-sm font-extrabold text-purple-700">₦{Number(p.price).toLocaleString()}</p>
+                    <p className="text-sm font-extrabold text-purple-700">
+                      ₦{Number(p.price).toLocaleString()}
+                    </p>
                   </div>
                 </a>
               ))}
