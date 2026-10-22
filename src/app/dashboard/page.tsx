@@ -15,6 +15,12 @@ type Merchant = {
   bank_name?: string | null;
   paystack_secret_key?: string | null;
   flutterwave_secret_key?: string | null;
+  is_verified?: boolean | null;
+  is_on_marketplace?: boolean | null;
+  business_state?: string | null;
+  business_lga?: string | null;
+  business_address?: string | null;
+  business_locations?: any[] | null;
   [key: string]: any;
 };
 
@@ -52,6 +58,7 @@ export default function DashboardHome() {
     orders: 0,
   });
   const [showSteps, setShowSteps] = useState(false);
+  const [showMarketplaceSteps, setShowMarketplaceSteps] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,7 +214,8 @@ export default function DashboardHome() {
     merchant.flutterwave_secret_key
   );
 
-  const steps = [
+  // ========== STORE SETUP (80%) ==========
+  const storeSteps = [
     {
       done: true,
       title: 'Create your store',
@@ -252,9 +260,35 @@ export default function DashboardHome() {
     },
   ];
 
-  const doneCount = steps.filter((step) => step.done).length;
-  const progress = Math.round((doneCount / steps.length) * 100);
-  const complete = progress === 100;
+  const storeDoneCount = storeSteps.filter((step) => step.done).length;
+  // Each of the 6 steps = \~13.33%. Cap store progress at 80%
+  const storeProgress = Math.min(
+    Math.round((storeDoneCount / storeSteps.length) * 80),
+    80
+  );
+  const storeComplete = storeDoneCount === storeSteps.length;
+
+  // ========== MARKETPLACE JOURNEY (20%) ==========
+  // Location is considered submitted if any of these exist
+  const hasLocation =
+    !!(
+      merchant.business_state ||
+      merchant.business_address ||
+      (Array.isArray(merchant.business_locations) &&
+        merchant.business_locations.length > 0)
+    );
+
+  const isVerified = !!merchant.is_verified;
+  const isOnMarketplace = !!merchant.is_on_marketplace;
+
+  // Marketplace is complete only when location is present AND verified
+  // (even if already on marketplace, we restore the 20% until location is filled)
+  const marketplaceDone = hasLocation && isVerified;
+  const marketplaceProgress = marketplaceDone ? 20 : 0;
+
+  // Total progress
+  const totalProgress = storeProgress + marketplaceProgress;
+  const everythingComplete = totalProgress === 100;
 
   const visitors = stats?.visitors || 0;
   const analyticsOrders = stats?.orders || 0;
@@ -277,12 +311,12 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* SETUP CHECKLIST */}
+      {/* ========== STORE SETUP (80%) ========== */}
       <div className="bg-white rounded-2xl border p-5">
-        {complete ? (
+        {storeComplete ? (
           <div className="flex items-center justify-between gap-3">
             <p className="font-extrabold text-green-700">
-              🎉 Store setup 100% complete — you're ready to sell!
+              ✅ Store setup complete (80%)
             </p>
 
             <button
@@ -300,22 +334,22 @@ export default function DashboardHome() {
               </h2>
 
               <span className="text-sm font-bold text-purple-600">
-                {progress}% complete
+                {storeProgress}% / 80%
               </span>
             </div>
 
             <div className="w-full bg-gray-100 rounded-full h-2.5 mb-4">
               <div
                 className="bg-purple-600 h-2.5 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${(storeProgress / 80) * 100}%` }}
               />
             </div>
           </>
         )}
 
-        {(showSteps || !complete) && (
+        {(showSteps || !storeComplete) && (
           <div className="space-y-2 mt-4">
-            {steps.map((step, index) => (
+            {storeSteps.map((step, index) => (
               <div
                 key={step.title}
                 className={`flex items-center gap-3 p-3 rounded-xl ${
@@ -369,6 +403,177 @@ export default function DashboardHome() {
           </div>
         )}
       </div>
+
+      {/* ========== MARKETPLACE JOURNEY (20%) ========== */}
+      <div className="bg-white rounded-2xl border p-5">
+        {marketplaceDone ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-extrabold text-green-700">
+              🛒 Marketplace complete (20%) — Total {totalProgress}%
+            </p>
+
+            <button
+              onClick={() => setShowMarketplaceSteps(!showMarketplaceSteps)}
+              className="text-xs font-bold text-purple-600 shrink-0"
+            >
+              {showMarketplaceSteps ? 'Hide' : 'View'}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-extrabold text-gray-900">
+                🛒 Progress to Marketplace
+              </h2>
+
+              <span className="text-sm font-bold text-purple-600">
+                {marketplaceProgress}% / 20%
+              </span>
+            </div>
+
+            <div className="w-full bg-gray-100 rounded-full h-2.5 mb-4">
+              <div
+                className="bg-orange-500 h-2.5 rounded-full transition-all"
+                style={{ width: `${(marketplaceProgress / 20) * 100}%` }}
+              />
+            </div>
+
+            <p className="text-xs text-gray-500 mb-4">
+              Optional. Completing this puts your products on the OrizzonCart Marketplace and shows your location on your store profile. You can still sell on your own storefront without it.
+            </p>
+          </>
+        )}
+
+        {(showMarketplaceSteps || !marketplaceDone) && (
+          <div className="space-y-2 mt-2">
+            {/* Step 1: Submit Location */}
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl ${
+                hasLocation ? 'bg-green-50' : 'bg-gray-50'
+              }`}
+            >
+              <span
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
+                  hasLocation
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {hasLocation ? '✓' : '1'}
+              </span>
+
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-sm font-bold ${
+                    hasLocation ? 'text-green-800' : 'text-gray-800'
+                  }`}
+                >
+                  Add business location
+                </p>
+                {!hasLocation && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    💡 Required so customers see your location under “Contact & Locations” on the marketplace.
+                  </p>
+                )}
+              </div>
+
+              {!hasLocation && (
+                <Link
+                  href="/dashboard/settings/verification"
+                  className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700"
+                >
+                  Add Location
+                </Link>
+              )}
+            </div>
+
+            {/* Step 2: Admin Approval */}
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl ${
+                isVerified ? 'bg-green-50' : 'bg-gray-50'
+              }`}
+            >
+              <span
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
+                  isVerified
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {isVerified ? '✓' : '2'}
+              </span>
+
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-sm font-bold ${
+                    isVerified ? 'text-green-800' : 'text-gray-800'
+                  }`}
+                >
+                  Admin verification
+                </p>
+                {!isVerified && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    💡 After you submit location, an admin will review and approve it.
+                    {hasLocation && ' (Currently pending)'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Step 3: Sync / List on Marketplace */}
+            <div
+              className={`flex items-center gap-3 p-3 rounded-xl ${
+                isOnMarketplace && marketplaceDone ? 'bg-green-50' : 'bg-gray-50'
+              }`}
+            >
+              <span
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 ${
+                  isOnMarketplace && marketplaceDone
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {isOnMarketplace && marketplaceDone ? '✓' : '3'}
+              </span>
+
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-sm font-bold ${
+                    isOnMarketplace && marketplaceDone
+                      ? 'text-green-800'
+                      : 'text-gray-800'
+                  }`}
+                >
+                  List & sync products to Marketplace
+                </p>
+                {!(isOnMarketplace && marketplaceDone) && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    💡 Go to Marketing → Marketplace tools to turn on listing and sync your products.
+                  </p>
+                )}
+              </div>
+
+              {!(isOnMarketplace && marketplaceDone) && (
+                <Link
+                  href="/dashboard/settings/marketplace"
+                  className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700"
+                >
+                  Marketplace
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Total progress summary */}
+      {everythingComplete && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+          <p className="font-extrabold text-green-800">
+            🎉 100% complete — Store + Marketplace ready!
+          </p>
+        </div>
+      )}
 
       {/* STATS + QUICK ACTIONS */}
       <div className="bg-white rounded-2xl border p-5 space-y-4">
