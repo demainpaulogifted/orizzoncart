@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { generateSlug } from '@/lib/utils';
 import Image from 'next/image';
-import { isPhysicalStore } from '@/lib/store-rules';
 
 export default function AddProductPage() {
   const router = useRouter();
@@ -20,58 +19,53 @@ export default function AddProductPage() {
     track_inventory: true,
     allow_backorders: false,
   });
-  
-  // ✅ FIX 1: Use { url: string }[] to match database schema
+
   const [images, setImages] = useState<{ url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
-  const [merchantType, setMerchantType] = useState<'physical' | 'digital' | null>(null);
-  const [loadingMerchant, setLoadingMerchant] = useState(true);
+  const [merchantType, setMerchantType] = useState<string | null>(null);
 
   const supabase = createClient();
 
   useEffect(() => {
-    const fetchCategoriesAndMerchant = async () => {
-      // Categories
-      const { data } = await supabase.from('products').select('category').not('category', 'is', null);
+    const load = async () => {
+      // Load categories
+      const { data } = await supabase
+        .from('products')
+        .select('category')
+        .not('category', 'is', null);
+
       if (data) {
         const cats = [...new Set(data.map((p: any) => p.category).filter(Boolean))];
         setExistingCategories(cats);
       }
 
-      // Merchant type (so we can hide digital option for physical stores)
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+      // Load merchant type (physical / digital)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        const activeMerchantId = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('active_merchant_id='))
-          ?.split('=')[1];
+      const activeMerchantId = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('active_merchant_id='))
+        ?.split('=')[1];
 
-        const { data: merchants } = await supabase
-          .from('merchants')
-          .select('id, merchant_type')
-          .eq('user_id', user.id);
+      const { data: merchants } = await supabase
+        .from('merchants')
+        .select('id, merchant_type')
+        .eq('user_id', user.id);
 
-        const list = merchants || [];
-        const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
+      const list = merchants || [];
+      const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
 
-        if (merchant) {
-          setMerchantType(merchant.merchant_type === 'digital' ? 'digital' : 'physical');
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingMerchant(false);
+      if (merchant) {
+        setMerchantType(merchant.merchant_type || 'physical');
       }
     };
 
-    fetchCategoriesAndMerchant();
+    load();
   }, []);
 
-  // ✅ FIX 2: Corrected string interpolation for fileName
   const handleImageUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -81,6 +75,7 @@ export default function AddProductPage() {
 
       for (const file of Array.from(files)) {
         const fileExt = file.name.split('.').pop();
+        // ✅ Correct filename generation
         const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(7)}.${fileExt}`;
 
         const { error } = await supabase.storage
@@ -92,16 +87,18 @@ export default function AddProductPage() {
           continue;
         }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(fileName);
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('product-images').getPublicUrl(fileName);
 
         uploadedUrls.push({ url: publicUrl });
       }
 
       if (uploadedUrls.length > 0) {
         setImages((prev) => [...prev, ...uploadedUrls]);
-        toast.success(`\( {uploadedUrls.length} photo \){uploadedUrls.length > 1 ? 's' : ''} uploaded`);
+        toast.success(
+          `\( {uploadedUrls.length} photo \){uploadedUrls.length > 1 ? 's' : ''} uploaded`
+        );
       }
     } catch (error: any) {
       toast.error('Upload failed: ' + error.message);
@@ -119,13 +116,14 @@ export default function AddProductPage() {
     setSaving(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // ✅ FIX 3: Multi-store safe merchant lookup (uses active_merchant_id cookie)
       const activeMerchantId = document.cookie
         .split('; ')
-        .find(row => row.startsWith('active_merchant_id='))
+        .find((row) => row.startsWith('active_merchant_id='))
         ?.split('=')[1];
 
       const { data: merchants } = await supabase
@@ -135,20 +133,21 @@ export default function AddProductPage() {
 
       const list = merchants || [];
       const merchant = list.find((m: any) => m.id === activeMerchantId) || list[0];
-      
+
       if (!merchant) throw new Error('No store found. Please create a store first.');
 
       const slug = generateSlug(form.name);
 
       // Force is_digital = false for physical stores
-      const isDigital = isPhysicalStore(merchant) ? false : form.is_digital;
+      const isDigital =
+        merchant.merchant_type === 'digital' ? form.is_digital : false;
 
       const productData = {
         name: form.name,
         price: parseFloat(form.price),
         description: form.description,
         category: form.category,
-        images: images, // Now correctly { url: string }[]
+        images: images,
         slug: slug,
         is_digital: isDigital,
         is_active: true,
@@ -171,7 +170,6 @@ export default function AddProductPage() {
     }
   };
 
-  // Hide digital option completely for physical stores
   const showDigitalOption = merchantType === 'digital';
 
   return (
@@ -185,12 +183,19 @@ export default function AddProductPage() {
             Product Images {images.length > 0 && `(${images.length})`}
           </label>
 
-          {/* Thumbnails */}
           {images.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
               {images.map((img, index) => (
-                <div key={img.url} className="relative aspect-square rounded-xl overflow-hidden border bg-gray-100">
-                  <Image src={img.url} alt={`Product ${index + 1}`} fill className="object-cover" />
+                <div
+                  key={img.url}
+                  className="relative aspect-square rounded-xl overflow-hidden border bg-gray-100"
+                >
+                  <Image
+                    src={img.url}
+                    alt={`Product ${index + 1}`}
+                    fill
+                    className="object-cover"
+                  />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
@@ -208,13 +213,18 @@ export default function AddProductPage() {
             </div>
           )}
 
-          {/* Upload area */}
           <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 hover:border-purple-400 transition-colors">
             <span className="text-3xl">📷</span>
             <span className="text-sm font-bold text-gray-700 mt-2">
-              {uploading ? 'Uploading...' : images.length === 0 ? 'Tap to add photos' : 'Add more photos'}
+              {uploading
+                ? 'Uploading...'
+                : images.length === 0
+                ? 'Tap to add photos'
+                : 'Add more photos'}
             </span>
-            <span className="text-xs text-gray-500 mt-1">You can select multiple photos at once</span>
+            <span className="text-xs text-gray-500 mt-1">
+              You can select multiple photos at once
+            </span>
             <input
               type="file"
               accept="image/*"
@@ -228,7 +238,9 @@ export default function AddProductPage() {
 
         {/* Category */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category (Optional)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category (Optional)
+          </label>
           <input
             list="categories"
             value={form.category}
@@ -245,7 +257,9 @@ export default function AddProductPage() {
 
         {/* Product Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+          <label className="block text-sm font--medium text-gray-700 mb-1">
+            Product Name *
+          </label>
           <input
             required
             value={form.name}
@@ -256,7 +270,9 @@ export default function AddProductPage() {
 
         {/* Price */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Price (₦) *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Price (₦) *
+          </label>
           <input
             required
             type="number"
@@ -268,7 +284,9 @@ export default function AddProductPage() {
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description
+          </label>
           <textarea
             rows={3}
             value={form.description}
@@ -279,14 +297,18 @@ export default function AddProductPage() {
 
         {/* Inventory */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Inventory Management</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-4">
+            Inventory Management
+          </h3>
 
           <div className="flex items-center gap-3 mb-4">
             <input
               type="checkbox"
               id="trackInventory"
               checked={form.track_inventory}
-              onChange={(e) => setForm({ ...form, track_inventory: e.target.checked })}
+              onChange={(e) =>
+                setForm({ ...form, track_inventory: e.target.checked })
+              }
               className="w-5 h-5 text-purple-600 rounded"
             />
             <label htmlFor="trackInventory" className="font-medium text-gray-700">
@@ -297,17 +319,23 @@ export default function AddProductPage() {
           {form.track_inventory && (
             <>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock Quantity
+                </label>
                 <input
                   type="number"
                   min="0"
                   value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setForm({ ...form, stock: parseInt(e.target.value) || 0 })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="How many units available?"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {form.stock === 0 ? '⚠️ Product will show as Out of Stock' : `${form.stock} units available`}
+                  {form.stock === 0
+                    ? '⚠️ Product will show as Out of Stock'
+                    : `${form.stock} units available`}
                 </p>
               </div>
 
@@ -316,10 +344,15 @@ export default function AddProductPage() {
                   type="checkbox"
                   id="allowBackorders"
                   checked={form.allow_backorders}
-                  onChange={(e) => setForm({ ...form, allow_backorders: e.target.checked })}
+                  onChange={(e) =>
+                    setForm({ ...form, allow_backorders: e.target.checked })
+                  }
                   className="w-5 h-5 text-purple-600 rounded"
                 />
-                <label htmlFor="allowBackorders" className="font-medium text-gray-700">
+                <label
+                  htmlFor="allowBackorders"
+                  className="font-medium text-gray-700"
+                >
                   Allow customers to order when out of stock (backorders)
                 </label>
               </div>
@@ -327,14 +360,16 @@ export default function AddProductPage() {
           )}
         </div>
 
-        {/* Digital Product — ONLY shown for Digital stores */}
+        {/* Digital Product - only show for digital stores */}
         {showDigitalOption && (
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
               id="is_digital"
               checked={form.is_digital}
-              onChange={(e) => setForm({ ...form, is_digital: e.target.checked })}
+              onChange={(e) =>
+                setForm({ ...form, is_digital: e.target.checked })
+              }
               className="w-5 h-5 text-purple-600 rounded"
             />
             <label htmlFor="is_digital" className="font-medium text-gray-700">
@@ -346,7 +381,7 @@ export default function AddProductPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={saving || uploading || loadingMerchant}
+          disabled={saving || uploading}
           className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
         >
           {saving ? 'Publishing...' : 'Publish Product 🚀'}
