@@ -11,7 +11,7 @@ const NIGERIAN_STATES = [
   'Yobe', 'Zamfara',
 ];
 
-export default function ShippingSettingsPage() {
+export default function DeliveryZonesPage() {
   const [zones, setZones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any>(null);
@@ -62,7 +62,7 @@ export default function ShippingSettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      toast.success('✅ Shipping zone saved!');
+      toast.success('✅ Delivery zone saved!');
       setEditing(null);
       fetchZones();
     } catch (e: any) {
@@ -73,7 +73,7 @@ export default function ShippingSettingsPage() {
   }
 
   async function deleteZone(id: string) {
-    if (!confirm('Delete this shipping zone?')) return;
+    if (!confirm('Delete this delivery zone?')) return;
 
     try {
       const res = await fetch(`/api/dashboard/shipping-zones?id=${id}`, { method: 'DELETE' });
@@ -93,9 +93,9 @@ export default function ShippingSettingsPage() {
         <Link href="/dashboard/settings" className="text-purple-600 text-sm hover:underline">
           ← Back to Settings
         </Link>
-        <h1 className="text-2xl font-bold mt-2">🚚 Shipping Zones</h1>
+        <h1 className="text-2xl font-bold mt-2">🚚 Delivery Zones</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Set shipping costs by state/region. Customers will see the correct delivery fee at checkout.
+          Create multiple delivery zones with different prices. Customers will choose a zone at checkout and pay the fee you set (or free if you enable free delivery).
         </p>
       </div>
 
@@ -107,14 +107,14 @@ export default function ShippingSettingsPage() {
             onClick={() => startEdit()}
             className="px-5 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700"
           >
-            + Add Shipping Zone
+            + Add Delivery Zone
           </button>
 
           {zones.length === 0 ? (
             <div className="bg-white border rounded-xl p-10 text-center">
-              <p className="text-gray-500">No shipping zones configured yet</p>
+              <p className="text-gray-500">No delivery zones configured yet</p>
               <p className="text-sm text-gray-400 mt-2">
-                Add your first zone to start charging for delivery
+                Add your first zone so customers can select delivery options at checkout
               </p>
             </div>
           ) : (
@@ -136,7 +136,11 @@ export default function ShippingSettingsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-extrabold text-purple-700">₦{Number(zone.flat_fee).toLocaleString()}</p>
+                      <p className="font-extrabold text-purple-700">
+                        {Number(zone.flat_fee) === 0
+                          ? 'FREE'
+                          : `₦${Number(zone.flat_fee).toLocaleString()}`}
+                      </p>
                       {zone.free_shipping_threshold && (
                         <p className="text-[10px] text-green-600 font-bold">
                           Free over ₦{Number(zone.free_shipping_threshold).toLocaleString()}
@@ -169,14 +173,14 @@ export default function ShippingSettingsPage() {
       {editing && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold">{editing.id ? 'Edit Zone' : 'Add Zone'}</h2>
+            <h2 className="text-xl font-bold">{editing.id ? 'Edit Delivery Zone' : 'Add Delivery Zone'}</h2>
 
             <div>
               <label className="text-xs font-bold text-gray-600 block mb-1">Zone Name</label>
               <input
                 value={editing.zone_name}
                 onChange={(e) => setEditing({ ...editing, zone_name: e.target.value })}
-                placeholder="e.g., Lagos, Abuja, Nationwide"
+                placeholder="e.g., Lagos, South-West, Nationwide"
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
             </div>
@@ -206,18 +210,19 @@ export default function ShippingSettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1">Shipping Fee (₦)</label>
+              <label className="text-xs font-bold text-gray-600 block mb-1">Delivery Fee (₦)</label>
               <input
                 type="number"
                 value={editing.flat_fee}
                 onChange={(e) => setEditing({ ...editing, flat_fee: Number(e.target.value) })}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
+              <p className="text-[10px] text-gray-400 mt-1">Set to 0 for free delivery in this zone</p>
             </div>
 
             <div>
               <label className="text-xs font-bold text-gray-600 block mb-1">
-                Free Shipping Threshold (₦) - Optional
+                Free Delivery Threshold (₦) – Optional
               </label>
               <input
                 type="number"
@@ -228,7 +233,7 @@ export default function ShippingSettingsPage() {
                     free_shipping_threshold: e.target.value ? Number(e.target.value) : null,
                   })
                 }
-                placeholder="e.g., 50000 for free shipping over ₦50k"
+                placeholder="e.g., 50000 for free delivery over ₦50k"
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
             </div>
