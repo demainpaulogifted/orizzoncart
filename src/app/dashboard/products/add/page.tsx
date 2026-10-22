@@ -130,14 +130,10 @@ export default function AddProductPage() {
           continue;
         }
 
-        const fileExt = file.name.split('.').pop()?.toLowerCase();
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
 
-        if (!fileExt || !/^[a-z0-9]+$/.test(fileExt)) {
-          toast.error(`${file.name}: Invalid image filename.`);
-          continue;
-        }
-
-        const fileName = `\( {user.id}/ \){Date.now()}-\( {crypto.randomUUID()}. \){fileExt}`;
+        // Simple flat filename that works with current storage policies
+        const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(2, 10)}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('product-images')
@@ -230,6 +226,7 @@ export default function AddProductPage() {
         throw new Error('No store found. Please create a store first.');
       }
 
+      // Physical stores can never create digital products
       const isDigital =
         merchant.merchant_type === 'digital' ? form.is_digital : false;
 
