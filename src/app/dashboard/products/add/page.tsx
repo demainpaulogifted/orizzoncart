@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -69,19 +70,24 @@ export default function AddProductPage() {
           setMerchantType(merchant.merchant_type || 'physical');
         }
 
-        const { data: products } = await supabase
+        const { data: products, error: productsError } = await supabase
           .from('products')
           .select('category')
           .not('category', 'is', null);
+
+        if (productsError) {
+          console.error('Failed to load categories:', productsError);
+        }
 
         if (!cancelled && products) {
           const categories = [
             ...new Set(
               products
-                .map((p: any) => p.category)
-                .filter((c: string | null): c is string => Boolean(c))
+                .map((p: { category: string | null }) => p.category)
+                .filter((c): c is string => Boolean(c))
             ),
           ];
+
           setExistingCategories(categories);
         }
       } catch (error) {
@@ -89,7 +95,7 @@ export default function AddProductPage() {
       }
     };
 
-    load();
+    void load();
 
     return () => {
       cancelled = true;
@@ -108,7 +114,9 @@ export default function AddProductPage() {
       } = await supabase.auth.getUser();
 
       if (authError) throw authError;
-      if (!user) throw new Error('Please sign in before uploading images.');
+      if (!user) {
+        throw new Error('Please sign in before uploading images.');
+      }
 
       const uploadedImages: ProductImage[] = [];
       const allowedTypes = [
@@ -132,8 +140,8 @@ export default function AddProductPage() {
 
         const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
 
-        // Simple flat filename that works with current storage policies
-        const fileName = `\( {Date.now()}- \){Math.random().toString(36).substring(2, 10)}.${fileExt}`;
+        // Use a valid, unique filename. Keep it at the bucket root.
+        const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from('product-images')
@@ -144,29 +152,40 @@ export default function AddProductPage() {
           });
 
         if (uploadError) {
-          console.error('Upload failed:', uploadError);
+          console.error('Supabase image upload failed:', uploadError);
           toast.error(`Failed to upload ${file.name}: ${uploadError.message}`);
           continue;
         }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('product-images').getPublicUrl(fileName);
+        const { data } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
 
-        uploadedImages.push({ url: publicUrl });
+        if (!data.publicUrl) {
+          toast.error(`Could not create an image URL for ${file.name}.`);
+          continue;
+        }
+
+        // Save the permanent public URL with the product.
+        uploadedImages.push({ url: data.publicUrl });
       }
 
       if (uploadedImages.length > 0) {
         setImages((prev) => [...prev, ...uploadedImages]);
+
         toast.success(
-          `\( {uploadedImages.length} photo \){
+          `${uploadedImages.length} photo${
             uploadedImages.length === 1 ? '' : 's'
           } uploaded successfully.`
         );
       }
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : 'An unexpected error occurred.';
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred.';
+
+      console.error('Image upload error:', error);
       toast.error(`Image upload failed: ${message}`);
     } finally {
       setUploading(false);
@@ -204,7 +223,9 @@ export default function AddProductPage() {
       } = await supabase.auth.getUser();
 
       if (authError) throw authError;
-      if (!user) throw new Error('You must be signed in to publish a product.');
+      if (!user) {
+        throw new Error('You must be signed in to publish a product.');
+      }
 
       const activeMerchantId = document.cookie
         .split('; ')
@@ -226,7 +247,6 @@ export default function AddProductPage() {
         throw new Error('No store found. Please create a store first.');
       }
 
-      // Physical stores can never create digital products
       const isDigital =
         merchant.merchant_type === 'digital' ? form.is_digital : false;
 
@@ -258,7 +278,11 @@ export default function AddProductPage() {
       router.refresh();
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : 'An unexpected error occurred.';
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred.';
+
+      console.error('Product creation failed:', error);
       toast.error(`Failed to create product: ${message}`);
     } finally {
       setSaving(false);
@@ -269,7 +293,9 @@ export default function AddProductPage() {
 
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-6 text-2xl font-bold text-gray-900">Add New Product</h1>
+      <h1 className="mb-6 text-2xl font-bold text-gray-900">
+        Add New Product
+      </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Product Images */}
@@ -288,19 +314,46 @@ export default function AddProductPage() {
                   <img
                     src={img.url}
                     alt={`Product ${index + 1}`}
-                    className="h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="eager"
+                    onError={(event) => {
+                      console.error(
+                        'Product image failed to display. Check the URL and bucket access:',
+                        img.url
+                      );
+
+                      event.currentTarget.style.display = 'none';
+
+                      const fallback =
+                        event.currentTarget.parentElement?.querySelector(
+                          '[data-image-error]'
+                        );
+
+                      if (fallback instanceof HTMLElement) {
+                        fallback.style.display = 'flex';
+                      }
+                    }}
                   />
+
+                  <div
+                    data-image-error
+                    style={{ display: 'none' }}
+                    className="absolute inset-0 items-center justify-center p-2 text-center text-xs text-red-600"
+                  >
+                    Image unavailable. Check Supabase Storage access.
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white"
+                    aria-label={`Remove product image ${index + 1}`}
+                    className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white"
                   >
                     ×
                   </button>
 
                   {index === 0 && (
-                    <span className="absolute bottom-1 left-1 rounded bg-purple-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="absolute bottom-1 left-1 z-10 rounded bg-purple-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       Main
                     </span>
                   )}
@@ -321,6 +374,7 @@ export default function AddProductPage() {
             <span className="mt-1 text-xs text-gray-500">
               You can select multiple photos at once
             </span>
+
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
@@ -335,7 +389,8 @@ export default function AddProductPage() {
           </label>
 
           <p className="mt-2 text-xs text-gray-500">
-            Supported formats: JPG, PNG, WebP, GIF and AVIF. Maximum 5 MB per image.
+            Supported formats: JPG, PNG, WebP, GIF and AVIF. Maximum 5 MB per
+            image.
           </p>
         </div>
 
@@ -379,6 +434,8 @@ export default function AddProductPage() {
           <input
             required
             type="number"
+            min="0"
+            step="any"
             value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value })}
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
@@ -432,7 +489,7 @@ export default function AddProductPage() {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      stock: parseInt(e.target.value) || 0,
+                      stock: parseInt(e.target.value, 10) || 0,
                     })
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
@@ -450,7 +507,10 @@ export default function AddProductPage() {
                   }
                   className="h-5 w-5 rounded text-purple-600"
                 />
-                <label htmlFor="allowBackorders" className="font-medium text-gray-700">
+                <label
+                  htmlFor="allowBackorders"
+                  className="font-medium text-gray-700"
+                >
                   Allow customers to order when out of stock (backorders)
                 </label>
               </div>
