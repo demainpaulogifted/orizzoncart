@@ -16,9 +16,37 @@ type Merchant = {
   merchant_type: string | null;
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+const IMAGE_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  avif: 'image/avif',
+};
+
+function getFileExtension(file: File): string | null {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+
+  if (extension && IMAGE_TYPES[extension]) {
+    return extension;
+  }
+
+  const mimeExtension = Object.entries(IMAGE_TYPES).find(
+    ([, mimeType]) => mimeType === file.type
+  )?.[0];
+
+  return mimeExtension === 'jpeg' ? 'jpg' : mimeExtension || null;
+}
+
 export default function AddProductPage() {
   const router = useRouter();
-  const supabase = createClient();
+
+  // Keep one Supabase client for this mounted page.
+  const [supabase] = useState(() => createClient());
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -41,7 +69,7 @@ export default function AddProductPage() {
   useEffect(() => {
     let cancelled = false;
 
-    const load = async () => {
+    async function load() {
       try {
         const {
           data: { user },
@@ -63,9 +91,10 @@ export default function AddProductPage() {
 
         if (merchantError) throw merchantError;
 
-        const list = (merchants || []) as Merchant[];
+        const merchantList = (merchants || []) as Merchant[];
         const merchant =
-          list.find((m) => m.id === activeMerchantId) || list[0];
+          merchantList.find((item) => item.id === activeMerchantId) ||
+          merchantList[0];
 
         if (!cancelled && merchant) {
           setMerchantType(merchant.merchant_type || 'physical');
@@ -77,14 +106,14 @@ export default function AddProductPage() {
           .not('category', 'is', null);
 
         if (productsError) {
-          console.error('Failed to load categories:', productsError);
+          console.error('Failed to load product categories:', productsError);
         }
 
         if (!cancelled && products) {
           const categories = [
             ...new Set(
               products
-                .map((p: { category: string | null }) => p.category)
+                .map((product: { category: string | null }) => product.category)
                 .filter((category): category is string => Boolean(category))
             ),
           ];
@@ -94,7 +123,7 @@ export default function AddProductPage() {
       } catch (error) {
         console.error('Failed to load product form:', error);
       }
-    };
+    }
 
     void load();
 
@@ -103,11 +132,13 @@ export default function AddProductPage() {
     };
   }, [supabase]);
 
-  const handleImageUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) {
+  const handleImageUpload = async (selectedFiles: FileList | null) => {
+    if (!selectedFiles || selectedFiles.length === 0) {
       toast.error('No photo was selected. Please try again.');
       return;
     }
+
+    if (uploading) return;
 
     setUploading(true);
 
@@ -117,63 +148,80 @@ export default function AddProductPage() {
         error: authError,
       } = await supabase.auth.getUser();
 
-      if (authError) throw authError;
+      if (authError) {
+        throw new Error(`Could not verify your login: ${authError.message}`);
+      }
 
       if (!user) {
-        throw new Error('Please sign in before uploading images.');
+        throw new Error('Your session has expired. Sign in and try again.');
       }
 
       const uploadedImages: ProductImage[] = [];
-      const allowedTypes = [
-        'image/jpeg',
-        'image/png',
-        'image/webp',
-        'image/gif',
-        'image/avif',
-      ];
+      const failures: string[] = [];
 
-      for (const file of Array.from(files)) {
-        if (!allowedTypes.includes(file.type)) {
-          toast.error(
-            `${file.name}: Unsupported image format. Choose JPG, PNG, WebP, GIF or AVIF.`
+      for (const file of Array.from(selectedFiles)) {
+        if (file.size === 0) {
+          failures.push(`${file.name}: The selected file is empty.`);
+          continue;
+        }
+
+        if (file.size > MAX_IMAGE_SIZE) {
+          failures.push(`${file.name}: The image must be 5 MB or smaller.`);
+          continue;
+        }
+
+        const extension = getFileExtension(file);
+
+        if (!extension) {
+          failures.push(
+            `${file.name}: Unsupported format. Choose JPG, PNG, WebP, GIF or AVIF.`
           );
           continue;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`${file.name}: Image must be 5 MB or smaller.`);
-          continue;
-        }
+        const contentType = IMAGE_TYPES[extension];
 
-        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+        // Use a user-specific folder, compatible with user-folder storage rules.
+        const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(fileName, file, {
-            contentType: file.type,
+          .upload(filePath, file, {
+            contentType,
             cacheControl: '3600',
             upsert: false,
           });
 
         if (uploadError) {
-          console.error('Supabase image upload failed:', uploadError);
-          toast.error(
-            `Failed to upload ${file.name}: ${uploadError.message}`
+          console.error('Supabase image upload failed:', {
+            file: file.name,
+            message: uploadError.message,
+            name: uploadError.name,
+          });
+
+          failures.push(`${file.name}: ${uploadError.message}`);
+          continue;
+        }
+
+        const uploadedPath = uploadData?.path;
+
+        if (!uploadedPath) {
+          failures.push(
+            `${file.name}: Supabase uploaded no file path. Please try again.`
           );
           continue;
         }
 
-        const { data } = supabase.storage
+        const { data: publicUrlData } = supabase.storage
           .from('product-images')
-          .getPublicUrl(fileName);
+          .getPublicUrl(uploadedPath);
 
-        if (!data.publicUrl) {
-          toast.error(`Could not create an image URL for ${file.name}.`);
+        if (!publicUrlData?.publicUrl) {
+          failures.push(`${file.name}: Could not create the image URL.`);
           continue;
         }
 
-        uploadedImages.push({ url: data.publicUrl });
+        uploadedImages.push({ url: publicUrlData.publicUrl });
       }
 
       if (uploadedImages.length > 0) {
@@ -184,10 +232,23 @@ export default function AddProductPage() {
             uploadedImages.length === 1 ? '' : 's'
           } uploaded successfully.`
         );
-      } else {
-        toast.error(
-          'No photos were uploaded. Check the file format, file size and Supabase Storage settings.'
-        );
+      }
+
+      if (failures.length > 0) {
+        console.error('Image upload failure details:', failures);
+
+        // Show the actual reason, not a generic message that hides the error.
+        toast.error(failures.slice(0, 2).join(' '), {
+          duration: 8000,
+        });
+
+        if (failures.length > 2) {
+          toast.error(`${failures.length - 2} more image(s) could not be uploaded.`);
+        }
+      }
+
+      if (uploadedImages.length === 0 && failures.length === 0) {
+        toast.error('No images were uploaded. Select a photo and try again.');
       }
     } catch (error: unknown) {
       const message =
@@ -196,18 +257,24 @@ export default function AddProductPage() {
           : 'An unexpected error occurred.';
 
       console.error('Image upload error:', error);
-      toast.error(`Image upload failed: ${message}`);
+      toast.error(`Image upload failed: ${message}`, {
+        duration: 8000,
+      });
     } finally {
       setUploading(false);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const removeImage = (index: number) => {
-    setImages((previous) => previous.filter((_, i) => i !== index));
+    setImages((previous) => previous.filter((_, imageIndex) => imageIndex !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
     if (saving || uploading) return;
 
@@ -250,9 +317,10 @@ export default function AddProductPage() {
 
       if (merchantError) throw merchantError;
 
-      const list = (merchants || []) as Merchant[];
+      const merchantList = (merchants || []) as Merchant[];
       const merchant =
-        list.find((m) => m.id === activeMerchantId) || list[0];
+        merchantList.find((item) => item.id === activeMerchantId) ||
+        merchantList[0];
 
       if (!merchant) {
         throw new Error('No store found. Please create a store first.');
@@ -377,7 +445,7 @@ export default function AddProductPage() {
             ref={fileInputRef}
             id="product-image-upload"
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
             multiple
             className="sr-only"
             disabled={uploading}
@@ -389,8 +457,6 @@ export default function AddProductPage() {
               } else {
                 toast.error('No photo was selected. Please try again.');
               }
-
-              event.currentTarget.value = '';
             }}
           />
 
@@ -427,8 +493,8 @@ export default function AddProductPage() {
           <input
             list="categories"
             value={form.category}
-            onChange={(e) =>
-              setForm({ ...form, category: e.target.value })
+            onChange={(event) =>
+              setForm({ ...form, category: event.target.value })
             }
             placeholder="e.g., Men clothes, Summer Sale..."
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
@@ -448,7 +514,9 @@ export default function AddProductPage() {
           <input
             required
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(event) =>
+              setForm({ ...form, name: event.target.value })
+            }
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -464,7 +532,9 @@ export default function AddProductPage() {
             min="0"
             step="any"
             value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
+            onChange={(event) =>
+              setForm({ ...form, price: event.target.value })
+            }
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
         </div>
@@ -477,8 +547,8 @@ export default function AddProductPage() {
           <textarea
             rows={3}
             value={form.description}
-            onChange={(e) =>
-              setForm({ ...form, description: e.target.value })
+            onChange={(event) =>
+              setForm({ ...form, description: event.target.value })
             }
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
@@ -495,10 +565,10 @@ export default function AddProductPage() {
               type="checkbox"
               id="trackInventory"
               checked={form.track_inventory}
-              onChange={(e) =>
+              onChange={(event) =>
                 setForm({
                   ...form,
-                  track_inventory: e.target.checked,
+                  track_inventory: event.target.checked,
                 })
               }
               className="h-5 w-5 rounded text-purple-600"
@@ -521,10 +591,10 @@ export default function AddProductPage() {
                   type="number"
                   min="0"
                   value={form.stock}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setForm({
                       ...form,
-                      stock: parseInt(e.target.value, 10) || 0,
+                      stock: parseInt(event.target.value, 10) || 0,
                     })
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
@@ -537,10 +607,10 @@ export default function AddProductPage() {
                   type="checkbox"
                   id="allowBackorders"
                   checked={form.allow_backorders}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setForm({
                       ...form,
-                      allow_backorders: e.target.checked,
+                      allow_backorders: event.target.checked,
                     })
                   }
                   className="h-5 w-5 rounded text-purple-600"
@@ -563,8 +633,8 @@ export default function AddProductPage() {
               type="checkbox"
               id="is_digital"
               checked={form.is_digital}
-              onChange={(e) =>
-                setForm({ ...form, is_digital: e.target.checked })
+              onChange={(event) =>
+                setForm({ ...form, is_digital: event.target.checked })
               }
               className="h-5 w-5 rounded text-purple-600"
             />
