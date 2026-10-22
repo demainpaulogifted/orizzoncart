@@ -137,7 +137,6 @@ export default function AddProductPage() {
           continue;
         }
 
-        // Valid unique storage key
         const fileName = `\( {user.id}/ \){Date.now()}-\( {crypto.randomUUID()}. \){fileExt}`;
 
         const { error: uploadError } = await supabase.storage
@@ -231,7 +230,6 @@ export default function AddProductPage() {
         throw new Error('No store found. Please create a store first.');
       }
 
-      // Physical stores can never create digital products
       const isDigital =
         merchant.merchant_type === 'digital' ? form.is_digital : false;
 
@@ -277,13 +275,12 @@ export default function AddProductPage() {
       <h1 className="mb-6 text-2xl font-bold text-gray-900">Add New Product</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* ========== PRODUCT IMAGES ========== */}
+        {/* Product Images */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
             Product Images {images.length > 0 && `(${images.length})`}
           </label>
 
-          {/* Image Previews - using normal img for reliability */}
           {images.length > 0 && (
             <div className="mb-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
               {images.map((img, index) => (
@@ -315,7 +312,6 @@ export default function AddProductPage() {
             </div>
           )}
 
-          {/* Upload Area */}
           <label className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-purple-300 bg-gray-50 transition-colors hover:border-purple-500 hover:bg-gray-100">
             <span className="text-3xl">📷</span>
             <span className="mt-2 text-sm font-bold text-gray-700">
@@ -424,7 +420,7 @@ export default function AddProductPage() {
             <label htmlFor="trackInventory" className="font-medium text-gray-700">
               Track inventory for this product
             </label>
-          </div dec>
+          </div>
 
           {form.track_inventory && (
             <>
