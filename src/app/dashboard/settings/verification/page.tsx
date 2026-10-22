@@ -18,9 +18,9 @@ export default function VerificationPage() {
   const [showAddForm, setShowAddForm] = useState(false);
 
   const [form, setForm] = useState({
-    business_state: '',
-    business_lga: '',
-    business_address: '',
+    state: '',
+    city: '',
+    address: '',
     cac_number: '',
   });
 
@@ -59,37 +59,23 @@ export default function VerificationPage() {
   function getLocations(): Location[] {
     if (!merchant) return [];
 
-    const locations: Location[] = [];
-
     if (Array.isArray(merchant.business_locations) && merchant.business_locations.length > 0) {
-      merchant.business_locations.forEach((loc: any) => {
-        locations.push({
-          state: loc.state || '',
-          city: loc.city || '',
-          address: loc.address || '',
-          verified: !!merchant.is_verified,
-        });
-      });
-    }
-
-    // Fallback for very old data
-    if (locations.length === 0 && (merchant.business_state || merchant.business_lga)) {
-      locations.push({
-        state: merchant.business_state || '',
-        city: merchant.business_lga || '',
-        address: '',
+      return merchant.business_locations.map((loc: any) => ({
+        state: loc.state || '',
+        city: loc.city || '',
+        address: loc.address || '',
         verified: !!merchant.is_verified,
-      });
+      }));
     }
 
-    return locations;
+    return [];
   }
 
   const locations = getLocations();
   const hasAnyLocation = locations.length > 0;
 
   async function addLocation() {
-    if (!form.business_state.trim() || !form.business_lga.trim() || !form.business_address.trim()) {
+    if (!form.state.trim() || !form.city.trim() || !form.address.trim()) {
       return toast.error('Please fill in State, LGA and Address');
     }
 
@@ -103,20 +89,18 @@ export default function VerificationPage() {
     }));
 
     const newLocation = {
-      state: form.business_state.trim(),
-      city: form.business_lga.trim(),
-      address: form.business_address.trim(),
+      state: form.state.trim(),
+      city: form.city.trim(),
+      address: form.address.trim(),
     };
 
     const updatedLocations = [...currentLocations, newLocation];
 
-    // Only update columns that actually exist
+    // ONLY update columns that exist in the database
     const { error } = await supabase
       .from('merchants')
       .update({
         business_locations: updatedLocations,
-        business_state: updatedLocations[0].state,
-        business_lga: updatedLocations[0].city,
         cac_number: form.cac_number.trim() || null,
       })
       .eq('id', merchant.id);
@@ -131,9 +115,9 @@ export default function VerificationPage() {
     toast.success('✅ Location added! Waiting for admin approval.');
     setShowAddForm(false);
     setForm({
-      business_state: '',
-      business_lga: '',
-      business_address: '',
+      state: '',
+      city: '',
+      address: '',
       cac_number: form.cac_number,
     });
     load();
@@ -169,7 +153,7 @@ export default function VerificationPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-bold text-gray-900">{loc.address || 'No address'}</p>
+                  <p className="font-bold text-gray-900">{loc.address}</p>
                   <p className="text-sm text-gray-600 mt-0.5">
                     {loc.city}, {loc.state}
                   </p>
@@ -192,7 +176,7 @@ export default function VerificationPage() {
         </div>
       )}
 
-      {/* Add new location */}
+      {/* Add new location form */}
       {!showAddForm ? (
         <button
           onClick={() => setShowAddForm(true)}
@@ -212,8 +196,8 @@ export default function VerificationPage() {
           <div>
             <label className="text-sm font-bold text-gray-700 block mb-1">State *</label>
             <input
-              value={form.business_state}
-              onChange={(e) => setForm({ ...form, business_state: e.target.value })}
+              value={form.state}
+              onChange={(e) => setForm({ ...form, state: e.target.value })}
               placeholder="e.g., Lagos"
               className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
             />
@@ -222,8 +206,8 @@ export default function VerificationPage() {
           <div>
             <label className="text-sm font-bold text-gray-700 block mb-1">LGA *</label>
             <input
-              value={form.business_lga}
-              onChange={(e) => setForm({ ...form, business_lga: e.target.value })}
+              value={form.city}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
               placeholder="e.g., Ikeja"
               className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
             />
@@ -232,8 +216,8 @@ export default function VerificationPage() {
           <div>
             <label className="text-sm font-bold text-gray-700 block mb-1">Town / Address *</label>
             <textarea
-              value={form.business_address}
-              onChange={(e) => setForm({ ...form, business_address: e.target.value })}
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
               rows={2}
               placeholder="e.g., 12 Allen Avenue, Ikeja"
               className="w-full px-3 py-3 border rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
