@@ -1,39 +1,29 @@
-import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from('merchants')
-    .select('*')
-    .eq('is_verified', false)
-    .not('business_locations', 'is', null)
-    .order('created_at', { ascending: false });
+  try {
+    const admin = createAdminClient();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ merchants: data || [] });
-}
+    const { data: allWithLocations, error } = await admin
+      .from('merchants')
+      .select('id, store_name, store_slug, is_verified, business_locations, cac_number, created_at')
+      .not('business_locations', 'is', null)
+      .order('created_at', { ascending: false });
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const { merchantId, action } = body;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-  if (!merchantId || !['approve', 'reject'].includes(action)) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    const merchants = (allWithLocations || []).filter(
+      (m: any) => Array.isArray(m.business_locations) && m.business_locations.length > 0
+    );
+
+    const pending = merchants.filter((m: any) => !m.is_verified);
+    const verified = merchants.filter((m: any) => m.is_verified);
+
+    return NextResponse.json({ pending, verified });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  const admin = createAdminClient();
-
-  const updateData = action === 'approve'
-    ? { is_verified: true, verified_at: new Date().toISOString() }
-    : { is_verified: false, business_locations: null, cac_number: null };
-
-  const { error } = await admin
-    .from('merchants')
-    .update(updateData)
-    .eq('id', merchantId);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ success: true });
 }
