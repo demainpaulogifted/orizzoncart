@@ -122,11 +122,11 @@ export default async function AdminMerchantDetailPage({
                 <div>
                   <p className="text-gray-500 text-xs uppercase font-semibold">Store URL</p>
                   <a
-                    href={`https://${merchant.store_slug}.orizzoncart.name.ng`}
+                    href={`https://${merchant.store_slug}.orizzoncart.com.ng`}
                     target="_blank"
                     className="font-medium text-purple-700 hover:underline break-all"
                   >
-                    {merchant.store_slug}.orizzoncart.name.ng
+                    {merchant.store_slug}.orizzoncart.com.ng
                   </a>
                 </div>
               )}

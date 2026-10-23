@@ -11,7 +11,7 @@ export const metadata = {
   title: 'Active Stores — OrizzonCart Marketplace',
   description:
     'Browse verified Nigerian stores ranked by how recently the merchant was active. Shop from live sellers, not abandoned shops.',
-  alternates: { canonical: 'https://orizzoncart.name.ng/marketplace/stores' },
+  alternates: { canonical: 'https://orizzoncart.com.ng/marketplace/stores' },
 };
 
 const themeList: any[] = Object.values(THEMES);

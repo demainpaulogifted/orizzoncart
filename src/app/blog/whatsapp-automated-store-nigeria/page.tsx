@@ -414,7 +414,7 @@ export default function WhatsAppAutomatedStoreGuide() {
             <h3 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">Setting Up Your WhatsApp-Integrated Store</h3>
             <ol className="list-decimal pl-6 space-y-4 my-4">
               <li>
-                <strong>Create Your OrizzonCart Store:</strong> Sign up at orizzoncart.name.ng and 
+                <strong>Create Your OrizzonCart Store:</strong> Sign up at orizzoncart.com.ng and 
                 choose your theme (takes 2 minutes).
               </li>
               <li>
@@ -747,7 +747,7 @@ export default function WhatsAppAutomatedStoreGuide() {
             </div>
             <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">What if I don't have a website?</h3>
-              <p className="text-gray-700">OrizzonCart IS your website! You get a professional online store (like yourstore.orizzoncart.name.ng) that integrates perfectly with WhatsApp. No coding needed.</p>
+              <p className="text-gray-700">OrizzonCart IS your website! You get a professional online store (like yourstore.orizzoncart.com.ng) that integrates perfectly with WhatsApp. No coding needed.</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
               <h3 className="text-xl font-semibold text-gray-900 mb-2">How much does WhatsApp automation cost?</h3>

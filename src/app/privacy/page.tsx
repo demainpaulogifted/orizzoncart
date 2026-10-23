@@ -21,7 +21,7 @@ export default function PrivacyPage() {
           <p>
             OrizzonCart (“we”, “us”) is operated by OrizzonS Inc. This policy explains how we handle
             information when you use{' '}
-            <strong>orizzoncart.name.ng</strong>, merchant subdomains, and related services.
+            <strong>orizzoncart.com.ng</strong>, merchant subdomains, and related services.
           </p>
         </section>
 
@@ -103,10 +103,10 @@ export default function PrivacyPage() {
             Merchants can update store and account details from the dashboard. To request access,
             correction, or deletion of personal data we hold, contact us at{' '}
             <a
-              href="mailto:support@orizzoncart.name.ng"
+              href="mailto:support@orizzoncart.com.ng"
               className="text-purple-600 font-semibold hover:underline"
             >
-              support@orizzoncart.name.ng
+              support@orizzoncart.com.ng
             </a>
             . We may need to verify your identity before acting on a request.
           </p>
@@ -134,10 +134,10 @@ export default function PrivacyPage() {
           <p>
             Privacy questions:{' '}
             <a
-              href="mailto:support@orizzoncart.name.ng"
+              href="mailto:support@orizzoncart.com.ng"
               className="text-purple-600 font-semibold hover:underline"
             >
-              support@orizzoncart.name.ng
+              support@orizzoncart.com.ng
             </a>
             . See also our{' '}
             <Link href="/contact" className="text-purple-600 font-semibold hover:underline">

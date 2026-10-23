@@ -204,7 +204,7 @@ export default async function ShopPage({
               const t = themeFor(merchant ? merchant.theme_id : null);
               const img = p.images && p.images[0] ? p.images[0].url : null;
               const storeUrl = merchant
-                ? 'https://' + merchant.store_slug + '.orizzoncart.name.ng/p/' + p.slug
+                ? 'https://' + merchant.store_slug + '.orizzoncart.com.ng/p/' + p.slug
                 : '#';
               return (
                 <a

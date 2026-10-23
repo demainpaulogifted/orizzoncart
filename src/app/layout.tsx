@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 
 const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng'
+  process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.com.ng'
 ).replace(/\/$/, '');
 
 export const metadata: Metadata = {

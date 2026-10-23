@@ -335,7 +335,7 @@ className="min-h-screen bg-[var(--color-bg,#FFFFFF)] text-[var(--color-text,#1A1
       <p className="text-[11px] text-stone-400">
         Storefront powered by{' '}
         <Link
-          href="https://www.orizzoncart.name.ng"
+          href="https://www.orizzoncart.com.ng"
           className="text-stone-700 font-bold"
         >
           OrizzonCart

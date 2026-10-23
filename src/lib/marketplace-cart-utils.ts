@@ -17,7 +17,7 @@ export interface MerchantCart {
 }
 
 // Adjust this domain to match your actual storefront subdomain pattern
-const STOREFRONT_DOMAIN = "orizzoncart.name.ng"; 
+const STOREFRONT_DOMAIN = "orizzoncart.com.ng"; 
 
 export function getAggregatedCarts(): MerchantCart[] {
   if (typeof window === "undefined") return [];

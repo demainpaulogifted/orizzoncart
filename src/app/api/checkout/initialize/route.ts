@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
     await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
 
     const hasOwn = !!(merchant.paystack_secret_key || merchant.flutterwave_secret_key);
     const hasBank = !!(merchant.bank_name && merchant.account_number);
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     const buildBody = (split: string | null) => {
       const b: any = {
-        email: customer?.email || 'customer@orizzoncart.name.ng',
+        email: customer?.email || 'customer@orizzoncart.com.ng',
         amount: totalAmount * 100,
         reference,
         callback_url: `${appUrl}/payment/verify?reference=${reference}`,

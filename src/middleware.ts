@@ -32,10 +32,10 @@ export function middleware(req: NextRequest) {
   const host = (req.headers.get('host') || '').toLowerCase();
   const { pathname } = req.nextUrl;
 
-  const isWildcard = host.endsWith('.orizzoncart.name.ng') && !host.startsWith('www.');
+  const isWildcard = host.endsWith('.orizzoncart.com.ng') && !host.startsWith('www.');
 
   if (isWildcard) {
-    const sub = host.replace('.orizzoncart.name.ng', '');
+    const sub = host.replace('.orizzoncart.com.ng', '');
     if (sub && sub !== '*') {
       const isPlatformPath = PLATFORM_PATHS.some(
         (p) => pathname === p || pathname.startsWith(p.endsWith('/') ? p : `${p}/`)

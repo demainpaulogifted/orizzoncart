@@ -26,10 +26,10 @@ export default function ContactPage() {
             Store setup, payments, products, or account issues.
           </p>
           <a
-            href="mailto:support@orizzoncart.name.ng"
+            href="mailto:support@orizzoncart.com.ng"
             className="text-sm font-bold text-purple-600 hover:underline"
           >
-            support@orizzoncart.name.ng
+            support@orizzoncart.com.ng
           </a>
         </div>
 
@@ -49,10 +49,10 @@ export default function ContactPage() {
           <h2 className="font-bold text-gray-900 mb-1">Partnerships</h2>
           <p className="text-sm text-gray-600 mb-3">Business, media, or integration enquiries.</p>
           <a
-            href="mailto:hello@orizzoncart.name.ng"
+            href="mailto:hello@orizzoncart.com.ng"
             className="text-sm font-bold text-purple-600 hover:underline"
           >
-            hello@orizzoncart.name.ng
+            hello@orizzoncart.com.ng
           </a>
         </div>
 

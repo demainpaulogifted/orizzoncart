@@ -21,12 +21,12 @@ export const metadata = {
     'marketplace app Nigeria',
     'verified Nigerian sellers',
   ],
-  alternates: { canonical: 'https://orizzoncart.name.ng/marketplace' },
+  alternates: { canonical: 'https://orizzoncart.com.ng/marketplace' },
   openGraph: {
     title: 'OrizzonCart Marketplace — Shop Verified Nigerian Stores',
     description:
       'Flash deals daily from verified Nigerian businesses. Secure payments and trackable delivery in one app.',
-    url: 'https://orizzoncart.name.ng/marketplace',
+    url: 'https://orizzoncart.com.ng/marketplace',
     siteName: 'OrizzonCart Marketplace',
     type: 'website',
     images: [{ url: '/marketplace-og.jpg', width: 1200, height: 630, alt: 'OrizzonCart Marketplace' }],
@@ -83,7 +83,7 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
 
 function productUrl(storeSlug: string | undefined, slug: string) {
   if (!storeSlug) return '#';
-  return 'https://' + storeSlug + '.orizzoncart.name.ng/p/' + slug;
+  return 'https://' + storeSlug + '.orizzoncart.com.ng/p/' + slug;
 }
 
 function categoryChipHref(cat: string) {
@@ -166,10 +166,10 @@ export default async function MarketplacePage() {
       {
         '@type': 'WebSite',
         name: 'OrizzonCart Marketplace',
-        url: 'https://orizzoncart.name.ng/marketplace',
+        url: 'https://orizzoncart.com.ng/marketplace',
         potentialAction: {
           '@type': 'SearchAction',
-          target: 'https://orizzoncart.name.ng/marketplace/categories?q={search_term_string}',
+          target: 'https://orizzoncart.com.ng/marketplace/categories?q={search_term_string}',
           'query-input': 'required name=search_term_string',
         },
       },

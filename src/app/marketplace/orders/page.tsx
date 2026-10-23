@@ -150,7 +150,7 @@ export default async function MyOrderPage({
 
                       {m && (
                         <Link
-                          href={`https://${m.store_slug}.orizzoncart.name.ng`}
+                          href={`https://${m.store_slug}.orizzoncart.com.ng`}
                           target="_blank"
                           className="block text-center text-[11px] font-bold text-purple-600 hover:underline"
                         >

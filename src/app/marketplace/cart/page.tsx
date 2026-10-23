@@ -59,7 +59,7 @@ function getStoreUrl(slug: string) {
   if (!slug) return "/marketplace";
 
   // Storefronts use the configured OrizzonCart subdomain pattern.
-  return `https://${slug}.orizzoncart.name.ng`;
+  return `https://${slug}.orizzoncart.com.ng`;
 }
 
 export default function MarketplaceCartPage() {

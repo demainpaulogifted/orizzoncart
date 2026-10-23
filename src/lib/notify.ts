@@ -3,14 +3,14 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 export async function sendOrderAlert(merchantId: string, order: any, itemsSummary: string) {
   const admin = createAdminClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
 
   // 1) PUSH NOTIFICATION
   try {
     const { data: settings } = await admin.from('platform_settings').select('vapid_public, vapid_private').limit(1).maybeSingle();
     const { data: subs } = await admin.from('push_subscriptions').select('*').eq('merchant_id', merchantId);
     if (settings?.vapid_public && settings?.vapid_private && subs?.length) {
-      webpush.setVapidDetails('mailto:support@orizzoncart.name.ng', settings.vapid_public, settings.vapid_private);
+      webpush.setVapidDetails('mailto:support@orizzoncart.com.ng', settings.vapid_public, settings.vapid_private);
       const payload = JSON.stringify({
         title: '💰 New Order!',
         body: `${order.customer_name} paid ₦${Number(order.total_amount).toLocaleString()} — ${order.order_number}`,

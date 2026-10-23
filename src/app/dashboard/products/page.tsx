@@ -21,7 +21,7 @@ export default async function ProductsPage() {
     ? await supabase.from('products').select('*').eq('merchant_id', merchant.id).order('created_at', { ascending: false })
     : { data: [] };
 
-  const storeUrl = merchant?.store_slug ? `https://${merchant.store_slug}.orizzoncart.name.ng` : '#';
+  const storeUrl = merchant?.store_slug ? `https://${merchant.store_slug}.orizzoncart.com.ng` : '#';
 
   const hasDropshipProducts = (products || []).some((p: any) => p.supplier && p.supplier_product_id);
 

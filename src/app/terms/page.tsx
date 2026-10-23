@@ -128,10 +128,10 @@ export default function TermsPage() {
           <p>
             Questions about these Terms:{' '}
             <a
-              href="mailto:support@orizzoncart.name.ng"
+              href="mailto:support@orizzoncart.com.ng"
               className="text-purple-600 font-semibold hover:underline"
             >
-              support@orizzoncart.name.ng
+              support@orizzoncart.com.ng
             </a>
             . See also{' '}
             <Link href="/privacy" className="text-purple-600 font-semibold hover:underline">

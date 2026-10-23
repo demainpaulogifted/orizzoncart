@@ -6,7 +6,7 @@ import { createClient as createAdminClient } from "@/lib/supabase/admin";
 export const dynamic = "force-dynamic";
 
 const COOKIE_NAME = "orz_shared_cart_id";
-const COOKIE_DOMAIN = ".orizzoncart.name.ng";
+const COOKIE_DOMAIN = ".orizzoncart.com.ng";
 const MAX_QUANTITY = 99;
 
 function getCartId(request: NextRequest) {
@@ -40,8 +40,8 @@ function attachCartCookie(response: NextResponse, request: NextRequest, cartId: 
   // Share the cookie only across OrizzonCart's configured parent domain.
   // Do not set a domain for localhost development.
   if (
-    hostname === "orizzoncart.name.ng" ||
-    hostname.endsWith(".orizzoncart.name.ng")
+    hostname === "orizzoncart.com.ng" ||
+    hostname.endsWith(".orizzoncart.com.ng")
   ) {
     options.domain = COOKIE_DOMAIN;
   }

@@ -132,7 +132,7 @@ export default async function AdminDashboardPage() {
                 <Link key={m.id} href={`/admin/merchants/${m.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-sm text-gray-900 truncate">{m.store_name}</p>
-                    <p className="text-[11px] text-gray-500 truncate">{m.store_slug}.orizzoncart.name.ng</p>
+                    <p className="text-[11px] text-gray-500 truncate">{m.store_slug}.orizzoncart.com.ng</p>
                   </div>
                   <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
                     m.payment_receiving_status === 'ACTIVE' ? 'bg-green-100 text-green-700' :

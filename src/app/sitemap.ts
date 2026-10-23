@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/admin';
 export const revalidate = 3600;
 
 const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng'
+  process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng'
 ).replace(/\/$/, '');
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -85,7 +85,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!merchant.store_slug) continue;
 
     const storeUrl =
-      `https://${merchant.store_slug}.orizzoncart.name.ng`;
+      `https://${merchant.store_slug}.orizzoncart.com.ng`;
 
     const lastModified = merchant.updated_at
       ? new Date(merchant.updated_at)

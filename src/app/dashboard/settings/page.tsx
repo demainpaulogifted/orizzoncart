@@ -80,7 +80,7 @@ export default function SettingsHubPage() {
 
   if (!merchant) return <div className="p-10 text-center text-gray-500">Loading...</div>;
 
-  const storeUrl = `https://${merchant.store_slug}.orizzoncart.name.ng`;
+  const storeUrl = `https://${merchant.store_slug}.orizzoncart.com.ng`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

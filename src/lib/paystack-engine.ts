@@ -49,7 +49,7 @@ export async function ensureOrizzonPay(merchant: any): Promise<any> {
           settlement_bank: BANK_CODES[merchant.bank_name] || '044',
           account_number: merchant.account_number,
           percentage_charge: 0,
-          primary_contact_email: 'support@orizzoncart.name.ng',
+          primary_contact_email: 'support@orizzoncart.com.ng',
           primary_contact_name: merchant.account_name || merchant.store_name,
           primary_contact_phone: '08000000000',
         }),

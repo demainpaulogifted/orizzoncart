@@ -23,7 +23,7 @@ export default async function AdminMerchantsPage() {
             <div key={m.id} className="p-4 flex items-center justify-between gap-3 hover:bg-gray-50">
               <div>
                 <p className="font-bold">{m.store_name}</p>
-                <p className="text-xs text-gray-500">{m.store_slug}.orizzoncart.name.ng • {m.business_name}</p>
+                <p className="text-xs text-gray-500">{m.store_slug}.orizzoncart.com.ng • {m.business_name}</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-1 text-[10px] font-bold rounded-full ${

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 const SITE_URL = (
-  process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.name.ng'
+  process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.com.ng'
 ).replace(/\/$/, '');
 
 export default function robots(): MetadataRoute.Robots {

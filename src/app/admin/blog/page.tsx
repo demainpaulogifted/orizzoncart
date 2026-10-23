@@ -60,7 +60,7 @@ export default async function AdminBlogPage() {
                 <div className="flex gap-2 shrink-0">
                   {post.is_published && (
                     <a
-                      href={`https://orizzoncart.name.ng/blog/${post.slug}`}
+                      href={`https://orizzoncart.com.ng/blog/${post.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 border rounded-lg text-xs font-bold hover:bg-gray-50"

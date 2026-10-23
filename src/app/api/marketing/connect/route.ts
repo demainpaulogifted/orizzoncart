@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+  process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
 
 const ALLOWED_PLATFORMS = [
   'google_merchant_center',

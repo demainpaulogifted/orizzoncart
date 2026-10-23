@@ -82,7 +82,7 @@ export default function AdminVerificationsPage() {
                 <div className="flex-1">
                   <h3 className="font-bold text-lg">{m.store_name}</h3>
                   <p className="text-xs text-gray-500 mb-3">
-                    {m.store_slug}.orizzoncart.name.ng
+                    {m.store_slug}.orizzoncart.com.ng
                   </p>
 
                   <div className="space-y-2">

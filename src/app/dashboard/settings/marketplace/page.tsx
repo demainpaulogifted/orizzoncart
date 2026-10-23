@@ -73,7 +73,7 @@ export default function MarketplaceSettingsPage() {
           <label className="flex items-center justify-between cursor-pointer">
             <div>
               <p className="font-semibold text-lg">List on Marketplace</p>
-              <p className="text-sm text-gray-500">Your products will appear on orizzoncart.name.ng/marketplace</p>
+              <p className="text-sm text-gray-500">Your products will appear on orizzoncart.com.ng/marketplace</p>
             </div>
             <input 
               type="checkbox" 

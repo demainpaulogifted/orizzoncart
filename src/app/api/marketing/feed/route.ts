@@ -4,7 +4,7 @@ import { getStoreUrl } from '@/lib/store-url';
 
 export const dynamic = 'force-dynamic';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
 
 function escapeXml(value: string): string {
   return String(value)

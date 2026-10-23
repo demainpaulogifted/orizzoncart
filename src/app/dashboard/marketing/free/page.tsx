@@ -7,7 +7,7 @@ import { ConnectPanel } from '@/components/marketing/ConnectPanel';
 export const dynamic = 'force-dynamic';
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+  process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
 
 const googleSteps = [
   'Copy your feed link above.',

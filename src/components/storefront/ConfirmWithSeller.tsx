@@ -70,7 +70,7 @@ export default function ConfirmWithSeller({ product, merchant }: ConfirmWithSell
   const productUrl =
     typeof window !== 'undefined'
       ? window.location.href
-      : 'https://' + (merchant.store_slug || 'store') + '.orizzoncart.name.ng/p/' + (product.slug || product.id);
+      : 'https://' + (merchant.store_slug || 'store') + '.orizzoncart.com.ng/p/' + (product.slug || product.id);
 
   const priceText =
     product.price != null ? '₦' + Number(product.price).toLocaleString() : '';

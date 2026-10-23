@@ -138,7 +138,7 @@ export default function DashboardHome() {
   }
 
   const storeUrl = merchant.store_slug
-    ? `https://${merchant.store_slug}.orizzoncart.name.ng`
+    ? `https://${merchant.store_slug}.orizzoncart.com.ng`
     : '/dashboard';
 
   const hasPayout = !!(

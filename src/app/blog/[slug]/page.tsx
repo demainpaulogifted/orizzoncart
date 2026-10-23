@@ -49,7 +49,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     headline: blog.title,
     description: blog.excerpt || blog.description,
     author: { '@type': 'Organization', name: 'OrizzonCart' },
-    publisher: { '@type': 'Organization', name: 'OrizzonCart', logo: { '@type': 'ImageObject', url: 'https://orizzoncart.name.ng/icon-192.png' } },
+    publisher: { '@type': 'Organization', name: 'OrizzonCart', logo: { '@type': 'ImageObject', url: 'https://orizzoncart.com.ng/icon-192.png' } },
     datePublished: blog.created_at,
     dateModified: blog.updated_at,
   };

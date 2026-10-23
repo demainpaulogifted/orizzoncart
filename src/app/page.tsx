@@ -6,11 +6,11 @@ export const metadata = {
   description:
     'OrizzonCart is the online store builder for Nigerian businesses: your own store link, Paystack & Flutterwave payments, WhatsApp selling, receipts and order tracking. Start free today.',
   keywords: ['OrizzonCart', 'orizzoncart', 'OrizzonCart online store', 'build online store Nigeria'],
-  alternates: { canonical: 'https://orizzoncart.name.ng' },
+  alternates: { canonical: 'https://orizzoncart.com.ng' },
   openGraph: {
     title: 'OrizzonCart — Own Your Sales',
     description: 'Build your online store in minutes with OrizzonCart. Payments, receipts, tracking — zero coding.',
-    url: 'https://orizzoncart.name.ng',
+    url: 'https://orizzoncart.com.ng',
     siteName: 'OrizzonCart',
     type: 'website',
   },

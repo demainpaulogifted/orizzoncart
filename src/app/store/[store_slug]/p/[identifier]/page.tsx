@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ store_slu
   return {
     title: `${product.name} | ${merchant.store_name}`,
     description: product.description,
-    openGraph: { title: product.name, description: product.description, url: `https://${store_slug}.orizzoncart.name.ng/p/${product.slug || product.id}`, images: imageUrl ? [{ url: imageUrl, width: 800, height: 600 }] : [], type: 'website' },
+    openGraph: { title: product.name, description: product.description, url: `https://${store_slug}.orizzoncart.com.ng/p/${product.slug || product.id}`, images: imageUrl ? [{ url: imageUrl, width: 800, height: 600 }] : [], type: 'website' },
   };
 }
 

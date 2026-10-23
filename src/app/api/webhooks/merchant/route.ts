@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
         if (dsOrder?.has_dropship_products && dsOrder?.auto_fulfill_enabled !== false) {
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.name.ng';
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
           fetch(`${appUrl}/api/dropshipping/fulfill`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

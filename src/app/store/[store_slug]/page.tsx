@@ -51,7 +51,7 @@ export async function generateMetadata({
       storeName +
       ' - Quality products, fast delivery, and secure payments.';
 
-  const storeUrl = `https://${store_slug}.orizzoncart.name.ng`;
+  const storeUrl = `https://${store_slug}.orizzoncart.com.ng`;
 
   return {
     title: {
@@ -178,7 +178,7 @@ export default async function StorePage({
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: merchant.store_name,
-    url: `https://${store_slug}.orizzoncart.name.ng`,
+    url: `https://${store_slug}.orizzoncart.com.ng`,
     description:
       merchant.store_description ||
       merchant.tagline ||

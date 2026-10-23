@@ -17,7 +17,7 @@ export default function OnboardingPage() {
     store_description: '',
   });
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.name.ng';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'orizzoncart.com.ng';
 
   const handleStoreName = (value: string) => {
     setForm({ ...form, store_name: value, store_slug: generateSlug(value) });
