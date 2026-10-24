@@ -4,12 +4,11 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng').replace(/\/$/, '');
 const FROM_EMAIL = 'OrizzonCart <noreply@orizzoncart.com.ng>';
+const LOGO_URL = `${APP_URL}/icon-192.png`;
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    throw new Error('RESEND_API_KEY is missing');
-  }
+  if (!key) throw new Error('RESEND_API_KEY is missing');
   return new Resend(key);
 }
 
@@ -40,8 +39,7 @@ function buildCustomerEmailHTML(params: {
   total: number;
   shippingAddress: string;
   storeName: string;
-  storeSlug: string;
-  suggestedProducts: { name: string; price: number; image?: string; url: string }[];
+  suggestedProducts: { name: string; price: number; url: string }[];
 }) {
   const {
     customerName,
@@ -53,7 +51,6 @@ function buildCustomerEmailHTML(params: {
     total,
     shippingAddress,
     storeName,
-    storeSlug,
     suggestedProducts,
   } = params;
 
@@ -61,10 +58,10 @@ function buildCustomerEmailHTML(params: {
     .map(
       (item) => `
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #eee;font-size:14px;color:#333;">
+        <td style="padding:14px 0;border-bottom:1px solid #f0f0f0;font-size:14px;color:#333;">
           ${item.name} <span style="color:#888;">× ${item.quantity}</span>
         </td>
-        <td style="padding:12px 0;border-bottom:1px solid #eee;text-align:right;font-size:14px;font-weight:600;color:#333;">
+        <td style="padding:14px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-size:14px;font-weight:600;color:#111;">
           ${formatNaira(item.price * item.quantity)}
         </td>
       </tr>`
@@ -74,8 +71,8 @@ function buildCustomerEmailHTML(params: {
   const suggestedHTML =
     suggestedProducts.length > 0
       ? `
-      <div style="margin-top:40px;padding-top:30px;border-top:1px solid #eee;">
-        <h3 style="margin:0 0 16px;font-size:16px;color:#111;">You may also like from ${storeName}</h3>
+      <div style="margin-top:36px;padding-top:28px;border-top:1px solid #eee;">
+        <h3 style="margin:0 0 16px;font-size:16px;color:#111;font-weight:600;">You may also like from ${storeName}</h3>
         <table width="100%" cellpadding="0" cellspacing="0">
           ${suggestedProducts
             .map(
@@ -84,7 +81,7 @@ function buildCustomerEmailHTML(params: {
               <td style="padding:10px 0;font-size:14px;">
                 <a href="\( {p.url}" style="color:#7c3aed;text-decoration:none;font-weight:500;"> \){p.name}</a>
               </td>
-              <td style="padding:10px 0;text-align:right;font-size:14px;font-weight:600;">
+              <td style="padding:10px 0;text-align:right;font-size:14px;font-weight:600;color:#111;">
                 ${formatNaira(p.price)}
               </td>
             </tr>`
@@ -111,17 +108,16 @@ function buildCustomerEmailHTML(params: {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:32px 32px 28px;text-align:center;">
-              <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">OrizzonCart</div>
-              <div style="margin-top:8px;font-size:14px;color:rgba(255,255,255,0.85);">Order Confirmation</div>
+              <img src="${LOGO_URL}" width="56" height="56" alt="OrizzonCart" style="display:block;margin:0 auto 12px;border-radius:12px;">
+              <div style="font-size:20px;font-weight:700;color:#ffffff;">OrizzonCart</div>
+              <div style="margin-top:6px;font-size:13px;color:rgba(255,255,255,0.85);">Order Confirmation</div>
             </td>
           </tr>
 
           <!-- Body -->
           <tr>
             <td style="padding:36px 32px;">
-              <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;line-height:1.3;">
-                Thank you, ${customerName}!
-              </h1>
+              <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111;">Thank you, ${customerName}!</h1>
               <p style="margin:0 0 28px;font-size:15px;color:#555;line-height:1.5;">
                 Your order from <strong>${storeName}</strong> has been confirmed and is being processed.
               </p>
@@ -130,12 +126,12 @@ function buildCustomerEmailHTML(params: {
               <table width="100%" style="background:#f9fafb;border-radius:12px;margin-bottom:28px;">
                 <tr>
                   <td style="padding:16px 20px;">
-                    <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Order Number</div>
-                    <div style="font-size:16px;font-weight:700;color:#111;margin-top:2px;">${orderNumber}</div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Order Number</div>
+                    <div style="font-size:16px;font-weight:700;color:#111;margin-top:3px;">${orderNumber}</div>
                   </td>
                   <td style="padding:16px 20px;text-align:right;">
-                    <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Tracking</div>
-                    <div style="font-size:16px;font-weight:700;color:#7c3aed;margin-top:2px;">${trackingNumber}</div>
+                    <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Tracking</div>
+                    <div style="font-size:16px;font-weight:700;color:#7c3aed;margin-top:3px;">${trackingNumber}</div>
                   </td>
                 </tr>
               </table>
@@ -157,14 +153,14 @@ function buildCustomerEmailHTML(params: {
                   <td style="padding:6px 0;text-align:right;font-size:14px;color:#333;">${formatNaira(shippingCost)}</td>
                 </tr>
                 <tr>
-                  <td style="padding:12px 0 0;font-size:16px;font-weight:700;color:#111;border-top:1px solid #eee;">Total Paid</td>
-                  <td style="padding:12px 0 0;text-align:right;font-size:16px;font-weight:700;color:#111;border-top:1px solid #eee;">${formatNaira(total)}</td>
+                  <td style="padding:14px 0 0;font-size:16px;font-weight:700;color:#111;border-top:1px solid #eee;">Total Paid</td>
+                  <td style="padding:14px 0 0;text-align:right;font-size:16px;font-weight:700;color:#111;border-top:1px solid #eee;">${formatNaira(total)}</td>
                 </tr>
               </table>
 
               <!-- Shipping -->
               <div style="background:#f9fafb;border-radius:12px;padding:16px 20px;margin-bottom:28px;">
-                <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Delivery Address</div>
+                <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Delivery Address</div>
                 <div style="font-size:14px;color:#333;line-height:1.5;">${shippingAddress}</div>
               </div>
 
@@ -183,7 +179,7 @@ function buildCustomerEmailHTML(params: {
                 <div style="font-size:15px;font-weight:600;color:#5b21b6;margin-bottom:6px;">Discover more Nigerian stores</div>
                 <div style="font-size:13px;color:#6b7280;margin-bottom:16px;">Shop verified sellers on OrizzonCart Marketplace</div>
                 <a href="${APP_URL}/marketplace" 
-                   style="display:inline-block;background:#ffffff;color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px;padding:10px 20px;border-radius:8px;border:1px solid #ddd6fe;">
+                   style="display:inline-block;background:#ffffff;color:#7c3aed;text-decoration:none;font-weight:600;font-size:13px;padding:10px 22px;border-radius:8px;border:1px solid #ddd6fe;">
                   Explore Marketplace →
                 </a>
               </div>
@@ -195,7 +191,7 @@ function buildCustomerEmailHTML(params: {
             <td style="background:#fafafa;padding:24px 32px;text-align:center;border-top:1px solid #eee;">
               <div style="font-size:12px;color:#999;line-height:1.6;">
                 This email was sent by OrizzonCart on behalf of ${storeName}.<br>
-                Need help? Reply to this email or visit <a href="${APP_URL}" style="color:#7c3aed;text-decoration:none;">orizzoncart.com.ng</a>
+                Need help? Visit <a href="${APP_URL}" style="color:#7c3aed;text-decoration:none;">orizzoncart.com.ng</a>
               </div>
             </td>
           </tr>
@@ -254,8 +250,9 @@ function buildMerchantEmailHTML(params: {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#059669,#047857);padding:32px 32px 28px;text-align:center;">
-              <div style="font-size:22px;font-weight:700;color:#ffffff;">🎉 New Order Received</div>
-              <div style="margin-top:8px;font-size:14px;color:rgba(255,255,255,0.9);">${storeName}</div>
+              <img src="${LOGO_URL}" width="56" height="56" alt="OrizzonCart" style="display:block;margin:0 auto 12px;border-radius:12px;">
+              <div style="font-size:20px;font-weight:700;color:#ffffff;">New Order Received</div>
+              <div style="margin-top:6px;font-size:13px;color:rgba(255,255,255,0.9);">${storeName}</div>
             </td>
           </tr>
 
@@ -265,7 +262,7 @@ function buildMerchantEmailHTML(params: {
               <table width="100%" style="background:#ecfdf5;border-radius:12px;margin-bottom:28px;">
                 <tr>
                   <td style="padding:20px;">
-                    <div style="font-size:13px;color:#047857;font-weight:600;margin-bottom:4px;">ORDER TOTAL</div>
+                    <div style="font-size:12px;color:#047857;font-weight:600;margin-bottom:4px;">ORDER TOTAL</div>
                     <div style="font-size:28px;font-weight:800;color:#065f46;">${formatNaira(total)}</div>
                     <div style="font-size:13px;color:#059669;margin-top:4px;">Order #${orderNumber} • ${trackingNumber}</div>
                   </td>
@@ -273,7 +270,7 @@ function buildMerchantEmailHTML(params: {
               </table>
 
               <h3 style="margin:0 0 16px;font-size:15px;font-weight:600;color:#111;">Customer Details</h3>
-              <table width="100%" style="margin-bottom:28px;font-size:14px;">
+              <table width="100%" style="margin-bottom:24px;font-size:14px;">
                 <tr>
                   <td style="padding:8px 0;color:#666;width:120px;">Name</td>
                   <td style="padding:8px 0;color:#111;font-weight:500;">${customerName}</td>
@@ -288,7 +285,7 @@ function buildMerchantEmailHTML(params: {
                 </tr>
               </table>
 
-              <h3 style="margin:0 0 16px;font-size:15px;font-weight:600;color:#111;">Order Information</h3>
+              <h3 style="margin:0 0 16px;font-size:15px;font-weight:600;color:#111;">Order Details</h3>
               <table width="100%" style="margin-bottom:28px;font-size:14px;">
                 <tr>
                   <td style="padding:8px 0;color:#666;width:140px;">Source</td>
@@ -303,7 +300,7 @@ function buildMerchantEmailHTML(params: {
                   <td style="padding:8px 0;color:#111;font-weight:500;line-height:1.5;">${itemsSummary}</td>
                 </tr>
                 <tr>
-                  <td style="padding:8px 0;color:#666;vertical-align:top;">Ship to</td>
+                  <td style="padding:8px 0;color:#666;vertical-align:top;">Shipping Location</td>
                   <td style="padding:8px 0;color:#111;font-weight:500;line-height:1.5;">${shippingAddress}</td>
                 </tr>
               </table>
@@ -322,7 +319,7 @@ function buildMerchantEmailHTML(params: {
           <tr>
             <td style="background:#fafafa;padding:20px 32px;text-align:center;border-top:1px solid #eee;">
               <div style="font-size:12px;color:#999;">
-                OrizzonCart • You received this because a customer placed an order on your store.
+                OrizzonCart • A customer placed an order on your store.
               </div>
             </td>
           </tr>
@@ -342,7 +339,7 @@ export async function sendOrderAlert(
 ) {
   const admin = createAdminClient();
 
-  // ---------- 1. WEB PUSH (keep) ----------
+  // 1. WEB PUSH
   try {
     const { data: settings } = await admin
       .from('platform_settings')
@@ -383,7 +380,7 @@ export async function sendOrderAlert(
     console.error('Push notification failed', e);
   }
 
-  // ---------- 2. FETCH EXTRA DATA ----------
+  // 2. FETCH DATA
   const { data: merchant } = await admin
     .from('merchants')
     .select('store_name, store_slug, user_id, contact_email')
@@ -392,7 +389,6 @@ export async function sendOrderAlert(
 
   if (!merchant) return;
 
-  // Get merchant's login email if contact_email is empty
   let merchantEmail = merchant.contact_email;
   if (!merchantEmail && merchant.user_id) {
     const { data: userData } = await admin.auth.admin.getUserById(merchant.user_id);
@@ -410,10 +406,9 @@ export async function sendOrderAlert(
     price: Number(i.unit_price),
   }));
 
-  // Suggested products (simple: 3 other active products from same merchant)
   const { data: otherProducts } = await admin
     .from('products')
-    .select('id, name, price, slug, images')
+    .select('id, name, price, slug')
     .eq('merchant_id', merchantId)
     .eq('is_active', true)
     .neq('id', orderItems?.[0]?.product_id || '')
@@ -433,7 +428,7 @@ export async function sendOrderAlert(
 
   const orderSource = order.source === 'marketplace' ? 'Marketplace' : 'Merchant Storefront';
 
-  // ---------- 3. SEND CUSTOMER EMAIL ----------
+  // 3. CUSTOMER EMAIL (only after successful payment)
   if (order.customer_email) {
     try {
       await getResend().emails.send({
@@ -450,7 +445,6 @@ export async function sendOrderAlert(
           total: Number(order.total_amount),
           shippingAddress,
           storeName: merchant.store_name,
-          storeSlug: merchant.store_slug,
           suggestedProducts,
         }),
       });
@@ -459,13 +453,13 @@ export async function sendOrderAlert(
     }
   }
 
-  // ---------- 4. SEND MERCHANT EMAIL ----------
+  // 4. MERCHANT EMAIL (only after successful payment)
   if (merchantEmail) {
     try {
       await getResend().emails.send({
         from: FROM_EMAIL,
         to: merchantEmail,
-        subject: `🎉 New Order #${order.order_number} – ${formatNaira(order.total_amount)}`,
+        subject: `New Order #${order.order_number} – ${formatNaira(order.total_amount)}`,
         html: buildMerchantEmailHTML({
           storeName: merchant.store_name,
           orderNumber: order.order_number,
