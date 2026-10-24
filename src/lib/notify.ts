@@ -2,9 +2,16 @@ import webpush from 'web-push';
 import { Resend } from 'resend';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng').replace(/\/$/, '');
 const FROM_EMAIL = 'OrizzonCart <noreply@orizzoncart.com.ng>';
+
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    throw new Error('RESEND_API_KEY is missing');
+  }
+  return new Resend(key);
+}
 
 function formatNaira(amount: number) {
   return `₦${Number(amount).toLocaleString('en-NG')}`;
@@ -429,7 +436,7 @@ export async function sendOrderAlert(
   // ---------- 3. SEND CUSTOMER EMAIL ----------
   if (order.customer_email) {
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: FROM_EMAIL,
         to: order.customer_email,
         subject: `Order Confirmed #${order.order_number} – ${merchant.store_name}`,
@@ -455,7 +462,7 @@ export async function sendOrderAlert(
   // ---------- 4. SEND MERCHANT EMAIL ----------
   if (merchantEmail) {
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: FROM_EMAIL,
         to: merchantEmail,
         subject: `🎉 New Order #${order.order_number} – ${formatNaira(order.total_amount)}`,
