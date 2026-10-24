@@ -21,6 +21,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0",
+    "resend": "^6.34.1",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
     "web-push": "^3.6.7",
