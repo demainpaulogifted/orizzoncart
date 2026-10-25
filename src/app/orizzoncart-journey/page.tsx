@@ -97,7 +97,7 @@ export default function OrizzonCartJourneyPage() {
             Orizzon<span className="text-amber-300">Cart</span>
           </Link>
           <Link
-            href="/"
+            href="/signup"
             className="rounded-full bg-white px-5 py-2 text-sm font-bold text-purple-700 shadow transition hover:-translate-y-0.5 hover:shadow-md"
           >
             Start Free →
@@ -125,7 +125,7 @@ export default function OrizzonCartJourneyPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/"
+              href="/signup"
               className="rounded-xl bg-purple-600 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-purple-500/30 transition hover:-translate-y-0.5 hover:bg-purple-700"
             >
               Create Free Account
@@ -184,7 +184,7 @@ export default function OrizzonCartJourneyPage() {
                 <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Password (minimum 6 characters)</li>
               </ul>
               <Link
-                href="/"
+                href="/signup"
                 className="inline-flex rounded-xl bg-purple-600 px-6 py-3 font-bold text-white shadow-md transition hover:bg-purple-700"
               >
                 Sign Up Free →
@@ -365,7 +365,7 @@ export default function OrizzonCartJourneyPage() {
                 Sign in any time to manage your OrizzonCart store. Access your merchant dashboard from the Marketplace app.
               </p>
               <Link
-                href="/"
+                href="/login"
                 className="inline-flex rounded-xl border-2 border-purple-300 bg-white px-6 py-3 font-bold text-purple-700 transition hover:border-purple-500 hover:bg-purple-50"
               >
                 Sign In →
@@ -415,7 +415,7 @@ export default function OrizzonCartJourneyPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/"
+              href="/signup"
               className="rounded-xl bg-purple-600 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-purple-500/30 transition hover:-translate-y-0.5 hover:bg-purple-700"
             >
               Create Free Account
