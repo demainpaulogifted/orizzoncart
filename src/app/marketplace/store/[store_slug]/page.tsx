@@ -153,7 +153,7 @@ export default async function SellerProfilePage({
               {products.map((p) => (
                 <a
                   key={p.id}
-                  href={`https://\( {m.store_slug}.orizzoncart.com.ng/p/ \){p.slug}`}
+                  href={`https://\( {m.store_slug}.orizzoncart.com.ng/p/ \){p.slug || p.id}`}
                   target="_blank"
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
                 >
