@@ -1,456 +1,501 @@
 import Link from 'next/link';
-import { THEMES } from '@/lib/themes';
+import Image from 'next/image';
+import type { Metadata } from 'next';
 
-export const metadata = {
-  title: 'OrizzonCart — Own Your Sales | Build Your Online Store in Nigeria',
+export const metadata: Metadata = {
+  title: 'OrizzonCart Journey — Create Online Stores & Sell on OrizzonCart Marketplace | Nigeria',
   description:
-    'OrizzonCart is the online store builder for Nigerian businesses: your own store link, Paystack & Flutterwave payments, WhatsApp selling, receipts and order tracking. Start free today.',
-  keywords: ['OrizzonCart', 'orizzoncart', 'OrizzonCart online store', 'build online store Nigeria'],
+    'OrizzonCart Journey: The simple path for Nigerian entrepreneurs, social-media sellers, market traders, fashion & beauty businesses, home bakers and digital-product creators to create online stores and sell through OrizzonCart Marketplace. Free to launch. Own your sales.',
+  keywords: [
+    'OrizzonCart',
+    'OrizzonCart Marketplace',
+    'create online stores',
+    'sell online Nigeria',
+    'online store builder Nigeria',
+    'WhatsApp selling',
+    'Nigerian e-commerce',
+    'fashion store online',
+    'digital products Nigeria',
+    'market traders online',
+    'home bakers sell online',
+    'social media sellers Nigeria',
+    'OrizzonCart journey',
+  ],
   alternates: { canonical: 'https://orizzoncart.com.ng' },
   openGraph: {
-    title: 'OrizzonCart — Own Your Sales',
-    description: 'Build your online store in minutes with OrizzonCart. Payments, receipts, tracking — zero coding.',
+    title: 'OrizzonCart Journey — Create Online Stores & Sell on OrizzonCart Marketplace',
+    description:
+      'Nigerian entrepreneurs, social-media sellers, market traders, fashion & beauty businesses, home bakers and digital creators: create your online store and let OrizzonCart Marketplace sell for you. Free to start.',
     url: 'https://orizzoncart.com.ng',
     siteName: 'OrizzonCart',
     type: 'website',
+    locale: 'en_NG',
+    images: [
+      {
+        url: 'https://orizzoncart.com.ng/orizzoncart-journey/images/Screenshot_20261025-092643_Chrome.jpg',
+        width: 720,
+        height: 1280,
+        alt: 'OrizzonCart Marketplace',
+      },
+    ],
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'OrizzonCart Journey — Create Online Stores & Sell on Marketplace',
+    description: 'Start selling online in Nigeria in minutes. Free store + OrizzonCart Marketplace exposure.',
+    images: ['https://orizzoncart.com.ng/orizzoncart-journey/images/Screenshot_20261025-092643_Chrome.jpg'],
+  },
+  robots: { index: true, follow: true },
 };
 
-const steps = [
-  { icon: '👤', title: 'Create your account', text: 'Sign up free with your email in 30 seconds.' },
-  { icon: '🏪', title: 'Name your store', text: 'Get your own link like paulsfashion.orizzoncart.com instantly.' },
-  { icon: '🎨', title: 'Pick a premium theme', text: 'Choose from 10 designer themes built for Nigerian businesses.' },
-  { icon: '📦', title: 'Add your products', text: 'Photo, name, price. That is all you need to publish.' },
-  { icon: '💳', title: 'Connect payments', text: 'Plug in your Paystack or Flutterwave keys + your WhatsApp number.' },
-  { icon: '🚀', title: 'Publish & sell', text: 'Your store goes live. Customers pay, you get receipts & tracking.' },
+const AUDIENCE = [
+  'Nigerian entrepreneurs',
+  'Social-media sellers',
+  'Market traders',
+  'Fashion & beauty',
+  'Home bakers',
+  'Digital-product creators',
+  'Small business owners',
 ];
 
-const features = [
-  { icon: '💬', title: 'WhatsApp Selling', text: 'A floating WhatsApp button on your store so customers can chat and buy instantly.' },
-  { icon: '🧾', title: 'Beautiful Receipts', text: 'Every paid order generates a gorgeous receipt with download & share buttons.' },
-  { icon: '📍', title: 'Order Tracking', text: 'Customers track orders with email + tracking number. No signup needed.' },
-  { icon: '📚', title: 'Digital Products', text: 'Sell courses, eBooks & files. Automatic delivery, no shipping needed.' },
-  { icon: '📊', title: 'Store Analytics', text: 'See your visitors, orders, sales and conversion rate in one dashboard.' },
-  { icon: '🔒', title: 'Showcase Mode', text: 'Launch free today. Unlock cart & checkout whenever you are ready.' },
-];
-
-export default function HomePage() {
-  const themes = Object.values(THEMES);
-
+function PhoneFrame({
+  src,
+  alt,
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  priority?: boolean;
+}) {
   return (
-    <>
-      <main className="min-h-screen bg-white text-gray-900">
-        {/* Navbar */}
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-gray-100">
-          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <span className="text-xl font-extrabold tracking-tight">
-              Orizzon<span className="text-purple-600">Cart</span>
+    <div className="mx-auto w-full max-w-[300px]">
+      <div className="rounded-[28px] bg-slate-900 p-3 shadow-2xl shadow-purple-900/20">
+        <div className="mx-auto mb-2 h-2 w-20 rounded-full bg-slate-700" />
+        <div className="overflow-hidden rounded-[18px] bg-white">
+          <Image
+            src={src}
+            alt={alt}
+            width={360}
+            height={720}
+            className="h-auto w-full"
+            priority={priority}
+            sizes="(max-width: 768px) 90vw, 300px"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function OrizzonCartJourneyPage() {
+  return (
+    <main className="min-h-screen bg-[#f8f5ff] text-slate-900">
+      {/* Sticky header */}
+      <header className="sticky top-0 z-50 border-b border-purple-200/50 bg-gradient-to-r from-purple-600 to-purple-800 text-white shadow-lg">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3.5">
+          <Link href="/" className="text-lg font-extrabold tracking-tight">
+            Orizzon<span className="text-amber-300">Cart</span>
+          </Link>
+          <Link
+            href="/"
+            className="rounded-full bg-white px-5 py-2 text-sm font-bold text-purple-700 shadow transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            Start Free →
+          </Link>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="bg-gradient-to-b from-purple-100/80 to-[#f8f5ff] px-4 pb-10 pt-12 text-center">
+        <div className="mx-auto max-w-3xl">
+          <span className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-purple-700 shadow-sm">
+            🇳🇬 Built for Nigerian businesses
+          </span>
+          <h1 className="mb-4 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl md:text-5xl">
+            Your{' '}
+            <span className="bg-gradient-to-r from-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
+              OrizzonCart Journey
             </span>
-            <nav className="flex items-center gap-2">
-              <Link
-                href="/blog/start-online-store-nigeria"
-                className="hidden sm:block text-sm font-medium text-gray-600 hover:text-purple-600 px-3 py-2 transition-colors"
-              >
-                Blog
-              </Link>
-              <Link
-                href="/marketplace"
-                className="hidden sm:block text-sm font-semibold text-purple-600 hover:text-purple-800 px-3 py-2 transition-colors"
-              >
-                🛍️ OrizzonCart Marketplace
-              </Link>
-              <Link
-                href="/track-order"
-                className="hidden sm:block text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2"
-              >
-                Track Order
-              </Link>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                className="text-sm font-semibold text-white bg-gray-900 rounded-full px-4 py-2 hover:bg-gray-800 transition-colors"
-              >
-                Get Started
-              </Link>
-            </nav>
-          </div>
-        </header>
-
-        {/* Hero */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-purple-100 via-indigo-100 to-blue-100">
-          <div className="max-w-6xl mx-auto px-4 py-20 md:py-28 text-center">
-            <span className="inline-block bg-white/70 text-purple-700 text-xs font-bold px-4 py-1.5 rounded-full mb-6 shadow-sm">
-              🇳🇬 Built for Nigerian businesses by OrizzonS Inc.
-            </span>
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
-              Open your online store
-              <br className="hidden md:block" /> in minutes, not months.
-            </h1>
-            <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-              OrizzonCart gives every business a beautiful storefront, secure Paystack & Flutterwave
-              payments, WhatsApp selling and automatic order tracking — no coding required.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/signup"
-                className="px-8 py-4 bg-purple-600 text-white rounded-full font-bold text-lg shadow-lg hover:bg-purple-700 hover:-translate-y-0.5 transition-all"
-              >
-                Create Your Online Store →
-              </Link>
-              <a
-                href="#themes"
-                className="px-8 py-4 bg-white text-purple-700 border-2 border-purple-600 rounded-full font-bold text-lg hover:bg-purple-50 transition-all"
-              >
-                Explore Premium Themes
-              </a>
-            </div>
-            <p className="mt-8 text-sm text-gray-500">
-              Free to launch • No monthly fees to start • Live in 6 simple steps
-            </p>
-            <p className="mt-3 text-sm font-semibold text-purple-700">
-              Looking to shop?{' '}
-              <Link href="/marketplace" className="underline font-extrabold">
-                OrizzonCart Marketplace
-              </Link>{' '}
-              — verified Nigerian stores in one app.
-            </p>
-          </div>
-        </section>
-
-        {/* Story */}
-        <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">
-              Selling online in Nigeria shouldn&apos;t be this hard.
-            </h2>
-            <p className="text-gray-600 text-lg">
-              Most business owners lose sales because customers can&apos;t find prices, can&apos;t pay
-              easily, and can&apos;t track orders. OrizzonCart fixes all three — with a store that
-              looks like it cost millions, for a one-time activation fee.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-red-50 border border-red-100 rounded-2xl p-6">
-              <p className="text-2xl mb-2">😩</p>
-              <h3 className="font-bold mb-1">The Problem</h3>
-              <p className="text-sm text-gray-600">
-                &quot;I sell on WhatsApp & Instagram, but I lose orders in DMs and customers don&apos;t
-                trust bank transfers.&quot;
-              </p>
-            </div>
-            <div className="bg-purple-50 border border-purple-100 rounded-2xl p-6">
-              <p className="text-2xl mb-2">🛠️</p>
-              <h3 className="font-bold mb-1">The OrizzonCart Way</h3>
-              <p className="text-sm text-gray-600">
-                A real storefront with real checkout. Customers pay securely, get a receipt and a
-                tracking number automatically.
-              </p>
-            </div>
-            <div className="bg-green-50 border border-green-100 rounded-2xl p-6">
-              <p className="text-2xl mb-2">📈</p>
-              <h3 className="font-bold mb-1">The Result</h3>
-              <p className="text-sm text-gray-600">
-                You look like a brand, get paid directly into your account, and manage everything from
-                your phone.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="bg-gray-50 py-16 md:py-24">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-3">How to set up your store</h2>
-              <p className="text-gray-600">Six steps. About 10 minutes. Zero coding.</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {steps.map((s, i) => (
-                <div key={s.title} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 font-extrabold flex items-center justify-center">
-                      {i + 1}
-                    </span>
-                    <span className="text-2xl">{s.icon}</span>
-                  </div>
-                  <h3 className="font-bold mb-1">{s.title}</h3>
-                  <p className="text-sm text-gray-600">{s.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Themes */}
-        <section id="themes" className="max-w-6xl mx-auto px-4 py-16 md:py-24">
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full uppercase tracking-wider">
-              Premium Theme Store
-            </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold mt-4 mb-3">Your store. Your style.</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Every theme is a complete designer storefront — colors, fonts and layout included.
-              Preview them live below.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {themes.map((t) => (
-              <div
-                key={t.name}
-                className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
-              >
-                <div className="p-4" style={{ backgroundColor: t.variables['--color-bg'] }}>
-                  <div
-                    className="rounded-lg overflow-hidden border"
-                    style={{ borderColor: t.variables['--color-text-muted'] }}
-                  >
-                    <div
-                      className="px-3 py-2 flex items-center justify-between"
-                      style={{ backgroundColor: t.variables['--color-surface'] }}
-                    >
-                      <span
-                        className="text-xs font-bold"
-                        style={{
-                          color: t.variables['--color-text'],
-                          fontFamily: t.variables['--font-heading'],
-                        }}
-                      >
-                        {t.display_name}
-                      </span>
-                      <span
-                        className="text-[10px] px-2 py-0.5 rounded-full text-white font-semibold"
-                        style={{ backgroundColor: t.variables['--color-primary'] }}
-                      >
-                        Cart
-                      </span>
-                    </div>
-                    <div className="p-3 grid grid-cols-3 gap-2">
-                      <div
-                        className="h-10 rounded"
-                        style={{ backgroundColor: t.variables['--color-surface'] }}
-                      />
-                      <div
-                        className="h-10 rounded"
-                        style={{ backgroundColor: t.variables['--color-surface'] }}
-                      />
-                      <div
-                        className="h-10 rounded"
-                        style={{ backgroundColor: t.variables['--color-surface'] }}
-                      />
-                    </div>
-                    <div className="px-3 pb-3">
-                      <div
-                        className="h-6 rounded-full text-[10px] flex items-center justify-center text-white font-semibold"
-                        style={{ backgroundColor: t.variables['--color-primary'] }}
-                      >
-                        Shop Now
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold">{t.display_name}</h3>
-                    <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
-                      ₦{t.price.toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-1">{t.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Features */}
-        <section className="bg-gray-50 py-16 md:py-24">
-          <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-12">
-              Everything a modern store needs
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((f) => (
-                <div key={f.title} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                  <span className="text-3xl">{f.icon}</span>
-                  <h3 className="font-bold mt-3 mb-1">{f.title}</h3>
-                  <p className="text-sm text-gray-600">{f.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-center mb-3">Simple, honest pricing</h2>
-          <p className="text-gray-600 text-center mb-12">No hidden subscriptions. Pay once, sell forever.</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl border border-gray-200 p-8">
-              <h3 className="font-bold text-lg">Showcase Store</h3>
-              <p className="text-4xl font-extrabold mt-2">Free</p>
-              <ul className="mt-6 space-y-2 text-sm text-gray-600">
-                <li>✅ Your own store link</li>
-                <li>✅ Unlimited products</li>
-                <li>✅ Premium theme preview</li>
-                <li>❌ Cart & checkout locked</li>
-              </ul>
-              <Link
-                href="/signup"
-                className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50 transition-colors"
-              >
-                Start Free
-              </Link>
-            </div>
-            <div className="rounded-2xl border-2 border-purple-600 p-8 relative shadow-xl">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                MOST POPULAR
-              </span>
-              <h3 className="font-bold text-lg">Activated Store</h3>
-              <p className="text-4xl font-extrabold mt-2">
-                ₦5,000 <span className="text-sm font-medium text-gray-500">one-time</span>
-              </p>
-              <ul className="mt-6 space-y-2 text-sm text-gray-600">
-                <li>✅ Cart & checkout unlocked</li>
-                <li>✅ Receive payments (Paystack/Flutterwave)</li>
-                <li>✅ Receipts & order tracking</li>
-                <li>✅ WhatsApp selling button</li>
-                <li>✅ Full analytics dashboard</li>
-              </ul>
-              <Link
-                href="/signup"
-                className="mt-8 block text-center px-6 py-3 rounded-full bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors"
-              >
-                Activate My Store
-              </Link>
-            </div>
-            <div className="rounded-2xl border border-gray-200 p-8">
-              <h3 className="font-bold text-lg">Premium Themes</h3>
-              <p className="text-4xl font-extrabold mt-2">
-                ₦12,000+ <span className="text-sm font-medium text-gray-500">one-time</span>
-              </p>
-              <ul className="mt-6 space-y-2 text-sm text-gray-600">
-                <li>✅ 10 designer storefronts</li>
-                <li>✅ Unique colors & fonts</li>
-                <li>✅ Mobile-optimized layouts</li>
-                <li>✅ Instant theme switching</li>
-              </ul>
-              <a
-                href="#themes"
-                className="mt-8 block text-center px-6 py-3 rounded-full border-2 border-gray-900 font-bold hover:bg-gray-50 transition-colors"
-              >
-                Browse Themes
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* Blog / Resources Section */}
-        <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
-          <div className="bg-purple-50 rounded-3xl p-8 md:p-12 border border-purple-100">
-            <div className="grid md:grid-cols-2 gap-8 items-center">
-              <div>
-                <span className="inline-block bg-purple-100 text-purple-700 text-xs font-bold px-3 py-1 rounded-full mb-4">
-                  📚 Free Guide
-                </span>
-                <h2 className="text-3xl md:text-4xl font-extrabold mb-4 text-gray-900">
-                  How to Start an Online Store in Nigeria (2024 Guide)
-                </h2>
-                <p className="text-gray-600 mb-6 text-lg">
-                  Stop losing sales to &quot;How much?&quot; DMs. Read our complete, step-by-step blueprint to building a professional, automated online store that accepts payments and scales your business.
-                </p>
-                <Link
-                  href="/blog/start-online-store-nigeria"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-bold rounded-full hover:bg-purple-700 transition-all"
-                >
-                  Read the Ultimate Guide →
-                </Link>
-              </div>
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-purple-100">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">🎯</span>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Find a Winning Niche</h4>
-                      <p className="text-sm text-gray-600">Validate your product idea before spending a dime.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">⚙️</span>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Build in 10 Minutes</h4>
-                      <p className="text-sm text-gray-600">No coding required. Just pick a theme and add products.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-2xl">💳</span>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Accept Payments Securely</h4>
-                      <p className="text-sm text-gray-600">Integrate Paystack or Flutterwave in one click.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="bg-gradient-to-br from-purple-600 to-blue-600 py-16 md:py-20 text-center text-white">
-          <div className="max-w-3xl mx-auto px-4">
-            <h2 className="text-3xl md:text-4xl font-extrabold mb-4">
-              Your competitors are still posting prices in captions.
-            </h2>
-            <p className="text-purple-100 text-lg mb-8">
-              Be the business with a real store, real checkout and real receipts.
-            </p>
+            <br />
+            Create online stores &amp; sell through OrizzonCart Marketplace
+          </h1>
+          <p className="mx-auto mb-8 max-w-xl text-lg text-slate-600">
+            OrizzonCart wants to sell for you. Free to launch. No coding. Your own store link + WhatsApp
+            selling + Marketplace exposure.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/signup"
-              className="inline-block px-10 py-4 bg-white text-purple-700 rounded-full font-bold text-lg shadow-lg hover:bg-purple-50 transition-all"
+              href="/"
+              className="rounded-xl bg-purple-600 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-purple-500/30 transition hover:-translate-y-0.5 hover:bg-purple-700"
             >
-              Create Your Online Store →
+              Create Free Account
+            </Link>
+            <Link
+              href="/marketplace"
+              className="rounded-xl border-2 border-purple-300 bg-white px-7 py-3.5 text-base font-bold text-purple-700 transition hover:border-purple-500 hover:bg-purple-50"
+            >
+              View Marketplace
             </Link>
           </div>
-        </section>
+          <p className="mt-4 text-sm text-slate-500">Free forever to launch · Pay only when you activate selling</p>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer className="bg-gray-900 text-gray-400 py-10">
-          <div className="max-w-6xl mx-auto px-4 flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <span className="text-white font-extrabold">
-                Orizzon<span className="text-purple-400">Cart</span>
+      {/* Audience */}
+      <section className="px-4 py-8">
+        <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Perfect for
+        </p>
+        <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-2.5">
+          {AUDIENCE.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-purple-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* How to start */}
+      <section className="bg-white px-4 py-14" id="how-to-start">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-3 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+            How do you get started?
+          </h2>
+          <p className="mx-auto mb-12 max-w-lg text-center text-slate-600">
+            Four clear steps. About 10 minutes. Zero coding. Then OrizzonCart Marketplace can sell for you.
+          </p>
+
+          {/* Step 1 */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div>
+              <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-purple-600 text-lg font-extrabold text-white">
+                1
               </span>
-              <p className="text-sm text-center">
-                Powered by OrizzonS Inc. • Built for Nigerian businesses
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Sign up — Create your free account</h3>
+              <p className="mb-4 text-slate-600">
+                Open OrizzonCart and create your free account in seconds. No credit card required.
+              </p>
+              <ul className="mb-6 space-y-2 text-slate-800">
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Full Name</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Email</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Password (minimum 6 characters)</li>
+              </ul>
+              <Link
+                href="/"
+                className="inline-flex rounded-xl bg-purple-600 px-6 py-3 font-bold text-white shadow-md transition hover:bg-purple-700"
+              >
+                Sign Up Free →
+              </Link>
+            </div>
+            <PhoneFrame
+              src="/orizzoncart-journey/images/Screenshot_20261025-092717_Chrome.jpg"
+              alt="OrizzonCart Create your account — Sign up free to launch your online store"
+              priority
+            />
+          </div>
+
+          {/* Step 2 */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div className="order-2 md:order-1">
+              <PhoneFrame
+                src="/orizzoncart-journey/images/Screenshot_20261025-093002_Chrome.jpg"
+                alt="OrizzonCart Create a New Store — Business name, store name, store link and WhatsApp number"
+              />
+            </div>
+            <div className="order-1 md:order-2">
+              <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-purple-600 text-lg font-extrabold text-white">
+                2
+              </span>
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Add your store details</h3>
+              <p className="mb-4 text-slate-600">
+                Give your business a name, choose your store link, add WhatsApp number and select physical or digital goods.
+              </p>
+              <ul className="mb-4 space-y-2 text-slate-800">
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Business / Owner Name</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Store Name &amp; unique link</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> WhatsApp Number (required to launch)</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Physical Goods or Digital Goods</li>
+              </ul>
+              <p className="text-sm text-slate-500">
+                Your store&apos;s ONLY address is assigned automatically at creation (e.g. vicky-store.orizzoncart.com.ng).
               </p>
             </div>
-            <div className="flex flex-wrap justify-center md:justify-end gap-x-5 gap-y-2 text-sm">
-              <Link href="/marketplace" className="hover:text-white transition-colors font-semibold">
-                🛍️ OrizzonCart Marketplace
-              </Link>
-              <Link href="/blog/start-online-store-nigeria" className="hover:text-white transition-colors">
-                Blog
-              </Link>
-              <Link href="/about" className="hover:text-white transition-colors">
-                About
-              </Link>
-              <Link href="/contact" className="hover:text-white transition-colors">
-                Contact
-              </Link>
-              <Link href="/privacy" className="hover:text-white transition-colors">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-white transition-colors">
-                Terms
-              </Link>
+          </div>
+
+          {/* Merchant type */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div>
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Choose merchant type &amp; launch</h3>
+              <p className="mb-4 text-slate-600">
+                Select Physical Goods (clothing, shoes, food, gadgets) or Digital Goods (courses, eBooks, files). Add an optional store description and hit Create Store.
+              </p>
+              <ul className="space-y-2 text-slate-800">
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Physical or Digital goods selector</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Optional store description</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> One-click Create Store</li>
+              </ul>
+            </div>
+            <PhoneFrame
+              src="/orizzoncart-journey/images/Screenshot_20261025-092914_Chrome.jpg"
+              alt="OrizzonCart merchant type selection — Physical Goods or Digital Goods"
+            />
+          </div>
+
+          {/* Fashion example */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div className="order-2 md:order-1">
+              <PhoneFrame
+                src="/orizzoncart-journey/images/Screenshot_20261025-092903_Chrome.jpg"
+                alt="OrizzonCart Create a New Store form example for Paul's Fashion"
+              />
+            </div>
+            <div className="order-1 md:order-2">
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Example: Fashion store setup</h3>
+              <p className="text-slate-600">
+                Real example of filling Business Name, Store Name and Store Link. Your unique link is ready instantly.
+              </p>
             </div>
           </div>
-        </footer>
-      </main>
-    </>
+
+          {/* Step 3 - Onboarding */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div>
+              <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-purple-600 text-lg font-extrabold text-white">
+                3
+              </span>
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Follow the onboarding dashboard</h3>
+              <p className="mb-4 text-slate-600">
+                After creating your store you land on the Merchant dashboard. Complete these setup steps to start selling:
+              </p>
+              <ul className="mb-4 space-y-2 text-slate-800">
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Create your store (done)</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Add your first product (stores with 3+ products sell more)</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Set delivery zones</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Add a trust page (Refund Policy or About)</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Activate payments</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Connect payout method</li>
+              </ul>
+              <p className="text-sm text-slate-500">
+                You access your merchant / seller dashboard through the Marketplace app (Merchant tab).
+              </p>
+            </div>
+            <PhoneFrame
+              src="/orizzoncart-journey/images/Screenshot_20261025-093018_Chrome.jpg"
+              alt="OrizzonCart Store Setup onboarding dashboard"
+            />
+          </div>
+
+          {/* Progress to Marketplace */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div className="order-2 md:order-1">
+              <PhoneFrame
+                src="/orizzoncart-journey/images/Screenshot_20261025-093042_Chrome.jpg"
+                alt="OrizzonCart Progress to Marketplace steps"
+              />
+            </div>
+            <div className="order-1 md:order-2">
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Progress to Marketplace (optional but powerful)</h3>
+              <p className="mb-4 text-slate-600">
+                Complete these extra steps so your store appears on the OrizzonCart Marketplace and gets more visibility:
+              </p>
+              <ul className="mb-4 space-y-2 text-slate-800">
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Add business location</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Admin verification</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> List &amp; sync products to Marketplace</li>
+              </ul>
+              <p className="text-sm text-slate-500">
+                You can still sell on your own store even without Marketplace listing.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 4 - Marketplace */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div>
+              <span className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-purple-600 text-lg font-extrabold text-white">
+                4
+              </span>
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Check the Marketplace</h3>
+              <p className="mb-4 text-slate-600">
+                Once you have products and complete the optional Marketplace steps, check if your store profile and products have appeared on OrizzonCart Marketplace.
+              </p>
+              <ul className="mb-6 space-y-2 text-slate-800">
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Active Stores section</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Flash Deals</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Discover products from verified Nigerian sellers</li>
+                <li className="flex gap-2"><span className="font-bold text-emerald-500">✓</span> Your store image &amp; profile visible to shoppers</li>
+              </ul>
+              <Link
+                href="/marketplace"
+                className="inline-flex rounded-xl bg-purple-600 px-6 py-3 font-bold text-white shadow-md transition hover:bg-purple-700"
+              >
+                Open Marketplace →
+              </Link>
+            </div>
+            <PhoneFrame
+              src="/orizzoncart-journey/images/Screenshot_20261025-092643_Chrome.jpg"
+              alt="OrizzonCart Marketplace home — Flash Deals, Active Stores"
+            />
+          </div>
+
+          {/* Discover products */}
+          <div className="mb-14 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div className="order-2 md:order-1">
+              <PhoneFrame
+                src="/orizzoncart-journey/images/Screenshot_20261025-092654_Chrome.jpg"
+                alt="OrizzonCart Marketplace Discover — fashion products from verified stores"
+              />
+            </div>
+            <div className="order-1 md:order-2">
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Your products can appear here</h3>
+              <p className="text-slate-600">
+                Fashion, beauty, food, tech and more — verified sellers only, secure payments, trackable delivery. OrizzonCart Marketplace sells for you.
+              </p>
+            </div>
+          </div>
+
+          {/* Login */}
+          <div className="mb-10 grid items-center gap-8 rounded-3xl bg-[#f8f5ff] p-6 shadow-lg shadow-purple-100 md:grid-cols-2 md:p-10">
+            <div>
+              <h3 className="mb-2 text-2xl font-extrabold tracking-tight">Already have an account?</h3>
+              <p className="mb-6 text-slate-600">
+                Sign in any time to manage your OrizzonCart store. Access your merchant dashboard from the Marketplace app.
+              </p>
+              <Link
+                href="/"
+                className="inline-flex rounded-xl border-2 border-purple-300 bg-white px-6 py-3 font-bold text-purple-700 transition hover:border-purple-500 hover:bg-purple-50"
+              >
+                Sign In →
+              </Link>
+            </div>
+            <PhoneFrame
+              src="/orizzoncart-journey/images/Screenshot_20261025-092706_Chrome.jpg"
+              alt="OrizzonCart Welcome Back — Sign in to manage your store"
+            />
+          </div>
+
+          {/* Access note */}
+          <div className="mb-10 flex gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+            <span className="text-2xl">📱</span>
+            <div>
+              <p className="mb-1 font-bold text-amber-900">How to reach your Merchant / Seller Dashboard</p>
+              <p className="text-amber-900/90">
+                Open the OrizzonCart Marketplace app → tap the <strong>Merchant</strong> tab at the bottom. That is where you manage products, orders, delivery zones, payments and payouts.
+              </p>
+            </div>
+          </div>
+
+          {/* Marketplace CTA block */}
+          <div className="rounded-3xl bg-gradient-to-br from-purple-800 to-purple-600 px-6 py-12 text-center text-white shadow-xl">
+            <h2 className="mb-3 text-2xl font-extrabold sm:text-3xl">OrizzonCart Marketplace sells for you</h2>
+            <p className="mx-auto mb-8 max-w-lg text-purple-100">
+              Verified Nigerian stores. Flash deals. Secure payments. Trackable delivery. Your products reach more customers while you keep your own store link and WhatsApp selling.
+            </p>
+            <Link
+              href="/marketplace"
+              className="inline-flex rounded-xl bg-white px-8 py-3.5 font-bold text-purple-700 shadow transition hover:bg-purple-50"
+            >
+              Explore Marketplace
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="bg-gradient-to-b from-purple-50 to-white px-4 py-16 text-center">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="mb-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            Start your OrizzonCart Journey today
+          </h2>
+          <p className="mb-8 text-lg text-slate-600">
+            Create online stores in minutes. Sell online. Let OrizzonCart Marketplace work for you.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/"
+              className="rounded-xl bg-purple-600 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-purple-500/30 transition hover:-translate-y-0.5 hover:bg-purple-700"
+            >
+              Create Free Account
+            </Link>
+            <Link
+              href="/marketplace"
+              className="rounded-xl border-2 border-purple-300 bg-white px-7 py-3.5 text-base font-bold text-purple-700 transition hover:border-purple-500 hover:bg-purple-50"
+            >
+              View Marketplace
+            </Link>
+          </div>
+          <p className="mt-5 text-sm text-slate-500">orizzoncart.com.ng · Free to launch · Built for Nigeria</p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 px-4 py-10 text-center text-sm text-purple-200">
+        <div className="mb-4 flex flex-wrap justify-center gap-6">
+          <Link href="/" className="font-semibold text-white hover:underline">
+            OrizzonCart
+          </Link>
+          <Link href="/marketplace" className="font-semibold text-white hover:underline">
+            OrizzonCart Marketplace
+          </Link>
+          <Link href="/orizzoncart-journey" className="font-semibold text-white hover:underline">
+            OrizzonCart Journey
+          </Link>
+        </div>
+        <p>© {new Date().getFullYear()} OrizzonS Inc. · Create online stores · Sell online · OrizzonCart Marketplace</p>
+      </footer>
+
+      {/* JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            name: 'OrizzonCart Journey — Create Online Stores & Sell on OrizzonCart Marketplace',
+            description:
+              'Step-by-step journey for Nigerian entrepreneurs, social-media sellers, market traders, fashion & beauty businesses, home bakers and digital-product creators to create online stores and sell through OrizzonCart Marketplace.',
+            url: 'https://orizzoncart.com.ng',
+            publisher: {
+              '@type': 'Organization',
+              name: 'OrizzonCart',
+              url: 'https://orizzoncart.com.ng',
+            },
+            mainEntity: {
+              '@type': 'HowTo',
+              name: 'How to start selling on OrizzonCart and OrizzonCart Marketplace',
+              step: [
+                {
+                  '@type': 'HowToStep',
+                  position: 1,
+                  name: 'Sign up',
+                  text: 'Create your free OrizzonCart account with name, email and password.',
+                },
+                {
+                  '@type': 'HowToStep',
+                  position: 2,
+                  name: 'Add store details',
+                  text: 'Enter business name, store name, store link, WhatsApp number and choose physical or digital goods.',
+                },
+                {
+                  '@type': 'HowToStep',
+                  position: 3,
+                  name: 'Follow the onboarding dashboard',
+                  text: 'Add products, set delivery zones, add trust page, activate payments and connect payout method from the Merchant dashboard.',
+                },
+                {
+                  '@type': 'HowToStep',
+                  position: 4,
+                  name: 'Check Marketplace',
+                  text: 'Verify your store profile and products appear on OrizzonCart Marketplace.',
+                },
+              ],
+            },
+          }),
+        }}
+      />
+    </main>
   );
 }
