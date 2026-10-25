@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /marketplace/store/
 
 # Prevent crawling of dynamic API routes and auth paths
 Disallow: /api/
@@ -8,4 +9,4 @@ Disallow: /signup
 Disallow: /dashboard/
 
 # Point Google to your sitemap
-Sitemap: https://orizzoncart.name.ng/sitemap.xml
+Sitemap: https://orizzoncart.com.ng/sitemap.xml

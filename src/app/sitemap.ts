@@ -27,6 +27,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${SITE_URL}/orizzoncart-journey`,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/platform`,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
       url: `${SITE_URL}/about`,
       changeFrequency: 'monthly',
       priority: 0.8,
@@ -61,6 +71,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Only index merchant storefronts (subdomains).
+  // Do NOT index /marketplace/store/* profiles or /p/* product pages
+  // (avoids duplicate/conflict with storefront URLs; pages stay live).
   const {
     data: activeMerchants,
     error: merchantsError,
@@ -84,61 +97,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const merchant of activeMerchants || []) {
     if (!merchant.store_slug) continue;
 
-    const storeUrl =
-      `https://${merchant.store_slug}.orizzoncart.com.ng`;
-
+    const storeUrl = `https://${merchant.store_slug}.orizzoncart.com.ng`;
     const lastModified = merchant.updated_at
       ? new Date(merchant.updated_at)
       : undefined;
 
-    // Merchant storefront subdomain
     merchantPages.push({
       url: storeUrl,
       ...(lastModified ? { lastModified } : {}),
       changeFrequency: 'daily',
       priority: 0.9,
     });
-
-    // Merchant's marketplace profile
-    merchantPages.push({
-      url: `${SITE_URL}/marketplace/store/${encodeURIComponent(merchant.store_slug)}`,
-      ...(lastModified ? { lastModified } : {}),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    });
-
-    // Active products belonging to this eligible merchant
-    const {
-      data: products,
-      error: productsError,
-    } = await supabase
-      .from('products')
-      .select('id, slug, updated_at')
-      .eq('merchant_id', merchant.id)
-      .eq('is_active', true);
-
-    if (productsError) {
-      console.error(
-        `Failed to load products for merchant ${merchant.id}:`,
-        productsError.message
-      );
-      continue;
-    }
-
-    for (const product of products || []) {
-      const identifier = product.slug || product.id;
-
-      if (!identifier) continue;
-
-      merchantPages.push({
-        url: `${storeUrl}/p/${encodeURIComponent(identifier)}`,
-        ...(product.updated_at
-          ? { lastModified: new Date(product.updated_at) }
-          : {}),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      });
-    }
   }
 
   return [...staticPages, ...staticBlogPages, ...merchantPages];
