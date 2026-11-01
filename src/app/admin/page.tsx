@@ -30,7 +30,7 @@ export default async function AdminDashboardPage() {
         <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-xl shadow-md">👑</span>
         <div>
           <h1 className="text-xl font-extrabold text-gray-900">Platform Admin</h1>
-          <p className="text-gray-500 text-xs">OrizzonS Inc. Control Center</p>
+          <p className="text-gray-500 text-xs">OrizzonS Control Center</p>
         </div>
       </div>
 

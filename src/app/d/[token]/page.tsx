@@ -71,7 +71,7 @@ export default async function DigitalAccessPage({ params }: { params: Promise<{ 
             </div>
           </div>
         </div>
-        <p className="text-center text-xs text-gray-400 mt-6">Delivered by OrizzonCart • OrizzonS Inc.</p>
+        <p className="text-center text-xs text-gray-400 mt-6">Delivered by OrizzonCart • OrizzonS</p>
       </div>
     </div>
   );

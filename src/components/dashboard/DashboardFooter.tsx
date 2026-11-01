@@ -49,7 +49,7 @@ export function DashboardFooter() {
   return (
     <footer className="mt-12 border-t border-gray-200 bg-white rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
       <p className="text-xs text-gray-500 text-center sm:text-left">
-        OrizzonCart v1.0 • Powered by OrizzonS Inc. • Built for Nigerian businesses 🇳🇬
+        OrizzonCart v1.0 • Powered by OrizzonS • Built for Nigerian businesses 🇳🇬
       </p>
       <div className="flex gap-2 flex-wrap justify-center">
         <button onClick={install} className="px-4 py-2.5 bg-purple-600 text-white rounded-xl text-xs font-bold hover:bg-purple-700">

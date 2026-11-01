@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-2">1. Who we are</h2>
           <p>
-            OrizzonCart (“we”, “us”) is operated by OrizzonS Inc. This policy explains how we handle
+            OrizzonCart (“we”, “us”) is operated by OrizzonS This policy explains how we handle
             information when you use{' '}
             <strong>orizzoncart.com.ng</strong>, merchant subdomains, and related services.
           </p>

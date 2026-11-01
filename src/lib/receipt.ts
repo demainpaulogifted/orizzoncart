@@ -25,7 +25,7 @@ export function buildReceiptHtml(o: any): string {
 <tr><td style="padding:4px 8px;color:#666">Shipping</td><td style="text-align:right">₦${Number(o.shipping_cost).toLocaleString()}</td></tr>
 <tr><td style="padding:4px 8px;font-weight:800">Total</td><td style="text-align:right;font-weight:800">₦${Number(o.total_amount).toLocaleString()}</td></tr>
 </table>
-<p style="margin-top:20px;font-size:11px;color:#999;text-align:center">Powered by OrizzonCart • OrizzonS Inc.</p>
+<p style="margin-top:20px;font-size:11px;color:#999;text-align:center">Powered by OrizzonCart • OrizzonS</p>
 </div></div></body></html>`;
 }
 

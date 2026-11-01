@@ -450,7 +450,7 @@ export default function OrizzonCartJourneyPage() {
             OrizzonCart Journey
           </Link>
         </div>
-        <p>© {new Date().getFullYear()} OrizzonS Inc. · Create online stores · Sell online · OrizzonCart Marketplace</p>
+        <p>© {new Date().getFullYear()} OrizzonS · Create online stores · Sell online · OrizzonCart Marketplace</p>
       </footer>
 
       {/* JSON-LD */}

@@ -21,7 +21,7 @@ export default function TermsPage() {
           <p>
             By accessing or using OrizzonCart (the “Platform”), you agree to these Terms of Service
             (“Terms”). If you do not agree, do not use the Platform. The Platform is operated by
-            OrizzonS Inc. (“we”, “us”).
+            OrizzonS (“we”, “us”).
           </p>
         </section>
 

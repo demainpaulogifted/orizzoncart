@@ -88,7 +88,7 @@ export function OrderReceipt({ order, merchant }: OrderReceiptProps) {
 
         {/* Footer */}
         <div className="bg-gray-50 p-6 text-center text-xs text-gray-500 border-t">
-          <p>Powered by OrizzonCart • OrizzonS Inc.</p>
+          <p>Powered by OrizzonCart • OrizzonS</p>
         </div>
       </div>
 

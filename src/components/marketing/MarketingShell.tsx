@@ -52,7 +52,7 @@ export function MarketingShell({
               Orizzon<span className="text-purple-400">Cart</span>
             </Link>
             <p className="text-sm text-center md:text-left">
-              Powered by OrizzonS Inc. • Built for Nigerian businesses 🇳🇬
+              Powered by OrizzonS • Built for Nigerian businesses 🇳🇬
             </p>
           </div>
           <div className="flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-sm">

@@ -60,7 +60,7 @@ export default function ContactPage() {
           <p className="text-2xl mb-2">🏢</p>
           <h2 className="font-bold text-gray-900 mb-1">Operator</h2>
           <p className="text-sm text-gray-600">
-            OrizzonCart is operated by <strong>OrizzonS Inc.</strong>
+            OrizzonCart is operated by <strong>OrizzonS</strong>
             <br />
             Nigeria
           </p>

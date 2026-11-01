@@ -85,7 +85,7 @@ export default function PlatformPage() {
         <section className="relative overflow-hidden bg-gradient-to-br from-purple-100 via-indigo-100 to-blue-100">
           <div className="max-w-6xl mx-auto px-4 py-20 md:py-28 text-center">
             <span className="inline-block bg-white/70 text-purple-700 text-xs font-bold px-4 py-1.5 rounded-full mb-6 shadow-sm">
-              🇳🇬 Built for Nigerian businesses by OrizzonS Inc.
+              🇳🇬 Built for Nigerian businesses by OrizzonS
             </span>
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
               Open your online store
@@ -425,7 +425,7 @@ export default function PlatformPage() {
                 Orizzon<span className="text-purple-400">Cart</span>
               </span>
               <p className="text-sm text-center">
-                Powered by OrizzonS Inc. • Built for Nigerian businesses
+                Powered by OrizzonS • Built for Nigerian businesses
               </p>
             </div>
             <div className="flex flex-wrap justify-center md:justify-end gap-x-5 gap-y-2 text-sm">
