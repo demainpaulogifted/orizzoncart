@@ -102,12 +102,20 @@ export default function OrizzonCartJourneyPage() {
           <Link href="/" className="text-lg font-extrabold tracking-tight">
             Orizzon<span className="text-amber-300">Cart</span>
           </Link>
-          <Link
-            href="/signup"
-            className="rounded-full bg-white px-5 py-2 text-sm font-bold text-purple-700 shadow transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            Start Free →
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/about"
+              className="hidden sm:inline text-sm font-semibold text-white/90 hover:text-white px-2 py-2"
+            >
+              About
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-full bg-white px-5 py-2 text-sm font-bold text-purple-700 shadow transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              Start Free →
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -448,6 +456,12 @@ export default function OrizzonCartJourneyPage() {
           </Link>
           <Link href="/orizzoncart-journey" className="font-semibold text-white hover:underline">
             OrizzonCart Journey
+          </Link>
+          <Link href="/about" className="font-semibold text-white hover:underline">
+            About
+          </Link>
+          <Link href="/contact" className="font-semibold text-white hover:underline">
+            Contact
           </Link>
         </div>
         <p>© {new Date().getFullYear()} OrizzonS · Create online stores · Sell online · OrizzonCart Marketplace</p>
