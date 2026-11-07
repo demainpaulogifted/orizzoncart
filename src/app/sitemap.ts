@@ -8,6 +8,18 @@ const SITE_URL = (
 ).replace(/\/$/, '');
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Avoid build crash when Supabase env is not present (e.g. some preview builds)
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return [
+      { url: SITE_URL, changeFrequency: 'daily', priority: 1 },
+      { url: `${SITE_URL}/marketplace`, changeFrequency: 'hourly', priority: 0.9 },
+      { url: `${SITE_URL}/about`, changeFrequency: 'monthly', priority: 0.8 },
+      { url: `${SITE_URL}/contact`, changeFrequency: 'monthly', priority: 0.7 },
+      { url: `${SITE_URL}/terms`, changeFrequency: 'yearly', priority: 0.5 },
+      { url: `${SITE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.5 },
+    ];
+  }
+
   const supabase = createClient();
 
   const staticPages: MetadataRoute.Sitemap = [
