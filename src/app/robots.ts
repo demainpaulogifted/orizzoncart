@@ -1,3 +1,4 @@
+
 import type { MetadataRoute } from 'next';
 
 const SITE_URL = (
@@ -9,7 +10,11 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/api/marketing/feed'],
+        allow: [
+          '/',
+          '/api/marketing/feed',
+          '/api/marketing/google-merchant',
+        ],
         disallow: [
           '/admin/',
           '/dashboard/',
