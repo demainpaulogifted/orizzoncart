@@ -258,7 +258,7 @@ aria-label="Back to marketplace"
       </div>
     </div>
 
-    {/* Returns and Refunds Policy */}
+    {/* Returns, Refunds and Exchanges Policy */}
     <div className="mb-6 rounded-2xl border border-purple-200 bg-purple-50 p-4">
       <h2 className="text-sm font-bold text-purple-900">
         ↩️ Returns, Refunds & Exchanges
