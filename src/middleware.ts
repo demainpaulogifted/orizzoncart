@@ -81,7 +81,7 @@ export function middleware(req: NextRequest) {
 
       if (!isPlatformPath && !alreadyStorePath) {
         const url = req.nextUrl.clone();
-        url.pathname = `/store/\( {sub} \){pathname === '/' ? '' : pathname}`;
+        url.pathname = '/store/' + sub + (pathname === '/' ? '' : pathname);
         return NextResponse.rewrite(url);
       }
     }
