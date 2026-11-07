@@ -26,25 +26,20 @@ export function middleware(req: NextRequest) {
     isMarketplacePath ? '/manifest-marketplace.json' : '/manifest.json'
   );
 
-  // Marketplace host: rewrite root and clean paths onto existing /marketplace app routes
   if (isMarketplaceHost) {
     const url = req.nextUrl.clone();
 
-    // Root of marketplace subdomain → existing marketplace home
     if (pathname === '/' || pathname === '') {
       url.pathname = '/marketplace';
       return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
 
-    // New clean profile path → existing marketplace store profile
-    // marketplace.orizzoncart.com.ng/merchantprofile/{slug}
     if (pathname.startsWith('/merchantprofile/')) {
       const slug = pathname.replace('/merchantprofile/', '');
       url.pathname = `/marketplace/store/${slug}`;
       return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
 
-    // Keep existing marketplace routes working on the subdomain
     if (!pathname.startsWith('/marketplace') && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
       url.pathname = `/marketplace${pathname === '/' ? '' : pathname}`;
       return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
@@ -71,7 +66,6 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // Existing merchant storefront wildcard handling
   const isWildcard =
     host.endsWith('.orizzoncart.com.ng') &&
     !host.startsWith('www.') &&
