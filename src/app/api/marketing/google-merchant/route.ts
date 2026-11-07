@@ -15,6 +15,8 @@ const MERCHANT_BATCH_SIZE = 100;
 
 function escapeXml(value: unknown): string {
   return String(value ?? '')
+    // Remove characters that are invalid in XML 1.0.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -25,26 +27,42 @@ function escapeXml(value: unknown): string {
 function absoluteImageUrl(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) return '';
 
-  const url = value.trim();
+  const valueTrimmed = value.trim();
 
-  if (/^https?:\/\//i.test(url)) return url;
+  try {
+    const url = valueTrimmed.startsWith('/')
+      ? new URL(valueTrimmed, MARKETPLACE_URL)
+      : new URL(valueTrimmed);
 
-  if (url.startsWith('/')) return `${MARKETPLACE_URL}${url}`;
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
 
-  return '';
+    return url.toString();
+  } catch {
+    return '';
+  }
 }
 
 function getProductImage(images: unknown): string {
   if (!Array.isArray(images) || images.length === 0) return '';
 
-  const first = images[0];
+  for (const image of images) {
+    let candidate = '';
 
-  if (typeof first === 'string') {
-    return absoluteImageUrl(first);
-  }
+    if (typeof image === 'string') {
+      candidate = image;
+    } else if (
+      image &&
+      typeof image === 'object' &&
+      'url' in image
+    ) {
+      candidate = String(
+        (image as { url?: unknown }).url ?? ''
+      );
+    }
 
-  if (first && typeof first === 'object' && 'url' in first) {
-    return absoluteImageUrl((first as { url?: unknown }).url);
+    const validUrl = absoluteImageUrl(candidate);
+
+    if (validUrl) return validUrl;
   }
 
   return '';
@@ -53,45 +71,89 @@ function getProductImage(images: unknown): string {
 function getAvailability(product: any): string {
   const tracksInventory = product.track_inventory !== false;
 
-  if (!tracksInventory) return 'in stock';
+  if (!tracksInventory) {
+    return 'in_stock';
+  }
 
   const stock = Number(
     product.stock ?? product.inventory_quantity ?? 0
   );
 
   if (Number.isFinite(stock) && stock > 0) {
-    return 'in stock';
+    return 'in_stock';
   }
 
   if (product.allow_backorders === true) {
     return 'backorder';
   }
 
-  return 'out of stock';
+  return 'out_of_stock';
 }
 
-function makeProductItem(product: any, merchant: any): string | null {
+function getProductUrl(
+  merchant: any,
+  product: any
+): string {
+  if (!merchant.store_slug) return '';
+
+  const identifier = String(
+    product.slug || product.id || ''
+  ).trim();
+
+  if (!identifier) return '';
+
+  try {
+    const storeUrl = getStoreUrl(merchant.store_slug)
+      .replace(/\/$/, '');
+
+    const url = new URL(
+      `${storeUrl}/p/${encodeURIComponent(identifier)}`
+    );
+
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return '';
+    }
+
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+function makeProductItem(
+  product: any,
+  merchant: any
+): string | null {
   const name = String(product.name || '').trim();
+
   const price = Number(product.price);
+
   const imageUrl = getProductImage(product.images);
 
-  // Google requires a title, valid price, product URL and image.
-  if (!name || !Number.isFinite(price) || price <= 0 || !imageUrl) {
+  const productUrl = getProductUrl(merchant, product);
+
+  // Only export products with the required information.
+  if (
+    !product.id ||
+    !name ||
+    !Number.isFinite(price) ||
+    price <= 0 ||
+    !imageUrl ||
+    !productUrl
+  ) {
     return null;
   }
 
-  if (!merchant.store_slug) return null;
-
-  const storeUrl = getStoreUrl(merchant.store_slug).replace(/\/$/, '');
-  const identifier = product.slug || product.id;
-  const productUrl = `${storeUrl}/p/${encodeURIComponent(identifier)}`;
-
-  const description = String(product.description || name)
+  const description = String(
+    product.description || name
+  )
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 5000);
 
-  const category = String(product.category || '').trim();
+  const category = String(
+    product.category || ''
+  ).trim();
 
   const fields = [
     `    <g:id>${escapeXml(product.id)}</g:id>`,
@@ -105,7 +167,9 @@ function makeProductItem(product: any, merchant: any): string | null {
   ];
 
   if (category) {
-    fields.push(`    <g:product_type>${escapeXml(category)}</g:product_type>`);
+    fields.push(
+      `    <g:product_type>${escapeXml(category)}</g:product_type>`
+    );
   }
 
   return `  <item>\n${fields.join('\n')}\n  </item>`;
@@ -115,27 +179,39 @@ export async function GET() {
   try {
     const admin = createAdminClient();
 
-    // Only stores approved and active on the OrizzonCart marketplace.
-    const { data: merchants, error: merchantError } = await admin
-      .from('merchants')
-      .select('id, store_slug, store_name, merchant_type')
-      .eq('is_on_marketplace', true)
-      .eq('payment_receiving_status', 'ACTIVE')
-      .eq('is_verified', true)
-      .eq('is_active', true)
-      .eq('merchant_type', 'physical');
+    // Retrieve every eligible marketplace merchant.
+    // This is intentionally independent of the dashboard's
+    // currently selected merchant.
+
+    const { data: merchants, error: merchantError } =
+      await admin
+        .from('merchants')
+        .select(
+          'id, store_slug, store_name, merchant_type'
+        )
+        .eq('is_on_marketplace', true)
+        .eq('payment_receiving_status', 'ACTIVE')
+        .eq('is_verified', true)
+        .eq('is_active', true)
+        .eq('merchant_type', 'physical');
 
     if (merchantError) {
-      console.error('Google Merchant feed merchant query failed:', merchantError);
-      return new Response('Could not load marketplace stores.', {
-        status: 500,
-      });
+      console.error(
+        'Google Merchant feed merchant query failed:',
+        merchantError
+      );
+
+      return new Response(
+        'Could not load marketplace stores.',
+        { status: 500 }
+      );
     }
 
     const items: string[] = [];
+
     const merchantList = merchants || [];
 
-    // Batch stores to avoid oversized Supabase queries.
+    // Process merchants in manageable batches.
     for (
       let merchantOffset = 0;
       merchantOffset < merchantList.length;
@@ -150,41 +226,70 @@ export async function GET() {
         .map((merchant) => merchant.id)
         .filter(Boolean);
 
-      if (merchantIds.length === 0) continue;
+      if (!merchantIds.length) continue;
 
       const merchantById = new Map(
-        merchantBatch.map((merchant) => [merchant.id, merchant])
+        merchantBatch.map((merchant) => [
+          merchant.id,
+          merchant,
+        ])
       );
 
-      // Paginate products so the feed does not stop at the first 1,000.
-      for (let productOffset = 0; ; productOffset += PAGE_SIZE) {
-        const { data: products, error: productError } = await admin
-          .from('products')
-          .select('*')
-          .in('merchant_id', merchantIds)
-          .eq('is_active', true)
-          .eq('is_digital', false)
-          .order('id', { ascending: true })
-          .range(productOffset, productOffset + PAGE_SIZE - 1);
+      // Retrieve all eligible physical products,
+      // including products beyond the first 1,000.
+
+      for (
+        let productOffset = 0;
+        ;
+        productOffset += PAGE_SIZE
+      ) {
+        const { data: products, error: productError } =
+          await admin
+            .from('products')
+            .select('*')
+            .in('merchant_id', merchantIds)
+            .eq('is_active', true)
+            .eq('is_digital', false)
+            .order('id', { ascending: true })
+            .range(
+              productOffset,
+              productOffset + PAGE_SIZE - 1
+            );
 
         if (productError) {
-          console.error('Google Merchant feed product query failed:', productError);
-          return new Response('Could not load marketplace products.', {
-            status: 500,
-          });
+          console.error(
+            'Google Merchant feed product query failed:',
+            productError
+          );
+
+          return new Response(
+            'Could not load marketplace products.',
+            { status: 500 }
+          );
         }
 
         const productList = products || [];
 
         for (const product of productList) {
-          const merchant = merchantById.get(product.merchant_id);
+          const merchant = merchantById.get(
+            product.merchant_id
+          );
+
           if (!merchant) continue;
 
-          const item = makeProductItem(product, merchant);
-          if (item) items.push(item);
+          const item = makeProductItem(
+            product,
+            merchant
+          );
+
+          if (item) {
+            items.push(item);
+          }
         }
 
-        if (productList.length < PAGE_SIZE) break;
+        if (productList.length < PAGE_SIZE) {
+          break;
+        }
       }
     }
 
@@ -200,17 +305,26 @@ ${items.join('\n')}
 
     return new Response(xml, {
       status: 200,
+
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+
+        // Keep marketplace changes reasonably fresh.
+        'Cache-Control':
+          'public, max-age=300, s-maxage=300, stale-while-revalidate=600',
+
         'X-Robots-Tag': 'noindex, nofollow',
       },
     });
   } catch (error) {
-    console.error('Google Merchant feed unexpected error:', error);
+    console.error(
+      'Google Merchant feed unexpected error:',
+      error
+    );
 
-    return new Response('Google Merchant feed is temporarily unavailable.', {
-      status: 500,
-    });
+    return new Response(
+      'Google Merchant feed is temporarily unavailable.',
+      { status: 500 }
+    );
   }
 }
