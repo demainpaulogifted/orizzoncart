@@ -1,0 +1,13 @@
+[1mdiff --git a/src/app/marketplace/store/[store_slug]/page.tsx b/src/app/marketplace/store/[store_slug]/page.tsx[m
+[1mindex 33c40a6..2f8cfd3 100644[m
+[1m--- a/src/app/marketplace/store/[store_slug]/page.tsx[m
+[1m+++ b/src/app/marketplace/store/[store_slug]/page.tsx[m
+[36m@@ -153,7 +153,7 @@[m [mexport default async function SellerProfilePage({[m
+               {products.map((p) => ([m
+                 <a[m
+                   key={p.id}[m
+[31m-                  href={`https://\( {m.store_slug}.orizzoncart.com.ng/p/ \){p.slug || p.id}`}[m
+[32m+[m[32m                  href={`https://${m.store_slug}.orizzoncart.com.ng/p/${p.slug || p.id}`}[m
+                   target="_blank"[m
+                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"[m
+                 >[m
