@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { TrackProductView } from '@/components/TrackProductView';
 import { MarketplaceAddToCartButton } from '@/components/marketplace/MarketplaceAddToCartButton';
+import { ProductImageGallery } from '@/components/marketplace/ProductImageGallery';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,10 +40,6 @@ export default async function MarketplaceProductPage({
     .order('created_at', { ascending: false })
     .limit(24);
 
-  const img = product.images && product.images[0]
-    ? (product.images[0].url || product.images[0])
-    : null;
-
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <TrackProductView productId={product.id} source="marketplace" />
@@ -60,19 +57,19 @@ export default async function MarketplaceProductPage({
 
       <main className="max-w-3xl mx-auto px-4 pt-4 space-y-5">
         <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
-          <div className="aspect-square bg-gray-100">
-            {img ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={String(img)} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-5xl text-gray-300">📦</div>
-            )}
-          </div>
-          <div className="p-4 space-y-2">
+          <ProductImageGallery images={product.images} alt={product.name} />
+
+          <div className="p-4 space-y-3">
             <h1 className="text-xl font-extrabold text-gray-900">{product.name}</h1>
             <p className="text-2xl font-extrabold text-purple-700">
               ₦{Number(product.price).toLocaleString()}
+              {product.compare_at_price && Number(product.compare_at_price) > Number(product.price) ? (
+                <span className="ml-2 text-sm text-gray-400 line-through font-medium">
+                  ₦{Number(product.compare_at_price).toLocaleString()}
+                </span>
+              ) : null}
             </p>
+
             {merchant ? (
               <Link
                 href={'/marketplace/store/' + merchant.store_slug}
@@ -81,9 +78,16 @@ export default async function MarketplaceProductPage({
                 🏪 {merchant.store_name} • View profile
               </Link>
             ) : null}
+
             {product.description ? (
-              <p className="text-sm text-gray-600 whitespace-pre-wrap pt-2">{product.description}</p>
+              <p className="text-sm text-gray-600 whitespace-pre-wrap pt-1">{product.description}</p>
             ) : null}
+
+            <MarketplaceAddToCartButton
+              productId={product.id}
+              storeSlug={merchant?.store_slug || ''}
+              productName={product.name}
+            />
           </div>
         </div>
 
