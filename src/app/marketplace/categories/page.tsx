@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import Link from 'next/link'
+import { ProductCardAddButton } from '@/components/marketplace/ProductCardAddButton';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { THEMES } from '@/lib/themes';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
@@ -203,17 +204,17 @@ export default async function ShopPage({
               const merchant = byId.get(p.merchant_id);
               const t = themeFor(merchant ? merchant.theme_id : null);
               const img = p.images && p.images[0] ? p.images[0].url : null;
-              const storeUrl = merchant
-                ? 'https://' + merchant.store_slug + '.orizzoncart.com.ng/p/' + p.slug
+              const storeUrl = p.slug
+                ? '/marketplace/p/' + encodeURIComponent(p.slug)
                 : '#';
               return (
                 <a
                   key={p.id}
                   href={storeUrl}
-                  target="_blank"
+                  
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                 >
-                  <div className="aspect-square bg-gray-100">
+                  <div className="relative aspect-square bg-gray-100">
                     {img ? (
                       <img src={img} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
@@ -221,6 +222,10 @@ export default async function ShopPage({
                         📦
                       </div>
                     )}
+                    <ProductCardAddButton
+                      productId={p.id}
+                      storeSlug={(merchant && merchant.store_slug) || ''}
+                    />
                   </div>
                   <div className="p-2 space-y-1">
                     <p className="text-xs font-medium line-clamp-2">{p.name}</p>
@@ -230,12 +235,9 @@ export default async function ShopPage({
                     >
                       ₦{Number(p.price).toLocaleString()}
                     </p>
-                    <Link
-                      href={'/marketplace/store/' + (merchant ? merchant.store_slug : '')}
-                      className="block text-[10px] text-gray-400 truncate hover:text-purple-600"
-                    >
-                      🏪 {merchant ? merchant.store_name : ''} • View profile
-                    </Link>
+                    <p className="text-[10px] text-gray-400 truncate">
+                      🏪 {merchant ? merchant.store_name : ''}
+                    </p>
                   </div>
                 </a>
               );

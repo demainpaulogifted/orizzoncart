@@ -311,6 +311,7 @@ export default async function MarketplacePage() {
                   const t = themeFor(p.merchant && p.merchant.theme_id);
                   const off = Math.round((1 - p.price / p.compare_at_price) * 100);
                   const img = p.images && p.images[0] ? p.images[0].url : null;
+                  const storeSlug = p.merchant && p.merchant.store_slug;
                   return (
                     <a
                       key={p.id}
