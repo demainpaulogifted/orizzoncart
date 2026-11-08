@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { THEMES } from '@/lib/themes';
+import { ProductCardAddButton } from '@/components/marketplace/ProductCardAddButton';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
@@ -320,7 +321,7 @@ export default async function MarketplacePage() {
                       <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
                         -{off}%
                       </span>
-                      <div className="aspect-square bg-gray-100">
+                      <div className="relative aspect-square bg-gray-100">
                         {img ? (
                           <img src={img} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
@@ -328,6 +329,7 @@ export default async function MarketplacePage() {
                             📦
                           </div>
                         )}
+                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                       </div>
                       <div className="p-2">
                         <p className="text-xs font-medium line-clamp-1">{p.name}</p>
@@ -367,7 +369,7 @@ export default async function MarketplacePage() {
                       
                       className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
-                      <div className="aspect-square bg-gray-100">
+                      <div className="relative aspect-square bg-gray-100">
                         {img ? (
                           <img src={img} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
@@ -375,6 +377,7 @@ export default async function MarketplacePage() {
                             📦
                           </div>
                         )}
+                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                       </div>
                       <div className="p-2 space-y-1">
                         <p className="text-xs font-medium line-clamp-2">{p.name}</p>
@@ -384,12 +387,9 @@ export default async function MarketplacePage() {
                         >
                           ₦{Number(p.price).toLocaleString()}
                         </p>
-                        <Link
-                          href={'/marketplace/store/' + (storeSlug || '')}
-                          className="block text-[10px] text-gray-400 truncate hover:text-purple-600"
-                        >
-                          🏪 {p.merchant && p.merchant.store_name} • View profile
-                        </Link>
+                        <p className="text-[10px] text-gray-400 truncate">
+                          🏪 {p.merchant && p.merchant.store_name}
+                        </p>
                       </div>
                     </a>
                   );
@@ -419,7 +419,7 @@ export default async function MarketplacePage() {
                       
                       className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
-                      <div className="aspect-square bg-gray-100">
+                      <div className="relative aspect-square bg-gray-100">
                         {img ? (
                           <img src={img} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
@@ -427,6 +427,7 @@ export default async function MarketplacePage() {
                             📦
                           </div>
                         )}
+                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                       </div>
                       <div className="p-2 space-y-1">
                         <p className="text-xs font-medium line-clamp-2">{p.name}</p>
@@ -436,12 +437,9 @@ export default async function MarketplacePage() {
                         >
                           ₦{Number(p.price).toLocaleString()}
                         </p>
-                        <Link
-                          href={'/marketplace/store/' + (storeSlug || '')}
-                          className="block text-[10px] text-gray-400 truncate hover:text-purple-600"
-                        >
-                          🏪 {p.merchant && p.merchant.store_name} • View profile
-                        </Link>
+                        <p className="text-[10px] text-gray-400 truncate">
+                          🏪 {p.merchant && p.merchant.store_name}
+                        </p>
                       </div>
                     </a>
                   );
