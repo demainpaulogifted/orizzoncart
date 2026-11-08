@@ -34,9 +34,9 @@ export function ProductCardAddButton({
       type="button"
       onClick={onAdd}
       aria-label="Add to cart"
-      className="absolute bottom-2 right-2 z-10 w-9 h-9 rounded-full bg-white/95 shadow-md border border-gray-200 flex items-center justify-center text-base active:scale-95"
+      className="w-full mt-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white py-2.5 text-xs font-bold flex items-center justify-center gap-2 active:scale-95"
     >
-      {loading ? '…' : done ? '✓' : '🛒'}
+      {loading ? 'Adding…' : done ? '✓ Added to cart' : '🛒 Add to cart'}
     </button>
   );
 }

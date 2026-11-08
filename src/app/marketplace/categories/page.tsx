@@ -222,10 +222,6 @@ export default async function ShopPage({
                         📦
                       </div>
                     )}
-                    <ProductCardAddButton
-                      productId={p.id}
-                      storeSlug={(merchant && merchant.store_slug) || ''}
-                    />
                   </div>
                   <div className="p-2 space-y-1">
                     <p className="text-xs font-medium line-clamp-2">{p.name}</p>
@@ -235,6 +231,10 @@ export default async function ShopPage({
                     >
                       ₦{Number(p.price).toLocaleString()}
                     </p>
+                    <ProductCardAddButton
+                      productId={p.id}
+                      storeSlug={(merchant && merchant.store_slug) || ''}
+                    />
                     <p className="text-[10px] text-gray-400 truncate">
                       🏪 {merchant ? merchant.store_name : ''}
                     </p>

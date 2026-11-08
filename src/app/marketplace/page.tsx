@@ -330,7 +330,6 @@ export default async function MarketplacePage() {
                             📦
                           </div>
                         )}
-                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                       </div>
                       <div className="p-2">
                         <p className="text-xs font-medium line-clamp-1">{p.name}</p>
@@ -342,6 +341,10 @@ export default async function MarketplacePage() {
                           <span className="text-[10px] text-gray-400 line-through font-medium">
                             ₦{Number(p.compare_at_price).toLocaleString()}
                           </span>
+                        </p>
+                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
+                        <p className="text-[10px] text-gray-400 truncate mt-1">
+                          🏪 {p.merchant && p.merchant.store_name}
                         </p>
                       </div>
                     </a>
@@ -378,7 +381,6 @@ export default async function MarketplacePage() {
                             📦
                           </div>
                         )}
-                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                       </div>
                       <div className="p-2 space-y-1">
                         <p className="text-xs font-medium line-clamp-2">{p.name}</p>
@@ -388,6 +390,7 @@ export default async function MarketplacePage() {
                         >
                           ₦{Number(p.price).toLocaleString()}
                         </p>
+                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                         <p className="text-[10px] text-gray-400 truncate">
                           🏪 {p.merchant && p.merchant.store_name}
                         </p>
@@ -428,7 +431,6 @@ export default async function MarketplacePage() {
                             📦
                           </div>
                         )}
-                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                       </div>
                       <div className="p-2 space-y-1">
                         <p className="text-xs font-medium line-clamp-2">{p.name}</p>
@@ -438,6 +440,7 @@ export default async function MarketplacePage() {
                         >
                           ₦{Number(p.price).toLocaleString()}
                         </p>
+                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                         <p className="text-[10px] text-gray-400 truncate">
                           🏪 {p.merchant && p.merchant.store_name}
                         </p>
