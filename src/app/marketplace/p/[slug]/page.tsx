@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { TrackProductView } from '@/components/TrackProductView';
+import { MarketplaceAddToCartButton } from '@/components/marketplace/MarketplaceAddToCartButton';
 
 export const dynamic = 'force-dynamic';
 
