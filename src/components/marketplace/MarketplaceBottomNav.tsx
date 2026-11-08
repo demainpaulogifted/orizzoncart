@@ -26,10 +26,13 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
     (active === key ? 'text-purple-600' : 'text-gray-400');
 
   // Logged-in merchant → dashboard. Otherwise → login (then dashboard after sign-in)
+  const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng').replace(/\/$/, '');
   const publishHref = isMerchant
-    ? '/dashboard/products/add'
-    : '/login?next=/dashboard/products/add';
-  const merchantHref = isMerchant ? '/dashboard' : '/login?next=/dashboard';
+    ? APP_URL + '/dashboard/products/add'
+    : APP_URL + '/login?next=/dashboard/products/add';
+  const merchantHref = isMerchant
+    ? APP_URL + '/dashboard'
+    : APP_URL + '/login?next=/dashboard';
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)]">

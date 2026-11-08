@@ -27,6 +27,17 @@ export function middleware(req: NextRequest) {
   );
 
   if (isMarketplaceHost) {
+    const MAIN_APP = 'https://orizzoncart.com.ng';
+    const toMain = ['/dashboard', '/admin', '/onboarding', '/checkout', '/payment', '/track-order'];
+    if (toMain.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+      return NextResponse.redirect(new URL(pathname + req.nextUrl.search, MAIN_APP));
+    }
+    if (pathname === '/login' || pathname === '/signup') {
+      const next = req.nextUrl.searchParams.get('next') || '';
+      if (next.startsWith('/dashboard') || next.startsWith('/admin') || next.startsWith('/onboarding')) {
+        return NextResponse.redirect(new URL(pathname + req.nextUrl.search, MAIN_APP));
+      }
+    }
     const url = req.nextUrl.clone();
 
     if (pathname === '/' || pathname === '') {

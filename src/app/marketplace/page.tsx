@@ -81,9 +81,9 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   return a;
 }
 
-function productUrl(storeSlug: string | undefined, slug: string) {
-  if (!storeSlug) return '#';
-  return 'https://' + storeSlug + '.orizzoncart.com.ng/p/' + slug;
+function productUrl(_storeSlug: string | undefined, slug: string) {
+  if (!slug) return '#';
+  return '/marketplace/p/' + encodeURIComponent(slug);
 }
 
 function categoryChipHref(cat: string) {
@@ -314,7 +314,7 @@ export default async function MarketplacePage() {
                     <a
                       key={p.id}
                       href={productUrl(p.merchant && p.merchant.store_slug, p.slug)}
-                      target="_blank"
+                      
                       className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative"
                     >
                       <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
@@ -364,7 +364,7 @@ export default async function MarketplacePage() {
                     <a
                       key={p.id}
                       href={productUrl(storeSlug, p.slug)}
-                      target="_blank"
+                      
                       className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div className="aspect-square bg-gray-100">
@@ -416,7 +416,7 @@ export default async function MarketplacePage() {
                     <a
                       key={'d-' + p.id}
                       href={productUrl(storeSlug, p.slug)}
-                      target="_blank"
+                      
                       className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div className="aspect-square bg-gray-100">
