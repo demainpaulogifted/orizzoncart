@@ -18,8 +18,12 @@ export default function EditProductPage() {
     is_digital: false,
     category: '',
     is_active: true,
+    // Flash Deal
+    is_flash_deal: false,
+    flash_deal_price: '',
+    flash_deal_days: '7',
   });
-  
+
   const [images, setImages] = useState<string[]>([]);
   const [digitalFileUrl, setDigitalFileUrl] = useState('');
   const [digitalFileName, setDigitalFileName] = useState('');
@@ -55,8 +59,7 @@ export default function EditProductPage() {
         return;
       }
 
-      const { data: product, error } = await supabase
-        .from('products')
+      const { data: product, error } = await supabase.from('products')
         .select('*')
         .eq('id', productId)
         .eq('merchant_id', merchant.id)
@@ -68,6 +71,16 @@ export default function EditProductPage() {
         return;
       }
 
+      let days = '7';
+      if (product.flash_deal_ends_at) {
+        const end = new Date(product.flash_deal_ends_at).getTime();
+        const now = Date.now();
+        const remaining = Math.max(1, Math.ceil((end - now) / (24 * 60 * 60 * 1000)));
+        if (remaining >= 30) days = '30';
+        else if (remaining >= 14) days = '14';
+        else days = '7';
+      }
+
       setForm({
         name: product.name || '',
         price: String(product.price || ''),
@@ -75,6 +88,9 @@ export default function EditProductPage() {
         is_digital: !!product.is_digital,
         category: product.category || '',
         is_active: product.is_active !== false,
+        is_flash_deal: !!product.is_flash_deal,
+        flash_deal_price: product.flash_deal_price != null ? String(product.flash_deal_price) : '',
+        flash_deal_days: days,
       });
 
       const loadedImages = (product.images || [])
@@ -110,12 +126,12 @@ export default function EditProductPage() {
     const urls: string[] = [];
 
     for (const file of Array.from(files)) {
-      const path = `${user?.id}/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-      
+      const path = `\( {user?.id}/ \){Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+
       const { error } = await supabase.storage
         .from('product-images')
         .upload(path, file, { upsert: false });
-        
+
       if (!error) {
         const { data } = supabase.storage.from('product-images').getPublicUrl(path);
         urls.push(data.publicUrl);
@@ -137,8 +153,8 @@ export default function EditProductPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const path = `${user?.id}/digital/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-    
+    const path = `\( {user?.id}/digital/ \){Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+
     const { error } = await supabase.storage
       .from('digital-products')
       .upload(path, file, { upsert: false });
@@ -164,6 +180,36 @@ export default function EditProductPage() {
       return;
     }
 
+    const price = parseFloat(form.price);
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error('Please enter a valid product price.');
+      return;
+    }
+
+    let flashDealPrice: number | null = null;
+    let flashDealEndsAt: string | null = null;
+
+    if (form.is_flash_deal) {
+      flashDealPrice = Number(form.flash_deal_price);
+      if (
+        form.flash_deal_price.trim() === '' ||
+        !Number.isFinite(flashDealPrice) ||
+        flashDealPrice < 0
+      ) {
+        toast.error('Please enter a valid Flash Deal price.');
+        return;
+      }
+      if (flashDealPrice >= price) {
+        toast.error('Flash Deal price must be lower than the normal price.');
+        return;
+      }
+      const days = parseInt(form.flash_deal_days, 10) || 7;
+      const ends = new Date();
+      ends.setDate(ends.getDate() + days);
+      ends.setHours(23, 59, 59, 999);
+      flashDealEndsAt = ends.toISOString();
+    }
+
     setSaving(true);
     const supabase = createClient();
 
@@ -171,7 +217,7 @@ export default function EditProductPage() {
       .from('products')
       .update({
         name: form.name,
-        price: parseFloat(form.price),
+        price,
         description: form.description,
         is_digital: form.is_digital,
         category: form.category || null,
@@ -179,13 +225,20 @@ export default function EditProductPage() {
         images: images.map((url) => ({ url })),
         digital_file_url: form.is_digital ? digitalFileUrl : null,
         digital_file_name: form.is_digital ? digitalFileName : null,
+        is_flash_deal: form.is_flash_deal,
+        flash_deal_price: form.is_flash_deal ? flashDealPrice : null,
+        flash_deal_ends_at: form.is_flash_deal ? flashDealEndsAt : null,
       })
       .eq('id', productId);
 
     if (error) {
       toast.error('Failed: ' + error.message);
     } else {
-      toast.success('Product updated successfully!');
+      toast.success(
+        form.is_flash_deal
+          ? 'Product updated and Flash Deal saved!'
+          : 'Product updated successfully!'
+      );
       router.push('/dashboard/products');
     }
     setSaving(false);
@@ -278,7 +331,6 @@ export default function EditProductPage() {
                     className="relative w-20 h-20 rounded-lg overflow-hidden border shrink-0 bg-gray-100"
                   >
                     <Image src={url} alt="" fill className="object-cover" />
-                    {/* ✅ FIX: Compare index (number) with index (number) to satisfy TypeScript */}
                     <button
                       type="button"
                       onClick={() => setImages((prev) => prev.filter((_, index) => index !== i))}
@@ -349,7 +401,7 @@ export default function EditProductPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Price (₦) *
+            Normal Price (₦) *
           </label>
           <input
             required
@@ -358,6 +410,53 @@ export default function EditProductPage() {
             onChange={(e) => setForm({ ...form, price: e.target.value })}
             className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Shown everywhere except Flash Deals.
+          </p>
+        </div>
+
+        {/* Flash Deal */}
+        <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-4 space-y-3">
+          <label className="flex items-center gap-3 text-sm font-bold text-gray-900">
+            <input
+              type="checkbox"
+              checked={form.is_flash_deal}
+              onChange={(e) => setForm({ ...form, is_flash_deal: e.target.checked })}
+              className="w-4 h-4 accent-orange-600"
+            />
+            ⚡ Add to Flash Deals
+          </label>
+
+          {form.is_flash_deal && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Flash Deal Price (₦) *
+                </label>
+                <input
+                  type="number"
+                  value={form.flash_deal_price}
+                  onChange={(e) => setForm({ ...form, flash_deal_price: e.target.value })}
+                  placeholder="Must be lower than normal price"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Deal Duration
+                </label>
+                <select
+                  value={form.flash_deal_days}
+                  onChange={(e) => setForm({ ...form, flash_deal_days: e.target.value })}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30">30 days</option>
+                </select>
+              </div>
+            </>
+          )}
         </div>
 
         <div>
@@ -415,6 +514,11 @@ export default function EditProductPage() {
             <p className="mt-1 text-xl font-bold text-purple-600">
               ₦{Number(form.price || 0).toLocaleString()}
             </p>
+            {form.is_flash_deal && form.flash_deal_price && (
+              <p className="text-sm text-orange-600 mt-1 font-bold">
+                Flash: ₦{Number(form.flash_deal_price || 0).toLocaleString()}
+              </p>
+            )}
             {form.is_digital && (
               <p className="text-xs text-blue-600 mt-1">⚡ Instant Digital Download</p>
             )}

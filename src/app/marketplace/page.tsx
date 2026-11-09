@@ -116,7 +116,9 @@ export default async function MarketplacePage() {
   const { data: products } = merchantIds.length
     ? await admin
         .from('products')
-        .select('id, name, slug, price, compare_at_price, images, merchant_id, created_at')
+        .select(
+          'id, name, slug, price, compare_at_price, images, merchant_id, created_at, is_flash_deal, flash_deal_price, flash_deal_ends_at'
+        )
         .in('merchant_id', merchantIds)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
@@ -155,9 +157,19 @@ export default async function MarketplacePage() {
   }
 
   const all = windowed;
+  const now = Date.now();
+
+  // Only active Flash Deals (discounted price only here)
   const deals = all.filter(function (p: any) {
-    return p.compare_at_price && p.compare_at_price > p.price;
+    if (!p.is_flash_deal || p.flash_deal_price == null) return false;
+    if (Number(p.flash_deal_price) >= Number(p.price)) return false;
+    if (p.flash_deal_ends_at) {
+      const ends = new Date(p.flash_deal_ends_at).getTime();
+      if (ends < now) return false;
+    }
+    return true;
   });
+
   const fresh = all.slice(0, 10);
   const discover = all.slice(4, 34);
 
@@ -309,14 +321,15 @@ export default async function MarketplacePage() {
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
                 {deals.map(function (p: any) {
                   const t = themeFor(p.merchant && p.merchant.theme_id);
-                  const off = Math.round((1 - p.price / p.compare_at_price) * 100);
+                  const dealPrice = Number(p.flash_deal_price);
+                  const normalPrice = Number(p.price);
+                  const off = Math.round((1 - dealPrice / normalPrice) * 100);
                   const img = p.images && p.images[0] ? p.images[0].url : null;
                   const storeSlug = p.merchant && p.merchant.store_slug;
                   return (
                     <a
                       key={p.id}
                       href={productUrl(p.merchant && p.merchant.store_slug, p.slug)}
-                      
                       className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative"
                     >
                       <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
@@ -337,9 +350,9 @@ export default async function MarketplacePage() {
                           className="text-sm font-extrabold"
                           style={{ color: t.variables['--color-primary'] }}
                         >
-                          ₦{Number(p.price).toLocaleString()}{' '}
+                          ₦{dealPrice.toLocaleString()}{' '}
                           <span className="text-[10px] text-gray-400 line-through font-medium">
-                            ₦{Number(p.compare_at_price).toLocaleString()}
+                            ₦{normalPrice.toLocaleString()}
                           </span>
                         </p>
                         <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
@@ -370,7 +383,6 @@ export default async function MarketplacePage() {
                     <a
                       key={p.id}
                       href={productUrl(storeSlug, p.slug)}
-                      
                       className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div className="relative aspect-square bg-gray-100">
@@ -420,7 +432,6 @@ export default async function MarketplacePage() {
                     <a
                       key={'d-' + p.id}
                       href={productUrl(storeSlug, p.slug)}
-                      
                       className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div className="relative aspect-square bg-gray-100">
