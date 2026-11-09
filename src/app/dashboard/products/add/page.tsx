@@ -13,6 +13,10 @@ type ProductImage = {
 type Merchant = {
   id: string;
   merchant_type: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  payment_receiving_status: string | null;
+  is_on_marketplace: boolean;
 };
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -57,6 +61,8 @@ export default function AddProductPage() {
     stock: 0,
     track_inventory: true,
     allow_backorders: false,
+    show_in_storefront: true,
+    show_in_marketplace: true,
     // Flash Deal
     is_flash_deal: false,
     flash_deal_price: '',
@@ -68,6 +74,7 @@ export default function AddProductPage() {
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [merchantType, setMerchantType] = useState<string | null>(null);
+  const [marketplaceEligible, setMarketplaceEligible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +96,7 @@ export default function AddProductPage() {
 
         const { data: merchants, error: merchantError } = await supabase
           .from('merchants')
-          .select('id, merchant_type')
+          .select('id, merchant_type, is_active, is_verified, payment_receiving_status, is_on_marketplace')
           .eq('user_id', user.id);
 
         if (merchantError) throw merchantError;
@@ -101,6 +108,12 @@ export default function AddProductPage() {
 
         if (!cancelled && merchant) {
           setMerchantType(merchant.merchant_type || 'physical');
+          setMarketplaceEligible(
+            merchant.is_active === true &&
+            merchant.is_verified === true &&
+            merchant.payment_receiving_status === 'ACTIVE' &&
+            merchant.is_on_marketplace === true
+          );
         }
 
         const { data: products, error: productsError } = await supabase
@@ -342,7 +355,7 @@ export default function AddProductPage() {
 
       const { data: merchants, error: merchantError } = await supabase
         .from('merchants')
-        .select('id, merchant_type')
+        .select('id, merchant_type, is_active, is_verified, payment_receiving_status, is_on_marketplace')
         .eq('user_id', user.id);
 
       if (merchantError) throw merchantError;
@@ -354,6 +367,16 @@ export default function AddProductPage() {
 
       if (!merchant) {
         throw new Error('No store found. Please create a store first.');
+      }
+
+      const canPublishToMarketplace =
+        merchant.is_active === true &&
+        merchant.is_verified === true &&
+        merchant.payment_receiving_status === 'ACTIVE' &&
+        merchant.is_on_marketplace === true;
+
+      if (form.show_in_marketplace && !canPublishToMarketplace) {
+        throw new Error('Your store must be active, verified, and approved for Marketplace before listing products there.');
       }
 
       const isDigital =
@@ -368,6 +391,8 @@ export default function AddProductPage() {
         slug: generateSlug(productName),
         is_digital: isDigital,
         is_active: true,
+        show_in_storefront: form.show_in_storefront,
+        show_in_marketplace: form.show_in_marketplace && canPublishToMarketplace,
         merchant_id: merchant.id,
         stock: form.track_inventory
           ? Math.max(0, parseInt(form.stock.toString(), 10) || 0)
@@ -578,6 +603,45 @@ export default function AddProductPage() {
           <p className="mt-1 text-xs text-gray-500">
             This is the price shown everywhere except Flash Deals.
           </p>
+        </div>
+
+        {/* Product Visibility */}
+        <div className="rounded-2xl border border-purple-200 bg-purple-50 p-5 space-y-4">
+          <div>
+            <h3 className="font-bold text-gray-900">Where should this product appear?</h3>
+            <p className="mt-1 text-xs text-gray-600">Choose the places where customers can discover this product.</p>
+          </div>
+
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={form.show_in_storefront}
+              onChange={(event) => setForm({ ...form, show_in_storefront: event.target.checked })}
+              className="mt-1 h-5 w-5 rounded text-purple-600"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-gray-900">Show in my Storefront</span>
+              <span className="block text-xs text-gray-500">Customers can find it in your own online store.</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={marketplaceEligible && form.show_in_marketplace}
+              disabled={!marketplaceEligible}
+              onChange={(event) => setForm({ ...form, show_in_marketplace: event.target.checked })}
+              className="mt-1 h-5 w-5 rounded text-purple-600 disabled:opacity-40"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-gray-900">Show in OrizzonCart Marketplace</span>
+              <span className="block text-xs text-gray-500">
+                {marketplaceEligible
+                  ? 'Customers can discover it across the marketplace.'
+                  : 'Unavailable until your store is active, verified, and approved for the marketplace.'}
+              </span>
+            </span>
+          </label>
         </div>
 
         {/* Flash Deal */}
