@@ -152,7 +152,7 @@ export default function AddProductPage() {
       } = await supabase.auth.getUser();
 
       if (authError) {
-        throw new Error(\`Could not verify your login: \${authError.message}\`);
+        throw new Error(`Could not verify your login: ${authError.message}`);
       }
 
       if (!user) {
@@ -164,12 +164,12 @@ export default function AddProductPage() {
 
       for (const file of Array.from(selectedFiles)) {
         if (file.size === 0) {
-          failures.push(\`\${file.name}: The selected file is empty.\`);
+          failures.push(`${file.name}: The selected file is empty.`);
           continue;
         }
 
         if (file.size > MAX_IMAGE_SIZE) {
-          failures.push(\`\${file.name}: The image must be 5 MB or smaller.\`);
+          failures.push(`${file.name}: The image must be 5 MB or smaller.`);
           continue;
         }
 
@@ -177,7 +177,7 @@ export default function AddProductPage() {
 
         if (!extension) {
           failures.push(
-            \`\${file.name}: Unsupported format. Choose JPG, PNG, WebP, GIF or AVIF.\`
+            `${file.name}: Unsupported format. Choose JPG, PNG, WebP, GIF or AVIF.`
           );
           continue;
         }
@@ -186,7 +186,7 @@ export default function AddProductPage() {
 
         // Use a user-specific folder, compatible with user-folder storage rules.
 <<<<<<< HEAD
-        const filePath = \`\${user.id}/\${crypto.randomUUID()}.\${extension}\`;
+        const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
 =======
         const filePath = `\( {user.id}/ \){crypto.randomUUID()}.${extension}`;
 >>>>>>> d5de1a397eab615c30c09e3845409e89d240903d
@@ -206,7 +206,7 @@ export default function AddProductPage() {
             name: uploadError.name,
           });
 
-          failures.push(\`\${file.name}: \${uploadError.message}\`);
+          failures.push(`${file.name}: ${uploadError.message}`);
           continue;
         }
 
@@ -214,7 +214,7 @@ export default function AddProductPage() {
 
         if (!uploadedPath) {
           failures.push(
-            \`\${file.name}: Supabase uploaded no file path. Please try again.\`
+            `${file.name}: Supabase uploaded no file path. Please try again.`
           );
           continue;
         }
@@ -224,7 +224,7 @@ export default function AddProductPage() {
           .getPublicUrl(uploadedPath);
 
         if (!publicUrlData?.publicUrl) {
-          failures.push(\`\${file.name}: Could not create the image URL.\`);
+          failures.push(`${file.name}: Could not create the image URL.`);
           continue;
         }
 
@@ -236,12 +236,12 @@ export default function AddProductPage() {
 
         toast.success(
 <<<<<<< HEAD
-          \`\${uploadedImages.length} photo\${
+          `${uploadedImages.length} photo${
 =======
           `\( {uploadedImages.length} photo \){
 >>>>>>> d5de1a397eab615c30c09e3845409e89d240903d
             uploadedImages.length === 1 ? '' : 's'
-          } uploaded successfully.\`
+          } uploaded successfully.`
         );
       }
 
@@ -253,7 +253,7 @@ export default function AddProductPage() {
         });
 
         if (failures.length > 2) {
-          toast.error(\`\${failures.length - 2} more image(s) could not be uploaded.\`);
+          toast.error(`${failures.length - 2} more image(s) could not be uploaded.`);
         }
       }
 
@@ -267,7 +267,7 @@ export default function AddProductPage() {
           : 'An unexpected error occurred.';
 
       console.error('Image upload error:', error);
-      toast.error(\`Image upload failed: \${message}\`, {
+      toast.error(`Image upload failed: ${message}`, {
         duration: 8000,
       });
     } finally {
@@ -408,7 +408,7 @@ export default function AddProductPage() {
           : 'An unexpected error occurred.';
 
       console.error('Product creation failed:', error);
-      toast.error(\`Failed to create product: \${message}\`);
+      toast.error(`Failed to create product: ${message}`);
     } finally {
       setSaving(false);
     }
@@ -426,7 +426,7 @@ export default function AddProductPage() {
         {/* Product Images */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
-            Product Images {images.length > 0 && \`(\${images.length})\`}
+            Product Images {images.length > 0 && `(${images.length})`}
           </label>
 
           {images.length > 0 && (
@@ -438,7 +438,7 @@ export default function AddProductPage() {
                 >
                   <img
                     src={img.url}
-                    alt={\`Product \${index + 1}\`}
+                    alt={`Product ${index + 1}`}
                     className="absolute inset-0 h-full w-full object-cover"
                     loading="eager"
                     onError={(event) => {
@@ -471,7 +471,7 @@ export default function AddProductPage() {
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    aria-label={\`Remove product image \${index + 1}\`}
+                    aria-label={`Remove product image ${index + 1}`}
                     className="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white"
                   >
                     ×
