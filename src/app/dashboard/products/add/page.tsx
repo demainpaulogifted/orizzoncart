@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -58,6 +57,10 @@ export default function AddProductPage() {
     stock: 0,
     track_inventory: true,
     allow_backorders: false,
+    // Flash Deal
+    is_flash_deal: false,
+    flash_deal_price: '',
+    flash_deal_days: '7',
   });
 
   const [images, setImages] = useState<ProductImage[]>([]);
@@ -182,7 +185,7 @@ export default function AddProductPage() {
         const contentType = IMAGE_TYPES[extension];
 
         // Use a user-specific folder, compatible with user-folder storage rules.
-        const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+        const filePath = `\( {user.id}/ \){crypto.randomUUID()}.${extension}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('product-images')
@@ -228,7 +231,7 @@ export default function AddProductPage() {
         setImages((previous) => [...previous, ...uploadedImages]);
 
         toast.success(
-          `${uploadedImages.length} photo${
+          `\( {uploadedImages.length} photo \){
             uploadedImages.length === 1 ? '' : 's'
           } uploaded successfully.`
         );
@@ -237,7 +240,6 @@ export default function AddProductPage() {
       if (failures.length > 0) {
         console.error('Image upload failure details:', failures);
 
-        // Show the actual reason, not a generic message that hides the error.
         toast.error(failures.slice(0, 2).join(' '), {
           duration: 8000,
         });
@@ -289,6 +291,34 @@ export default function AddProductPage() {
     if (form.price.trim() === '' || !Number.isFinite(price) || price < 0) {
       toast.error('Please enter a valid product price.');
       return;
+    }
+
+    // Flash Deal validation
+    let flashDealPrice: number | null = null;
+    let flashDealEndsAt: string | null = null;
+
+    if (form.is_flash_deal) {
+      flashDealPrice = Number(form.flash_deal_price);
+
+      if (
+        form.flash_deal_price.trim() === '' ||
+        !Number.isFinite(flashDealPrice) ||
+        flashDealPrice < 0
+      ) {
+        toast.error('Please enter a valid Flash Deal price.');
+        return;
+      }
+
+      if (flashDealPrice >= price) {
+        toast.error('Flash Deal price must be lower than the normal price.');
+        return;
+      }
+
+      const days = parseInt(form.flash_deal_days, 10) || 7;
+      const ends = new Date();
+      ends.setDate(ends.getDate() + days);
+      ends.setHours(23, 59, 59, 999);
+      flashDealEndsAt = ends.toISOString();
     }
 
     setSaving(true);
@@ -344,6 +374,10 @@ export default function AddProductPage() {
           : 999999,
         track_inventory: form.track_inventory,
         allow_backorders: form.allow_backorders,
+        // Flash Deal
+        is_flash_deal: form.is_flash_deal,
+        flash_deal_price: form.is_flash_deal ? flashDealPrice : null,
+        flash_deal_ends_at: form.is_flash_deal ? flashDealEndsAt : null,
       };
 
       const { error: insertError } = await supabase
@@ -352,7 +386,11 @@ export default function AddProductPage() {
 
       if (insertError) throw insertError;
 
-      toast.success('Product created successfully!');
+      toast.success(
+        form.is_flash_deal
+          ? 'Product created and added to Flash Deals!'
+          : 'Product created successfully!'
+      );
       router.push('/dashboard/products');
       router.refresh();
     } catch (error: unknown) {
@@ -521,10 +559,10 @@ export default function AddProductPage() {
           />
         </div>
 
-        {/* Price */}
+        {/* Normal Price */}
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Price (₦) *
+            Normal Price (₦) *
           </label>
           <input
             required
@@ -537,6 +575,68 @@ export default function AddProductPage() {
             }
             className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-purple-500"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            This is the price shown everywhere except Flash Deals.
+          </p>
+        </div>
+
+        {/* Flash Deal */}
+        <div className="rounded-2xl border-2 border-orange-200 bg-orange-50 p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_flash_deal"
+              checked={form.is_flash_deal}
+              onChange={(event) =>
+                setForm({ ...form, is_flash_deal: event.target.checked })
+              }
+              className="h-5 w-5 rounded text-orange-600"
+            />
+            <label htmlFor="is_flash_deal" className="font-bold text-gray-900">
+              ⚡ Add to Flash Deals
+            </label>
+          </div>
+
+          {form.is_flash_deal && (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Flash Deal Price (₦) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.flash_deal_price}
+                  onChange={(event) =>
+                    setForm({ ...form, flash_deal_price: event.target.value })
+                  }
+                  placeholder="Must be lower than normal price"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Only shown inside the Flash Deals section.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Deal Duration
+                </label>
+                <select
+                  value={form.flash_deal_days}
+                  onChange={(event) =>
+                    setForm({ ...form, flash_deal_days: event.target.value })
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-3 outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30">30 days</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Description */}
