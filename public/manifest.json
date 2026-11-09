@@ -1,8 +1,8 @@
 {
-  "name": "OrizzonCart — Own Your Sales",
-  "short_name": "OrizzonCart",
-  "description": "Premium multi-tenant e-commerce platform for Nigerian businesses.",
-  "start_url": "/dashboard",
+  "name": "OrizzonCart Marketplace",
+  "short_name": "OrizzonCart Market",
+  "description": "Shop products and limited-time deals from verified OrizzonCart stores.",
+  "start_url": "/marketplace",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

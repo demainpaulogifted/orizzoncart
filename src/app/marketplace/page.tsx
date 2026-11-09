@@ -321,59 +321,6 @@ export default async function MarketplacePage() {
               </div>
             </section>
           )}
-
-          {deals.length > 0 && (
-            <section>
-              <h2 className="font-extrabold text-lg mb-3">⚡ Flash Deals</h2>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-                {deals.map(function (p: any) {
-                  const t = themeFor(p.merchant && p.merchant.theme_id);
-                  const dealPrice = Number(p.flash_deal_price);
-                  const normalPrice = Number(p.price);
-                  const off = Math.round((1 - dealPrice / normalPrice) * 100);
-                  const img = p.images && p.images[0] ? p.images[0].url : null;
-                  const storeSlug = p.merchant && p.merchant.store_slug;
-                  return (
-                    <a
-                      key={p.id}
-                      href={productUrl(p.merchant && p.merchant.store_slug, p.slug)}
-                      className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative"
-                    >
-                      <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                        -{off}%
-                      </span>
-                      <div className="relative aspect-square bg-gray-100">
-                        {img ? (
-                          <img src={img} alt={p.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">
-                            📦
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-2">
-                        <p className="text-xs font-medium line-clamp-1">{p.name}</p>
-                        <p
-                          className="text-sm font-extrabold"
-                          style={{ color: t.variables['--color-primary'] }}
-                        >
-                          ₦{dealPrice.toLocaleString()}{' '}
-                          <span className="text-[10px] text-gray-400 line-through font-medium">
-                            ₦{normalPrice.toLocaleString()}
-                          </span>
-                        </p>
-                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
-                        <p className="text-[10px] text-gray-400 truncate mt-1">
-                          🏪 {p.merchant && p.merchant.store_name}
-                        </p>
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
           <section>
             <h2 className="font-extrabold text-lg mb-3">✨ Fresh For You</h2>
             {fresh.length === 0 ? (
