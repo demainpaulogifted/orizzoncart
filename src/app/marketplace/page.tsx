@@ -170,8 +170,15 @@ export default async function MarketplacePage() {
     return true;
   });
 
-  const fresh = all.slice(0, 10);
-  const discover = all.slice(4, 34);
+  // Keep active Flash Deals out of normal product sections.
+  const regularProducts = all.filter(function (p: any) {
+    return !deals.some(function (deal: any) {
+      return deal.id === p.id;
+    });
+  });
+
+  const fresh = regularProducts.slice(0, 10);
+  const discover = regularProducts.slice(4, 34);
 
   const jsonLd = {
     '@context': 'https://schema.org',
