@@ -185,11 +185,7 @@ export default function AddProductPage() {
         const contentType = IMAGE_TYPES[extension];
 
         // Use a user-specific folder, compatible with user-folder storage rules.
-<<<<<<< HEAD
         const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
-=======
-        const filePath = `\( {user.id}/ \){crypto.randomUUID()}.${extension}`;
->>>>>>> d5de1a397eab615c30c09e3845409e89d240903d
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('product-images')
@@ -235,11 +231,7 @@ export default function AddProductPage() {
         setImages((previous) => [...previous, ...uploadedImages]);
 
         toast.success(
-<<<<<<< HEAD
           `${uploadedImages.length} photo${
-=======
-          `\( {uploadedImages.length} photo \){
->>>>>>> d5de1a397eab615c30c09e3845409e89d240903d
             uploadedImages.length === 1 ? '' : 's'
           } uploaded successfully.`
         );
