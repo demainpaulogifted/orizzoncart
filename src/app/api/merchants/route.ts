@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { MerchantService } from '@/lib/services/merchant.service';
+import { cookies } from 'next/headers';
+import { attributeStoreRegistration, INVITE_COOKIE } from '@/lib/invite';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +21,14 @@ export async function POST(request: NextRequest) {
       store_slug: body.store_slug,
       merchant_type: body.merchant_type || 'physical',
     });
+
+    try {
+      const jar = await cookies();
+      const ref = body.referral_code || jar.get(INVITE_COOKIE)?.value || null;
+      await attributeStoreRegistration(merchant.id, ref);
+    } catch (e) {
+      console.error('Invite attribution failed', e);
+    }
 
     return NextResponse.json({ success: true, merchant }, { status: 201 });
   } catch (error) {

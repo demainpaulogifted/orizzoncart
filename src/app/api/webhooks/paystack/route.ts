@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { sendOrderAlert } from '@/lib/notify';
+import { attributeStoreActivation } from '@/lib/invite';
 
 const DAYS: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
 
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
       await admin.from('platform_transactions').update({ status: 'paid' }).eq('id', tx.id);
 
       if (tx.transaction_type === 'payment_activation') {
+        try { await attributeStoreActivation(tx.merchant_id); } catch (e) { console.error('Invite activation attr failed', e); }
         const { data: m } = await admin.from('merchants').select('paystack_secret_key, flutterwave_secret_key, bank_name, account_number').eq('id', tx.merchant_id).single();
         const hasKeys = !!(m?.paystack_secret_key || m?.flutterwave_secret_key);
         const hasBank = !!(m?.bank_name && m?.account_number);

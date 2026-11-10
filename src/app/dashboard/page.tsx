@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
+import { DashboardInviteBanner } from '@/components/invite/InviteEarnBanners';
 
 type Merchant = {
   id: string;
@@ -242,6 +243,8 @@ export default function DashboardHome() {
           </div>
         )}
       </div>
+
+      <DashboardInviteBanner />
 
       {/* MARKETPLACE 20% - Compact */}
       <div className="bg-white rounded-2xl border p-4">

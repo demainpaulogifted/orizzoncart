@@ -5,6 +5,7 @@ import { THEMES } from '@/lib/themes';
 import { ProductCardAddButton } from '@/components/marketplace/ProductCardAddButton';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
+import { MarketplaceInviteBanner } from '@/components/invite/InviteEarnBanners';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
 import { MarketplaceTour } from '@/components/marketplace/MarketplaceTour';
 import { parseAffinityCookie, rankActiveStores } from '@/lib/active-stores-feed';
@@ -247,6 +248,7 @@ export default async function MarketplacePage() {
           <h1 className="sr-only">
             OrizzonCart Marketplace — Shop Verified Nigerian Stores Online
           </h1>
+          <MarketplaceInviteBanner />
           <FlashSaleBanner />
 
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
