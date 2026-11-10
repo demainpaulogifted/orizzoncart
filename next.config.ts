@@ -14,20 +14,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
     deviceSizes: [360, 480, 640, 768, 1024, 1280],
   },
-  async redirects() {
-    return [
-      {
-        source: '/marketplace',
-        destination: 'https://marketplace.orizzoncart.com.ng',
-        permanent: true,
-      },
-      {
-        source: '/marketplace/:path*',
-        destination: 'https://marketplace.orizzoncart.com.ng/:path*',
-        permanent: true,
-      },
-    ];
-  },
+  // redirects removed: marketplace.orizzoncart.com.ng does not resolve on many mobile networks
 };
 
 export default nextConfig;

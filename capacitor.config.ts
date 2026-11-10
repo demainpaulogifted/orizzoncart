@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'OrizzonCart Marketplace',
   webDir: 'public',
   server: {
-    url: 'https://marketplace.orizzoncart.com.ng',
+    url: 'https://orizzoncart.com.ng/marketplace',
     cleartext: false
   }
 };
