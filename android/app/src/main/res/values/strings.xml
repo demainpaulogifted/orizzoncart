@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OrizzonCart Marketplace</string>
+    <string name="title_activity_main">OrizzonCart Marketplace</string>
+    <string name="package_name">com.orizzoncart.marketplace</string>
+    <string name="custom_url_scheme">com.orizzoncart.marketplace</string>
+</resources>
