@@ -23,7 +23,6 @@ export async function MarketplaceMerchantButton() {
     <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex flex-col gap-2">
       <Link
         href={`/store/${merchant.store_slug}`}
-        target="_blank"
         className="px-4 py-2 bg-white border border-purple-200 text-purple-700 text-xs font-bold rounded-full shadow-lg hover:bg-purple-50"
       >
         👀 My Store

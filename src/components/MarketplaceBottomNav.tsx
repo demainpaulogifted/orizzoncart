@@ -40,8 +40,6 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
 
         <a
           href={isMerchant ? '/dashboard/products/add' : '/signup'}
-          target="_blank"
-          rel="noopener noreferrer"
           className="flex flex-col items-center justify-end pb-1 -mt-5"
         >
           <span className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-2xl font-extrabold flex items-center justify-center shadow-lg border-4 border-white">
@@ -52,8 +50,6 @@ export async function MarketplaceBottomNav({ active }: { active?: string }) {
 
         <a
           href={isMerchant ? '/dashboard' : '/login'}
-          target="_blank"
-          rel="noopener noreferrer"
           className={item('merchant')}
         >
           <span className="text-lg leading-none">🏪</span>

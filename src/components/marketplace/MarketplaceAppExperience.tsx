@@ -9,6 +9,7 @@ export function MarketplaceAppExperience() {
   const [showButton, setShowButton] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [tourDone, setTourDone] = useState<boolean>(() => {
     try {
@@ -19,6 +20,17 @@ export function MarketplaceAppExperience() {
   });
 
   useEffect(() => {
+    const capacitor = (window as any).Capacitor;
+    const nativeApp = Boolean(
+      capacitor?.isNativePlatform?.() ||
+      (capacitor?.getPlatform && capacitor.getPlatform() !== 'web')
+    );
+    setIsNativeApp(nativeApp);
+    if (nativeApp) {
+      setTourDone(true);
+      return;
+    }
+
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
     setIsStandalone(
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -59,7 +71,7 @@ export function MarketplaceAppExperience() {
   }, []);
 
   useEffect(() => {
-    if (!tourDone || isStandalone) return;
+    if (!tourDone || isStandalone || isNativeApp) return;
 
     const seen = sessionStorage.getItem('mkt_app_popup');
     let t: any;
@@ -72,7 +84,7 @@ export function MarketplaceAppExperience() {
     return () => {
       if (t) clearTimeout(t);
     };
-  }, [tourDone, isStandalone]);
+  }, [tourDone, isStandalone, isNativeApp]);
 
   function closePopup() {
     setShowPopup(false);
@@ -130,7 +142,7 @@ export function MarketplaceAppExperience() {
     }
   }
 
-  if (isStandalone) return null;
+  if (isNativeApp || isStandalone) return null;
 
   return (
     <>
