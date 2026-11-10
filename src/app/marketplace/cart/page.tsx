@@ -202,11 +202,6 @@ export default function MarketplaceCartPage() {
     0
   );
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.line_total,
-    0
-  );
-
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
@@ -296,7 +291,7 @@ export default function MarketplaceCartPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-3">
             {groupedCarts.map((merchantCart) => {
               const storeSubtotal = merchantCart.items.reduce(
                 (sum, item) => sum + item.line_total,
@@ -311,16 +306,16 @@ export default function MarketplaceCartPage() {
               return (
                 <section
                   key={merchantCart.merchant_id}
-                  className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+                  className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm"
                 >
-                  <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-4">
+                  <div className="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-3 py-2.5">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-                        <Store size={21} />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+                        <Store size={17} />
                       </div>
 
                       <div className="min-w-0">
-                        <h2 className="truncate font-bold text-gray-900">
+                        <h2 className="truncate text-sm font-bold text-gray-900">
                           {merchantCart.merchant_name}
                         </h2>
                         <p className="text-xs text-gray-500">
@@ -334,7 +329,7 @@ export default function MarketplaceCartPage() {
                       href={getStoreUrl(merchantCart.merchant_slug)}
                       className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-800"
                     >
-                      Visit store
+                      View store & checkout
                       <ExternalLink size={13} />
                     </Link>
                   </div>
@@ -348,9 +343,9 @@ export default function MarketplaceCartPage() {
                       return (
                         <div
                           key={key}
-                          className="flex gap-3 p-4 sm:gap-4"
+                          className="flex gap-2 p-2.5 sm:gap-3"
                         >
-                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-gray-50 sm:h-24 sm:w-24">
+                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50 sm:h-16 sm:w-16">
                             {imageUrl ? (
                               <Image
                                 src={imageUrl}
@@ -367,15 +362,15 @@ export default function MarketplaceCartPage() {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <h3 className="line-clamp-2 text-sm font-semibold text-gray-900">
+                            <h3 className="line-clamp-2 text-xs font-semibold text-gray-900 sm:text-sm">
                               {item.name}
                             </h3>
 
-                            <p className="mt-1 font-bold text-purple-700">
+                            <p className="mt-0.5 text-sm font-bold text-purple-700">
                               {formatNaira(item.price)}
                             </p>
 
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <div className="mt-2 flex flex-wrap items-center gap-1">
                               <div className="inline-flex items-center overflow-hidden rounded-lg border border-gray-200">
                                 <button
                                   type="button"
@@ -386,13 +381,13 @@ export default function MarketplaceCartPage() {
                                     )
                                   }
                                   disabled={isBusy}
-                                  className="p-2 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                                  className="p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                                   aria-label={`Decrease quantity of ${item.name}`}
                                 >
                                   <Minus size={14} />
                                 </button>
 
-                                <span className="min-w-8 text-center text-sm font-semibold">
+                                <span className="min-w-7 text-center text-xs font-semibold">
                                   {item.quantity}
                                 </span>
 
@@ -416,7 +411,7 @@ export default function MarketplaceCartPage() {
                                 type="button"
                                 onClick={() => void removeItem(item)}
                                 disabled={isBusy}
-                                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                               >
                                 {isBusy ? (
                                   <LoaderCircle
@@ -432,7 +427,7 @@ export default function MarketplaceCartPage() {
                           </div>
 
                           <div className="shrink-0 text-right">
-                            <p className="text-sm font-bold text-gray-900">
+                            <p className="text-xs font-bold text-gray-900">
                               {formatNaira(item.line_total)}
                             </p>
                           </div>
@@ -441,7 +436,7 @@ export default function MarketplaceCartPage() {
                     })}
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-3">
+                  <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-3 py-2">
                     <span className="text-sm text-gray-600">
                       Store subtotal
                     </span>
@@ -453,29 +448,24 @@ export default function MarketplaceCartPage() {
               );
             })}
 
-            <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Cart subtotal
-                  </h2>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Delivery fees and final totals may vary by store.
-                  </p>
-                </div>
+            <div className="rounded-xl border border-purple-100 bg-purple-50 p-3">
+              <h2 className="text-sm font-bold text-purple-900">
+                Checkout separately with each store
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-gray-700">
+                Select “View store & checkout” above to see the store's
+                information, delivery details and payment options, then
+                complete your order directly in that store. There is no
+                combined checkout for different stores.
+              </p>
+            </div>
 
-                <p className="text-xl font-extrabold text-purple-700">
-                  {formatNaira(subtotal)}
-                </p>
-              </div>
-
-              <Link
-                href="/marketplace"
-                className="mt-5 flex w-full items-center justify-center rounded-xl border border-purple-200 bg-white px-5 py-3 font-semibold text-purple-700 transition hover:bg-purple-50"
-              >
-                Continue Shopping
-              </Link>
-            </section>
+            <Link
+              href="/marketplace"
+              className="flex w-full items-center justify-center rounded-xl border border-purple-200 bg-white px-5 py-3 text-sm font-semibold text-purple-700"
+            >
+              Continue Shopping
+            </Link>
           </div>
         )}
       </main>
