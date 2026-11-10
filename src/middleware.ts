@@ -20,6 +20,27 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isMarketplaceHost = MARKETPLACE_HOSTS.has(host);
+
+  // Invite deep link: /invite/{code} → cookie + signup (except join/dashboard)
+  {
+    const inviteMatch = pathname.match(/^\/invite\/([a-z0-9]+)$/i);
+    if (inviteMatch) {
+      const code = inviteMatch[1].toLowerCase();
+      if (code !== 'join' && code !== 'dashboard') {
+        const url = req.nextUrl.clone();
+        url.pathname = '/signup';
+        url.searchParams.set('ref', code);
+        const res = NextResponse.redirect(url);
+        res.cookies.set('invite_ref', code, {
+          path: '/',
+          maxAge: 60 * 60 * 24 * 30,
+          sameSite: 'lax',
+        });
+        return res;
+      }
+    }
+  }
+
   const isMarketplacePath = pathname.startsWith('/marketplace') || isMarketplaceHost;
 
   requestHeaders.set(
