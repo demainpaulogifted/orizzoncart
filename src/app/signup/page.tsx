@@ -9,6 +9,7 @@ import { MarketplaceReturnBanner } from '@/components/marketplace/MarketplaceRet
 export default function SignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({ full_name: '', email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -17,13 +18,13 @@ export default function SignupPage() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase.auth.signUp({
-        email: form.email,
+        email: form.email.trim().toLowerCase(),
         password: form.password,
-        options: { data: { full_name: form.full_name } },
+        options: { data: { full_name: form.full_name.trim() } },
       });
       if (error) throw error;
       if (data.session) {
-        toast.success('Account created! Let\'s set up your store.');
+        toast.success("Merchant account created! Let's set up your store.");
         router.push('/onboarding');
       } else {
         toast.success('Account created! Check your email to confirm, then log in.');
@@ -39,28 +40,45 @@ export default function SignupPage() {
   return (
     <>
       <MarketplaceReturnBanner />
-
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100 px-4 py-12">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-extrabold">Create your account</h1>
-            <p className="text-gray-600 mt-2 text-sm">Free forever to launch. Pay only when you activate selling.</p>
+            <h1 className="text-2xl font-extrabold">Create your merchant account</h1>
+            <p className="text-gray-600 mt-2 text-sm">Launch your OrizzonCart store. Pay only when you activate selling.</p>
           </div>
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Paul Ogu" />
+              <input required value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                autoComplete="name"
+                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                placeholder="Your full name" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="you@example.com" />
+              <input required type="email" autoComplete="email" value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                placeholder="you@example.com" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input required type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" placeholder="Minimum 6 characters" />
+              <div className="relative">
+                <input required type={showPassword ? 'text' : 'password'} minLength={6}
+                  autoComplete="new-password" value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="w-full px-3 py-3 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+                  placeholder="Minimum 6 characters" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-purple-600">
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
-            <button type="submit" disabled={loading} className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 disabled:opacity-50">
-              {loading ? 'Creating account...' : 'Create Free Account'}
+            <button type="submit" disabled={loading}
+              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 disabled:opacity-50">
+              {loading ? 'Creating account...' : 'Create Merchant Account'}
             </button>
           </form>
           <p className="text-center text-sm text-gray-600 mt-6">

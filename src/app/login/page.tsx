@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -18,25 +19,31 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
       if (error) throw error;
-      if (!data.user) throw new Error('Authentication failed');
+      if (!data.user) throw new Error('Authentication failed. Please try again.');
 
-      const { data: merchants } = await supabase
+      const { data: merchant, error: merchantError } = await supabase
         .from('merchants')
-        .select('id, store_slug')
+        .select('id')
         .eq('user_id', data.user.id)
-        .limit(1);
+        .maybeSingle();
 
-      if (merchants && merchants.length > 0) {
-        router.push('/dashboard');
+      if (merchantError) throw merchantError;
+
+      if (merchant) {
+        router.replace('/dashboard');
       } else {
-        router.push('/onboarding');
+        router.replace('/onboarding');
       }
+      router.refresh();
     } catch (err: any) {
-      console.error('Login error:', err);
-      toast.error(err.message || 'Failed to log in. Please check your credentials.');
+      console.error('Merchant login error:', err);
+      toast.error(err.message || 'Unable to sign in. Check your email and password.');
     } finally {
       setLoading(false);
     }
@@ -44,9 +51,7 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* Escape hatch for shoppers who accidentally landed on the merchant login page */}
       <MarketplaceReturnBanner />
-      
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border p-8 space-y-6">
           <div className="text-center space-y-2">
@@ -58,23 +63,30 @@ export default function LoginPage() {
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Email Address</label>
               <input
-                required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                required type="email" autoComplete="email"
+                value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
               />
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">Password</label>
-              <input
-                required type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-              />
+              <div className="relative">
+                <input
+                  required type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 pr-20 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-purple-600">
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
-            <button
-              type="submit" disabled={loading}
-              className="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full bg-purple-600 text-white font-bold py-3.5 rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200">
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
@@ -84,9 +96,9 @@ export default function LoginPage() {
               Forgot your password?
             </Link>
             <p className="text-sm text-gray-500">
-              Don't have an account?{' '}
+              Need a merchant account?{' '}
               <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-700">
-                Sign up free
+                Sign up
               </Link>
             </p>
           </div>
