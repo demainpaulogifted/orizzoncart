@@ -177,10 +177,9 @@ return (
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {products.map((p) => (
-            <a
+            <Link
               key={p.id}
-              href={`https://${m.store_slug}.orizzoncart.com.ng/p/${p.slug || p.id}`}
-              target="_blank"
+              href={`/marketplace/p/${encodeURIComponent(p.slug)}`}
               className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
             >
               <div className="aspect-square bg-gray-100">
@@ -203,7 +202,7 @@ return (
                   ₦{Number(p.price).toLocaleString()}
                 </p>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>
