@@ -4,6 +4,7 @@ const PLATFORM_PATHS = [
   '/dashboard', '/admin', '/api', '/login', '/signup', '/onboarding',
   '/forgot-password', '/reset-password', '/checkout', '/payment',
   '/track-order', '/about', '/contact', '/privacy', '/terms', '/d/',
+  '/invite',
   '/icon.png', '/apple-icon.png', '/manifest.webmanifest', '/manifest.json',
   '/sw.js', '/robots.txt', '/sitemap.xml',
 ];
