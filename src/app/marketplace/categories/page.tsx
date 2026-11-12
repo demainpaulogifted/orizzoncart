@@ -1,3 +1,5 @@
+import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
+import { insertShuffledFeedAds } from '@/lib/adsense-feed';
 import Link from 'next/link'
 import { ProductCardAddButton } from '@/components/marketplace/ProductCardAddButton';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
@@ -200,7 +202,11 @@ export default async function ShopPage({
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {list.map((p: any) => {
+            {insertShuffledFeedAds(list, 'shop:' + String(cat || '') + ':' + String(q || '') + ':' + new Date().toISOString().slice(0, 10)).map((entry: any) => {
+            if (entry.type === 'ad') {
+              return <AdSenseFeedCard key={entry.key} className="min-h-[220px]" />;
+            }
+            const p: any = entry.product;
               const merchant = byId.get(p.merchant_id);
               const t = themeFor(merchant ? merchant.theme_id : null);
               const img = p.images && p.images[0] ? p.images[0].url : null;

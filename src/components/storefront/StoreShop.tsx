@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+
+
+import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';import { insertShuffledFeedAds } from '@/lib/adsense-feed';import { useState, useMemo } from 'react';
 import ProductCard from './ProductCard';
 
 // ⚠️ REPLACE THIS WITH YOUR ACTUAL MONETAG IN-PAGE ZONE ID
@@ -65,15 +67,21 @@ export function StoreShop({ products, merchant, isShowcaseMode = false }: StoreS
 
       {/* Product Grid with In-Content Ads */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredProducts.map((product: any, index: number) => (
-          <div key={product.id}>
-            <ProductCard
-              product={{ ...product, store_slug: storeSlug }}
-              isShowcaseMode={isShowcaseMode}
-            />
-
-          </div>
-        ))}
+        {insertShuffledFeedAds(
+          filteredProducts,
+          'store:' + storeSlug + ':' + category + ':' + search + ':' + new Date().toISOString().slice(0, 10)
+        ).map((entry: any) =>
+          entry.type === 'ad' ? (
+            <AdSenseFeedCard key={entry.key} className="min-h-[220px]" />
+          ) : (
+            <div key={entry.key}>
+              <ProductCard
+                product={{ ...entry.product, store_slug: storeSlug }}
+                isShowcaseMode={isShowcaseMode}
+              />
+            </div>
+          )
+        )}
       </div>
       
       {filteredProducts.length === 0 && (

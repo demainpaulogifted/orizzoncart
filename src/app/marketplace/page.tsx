@@ -1,3 +1,5 @@
+import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
+import { insertShuffledFeedAds } from '@/lib/adsense-feed';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
@@ -331,7 +333,11 @@ export default async function MarketplacePage() {
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-                {fresh.map(function (p: any) {
+                {insertShuffledFeedAds(fresh, 'home-fresh:' + new Date().toISOString().slice(0, 10)).map(function (entry: any) {
+        if (entry.type === 'ad') {
+          return <AdSenseFeedCard key={entry.key} className="shrink-0 w-36 min-h-[190px]" />;
+        }
+        const p: any = entry.product;
                   const t = themeFor(p.merchant && p.merchant.theme_id);
                   const img = p.images && p.images[0] ? p.images[0].url : null;
                   const storeSlug = p.merchant && p.merchant.store_slug;
@@ -380,7 +386,11 @@ export default async function MarketplacePage() {
             <section>
               <h2 className="font-extrabold text-lg mb-3">🧭 Discover</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {discover.map(function (p: any) {
+                {insertShuffledFeedAds(discover, 'home-discover:' + new Date().toISOString().slice(0, 10)).map(function (entry: any) {
+        if (entry.type === 'ad') {
+          return <AdSenseFeedCard key={entry.key} className="min-h-[220px]" />;
+        }
+        const p: any = entry.product;
                   const t = themeFor(p.merchant && p.merchant.theme_id);
                   const img = p.images && p.images[0] ? p.images[0].url : null;
                   const storeSlug = p.merchant && p.merchant.store_slug;

@@ -140,6 +140,11 @@ export default async function RootLayout({
     .toLowerCase();
 
   const isMarketplace = host === 'marketplace.orizzoncart.com.ng';
+  const isMerchantStorefront =
+    host.endsWith('.orizzoncart.com.ng') &&
+    host !== 'www.orizzoncart.com.ng' &&
+    host !== 'marketplace.orizzoncart.com.ng' &&
+    !host.startsWith('admin.');
 
   return (
     <html lang="en">
@@ -148,7 +153,7 @@ export default async function RootLayout({
       </head>
 
       <body className="antialiased">
-        {isMarketplace && (
+        {(isMarketplace || isMerchantStorefront) && (
           <Script
             id="google-adsense"
             async
