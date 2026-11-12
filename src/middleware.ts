@@ -66,7 +66,7 @@ export function middleware(req: NextRequest) {
       (p) => pathname === p || pathname.startsWith(p.endsWith('/') ? p : `${p}/`)
     );
 
-    if (!isPlatformPath && !pathname.startsWith('/marketplace') && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
+    if (!isPlatformPath && pathname !== '/ads.txt' && !pathname.startsWith('/marketplace') && !pathname.startsWith('/api') && !pathname.startsWith('/_next')) {
       url.pathname = `/marketplace${pathname === '/' ? '' : pathname}`;
       return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
