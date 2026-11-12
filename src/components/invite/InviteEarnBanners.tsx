@@ -7,15 +7,14 @@ import { INVITE_EARN_ENABLED } from '@/lib/invite';
 export function MarketplaceInviteBanner() {
   if (!INVITE_EARN_ENABLED) return null;
   return (
-    <p className="text-center text-xs text-gray-500">
+    <div className="flex justify-center">
       <Link
         href="/invite/join"
-        className="font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900"
+        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100"
       >
-        Invite &amp; Earn ₦500
+        Invite merchants <span className="text-amber-600">· Earn ₦500</span> →
       </Link>
-      <span className="text-gray-400"> · recruit merchants</span>
-    </p>
+    </div>
   );
 }
 

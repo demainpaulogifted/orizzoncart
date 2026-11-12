@@ -224,13 +224,13 @@ export default async function MarketplacePage() {
       <MarketplaceTour />
 
       <div className="min-h-screen bg-gray-50 pb-24">
-        <header className="sticky top-0 z-40 bg-gradient-to-r from-purple-700 to-blue-700 text-white shadow-md">
-          <div className="max-w-3xl mx-auto px-4 py-3 space-y-2">
+        <header className="sticky top-0 z-50 bg-gradient-to-r from-purple-700 to-blue-700 text-white shadow-md">
+          <div className="max-w-3xl mx-auto px-3 py-2 space-y-1.5">
             <div className="flex items-center justify-between">
-              <Link href="/marketplace" className="font-extrabold text-lg tracking-tight">
+              <Link href="/marketplace" className="font-extrabold text-base tracking-tight">
                 Orizzon<span className="text-yellow-300">Cart</span> Marketplace
               </Link>
-              <span className="text-[10px] bg-white/15 rounded-full px-2 py-1 font-semibold">
+              <span className="text-[9px] bg-white/15 rounded-full px-2 py-1 font-semibold">
                 🇳🇬 Verified sellers only
               </span>
             </div>
@@ -238,13 +238,13 @@ export default async function MarketplacePage() {
               <input
                 name="q"
                 placeholder="Search products, stores, categories…"
-                className="w-full rounded-full px-4 py-2.5 text-sm text-gray-900 bg-white shadow-inner outline-none"
+                className="w-full rounded-full px-4 py-2 text-sm text-gray-900 bg-white shadow-inner outline-none"
               />
             </form>
           </div>
         </header>
 
-        <main className="max-w-3xl mx-auto px-4 space-y-6 pt-4">
+        <main className="max-w-3xl mx-auto px-4 space-y-4 pt-3">
           <h1 className="sr-only">
             OrizzonCart Marketplace — Shop Verified Nigerian Stores Online
           </h1>
@@ -283,23 +283,23 @@ export default async function MarketplacePage() {
                     <Link
                       key={m.id}
                       href={'/marketplace/store/' + m.store_slug}
-                      className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
+                      className="shrink-0 w-36 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div
-                        className="h-2"
+                        className="h-1.5"
                         style={{ backgroundColor: t.variables['--color-primary'] }}
                       />
-                      <div className="p-3">
-                        <div className="flex items-center gap-2">
+                      <div className="p-2">
+                        <div className="flex items-center gap-1.5">
                           {m.logo_url ? (
                             <img
                               src={m.logo_url}
-                              className="w-8 h-8 rounded-full object-cover"
+                              className="w-7 h-7 rounded-full object-cover"
                               alt=""
                             />
                           ) : (
                             <span
-                              className="w-8 h-8 rounded-full text-white text-xs font-extrabold flex items-center justify-center"
+                              className="w-7 h-7 rounded-full text-white text-[10px] font-extrabold flex items-center justify-center"
                               style={{ backgroundColor: t.variables['--color-primary'] }}
                             >
                               {(m.store_name && m.store_name[0]
@@ -308,10 +308,10 @@ export default async function MarketplacePage() {
                               ).toUpperCase()}
                             </span>
                           )}
-                          <p className="text-xs font-bold truncate">{m.store_name}</p>
+                          <p className="text-[11px] font-bold truncate">{m.store_name}</p>
                         </div>
                         <p
-                          className="mt-2 text-[10px] font-bold text-center rounded-full py-1 text-white"
+                          className="mt-1.5 text-[9px] font-bold text-center rounded-full py-1 text-white"
                           style={{ backgroundColor: t.variables['--color-primary'] }}
                         >
                           View Profile →
@@ -339,7 +339,7 @@ export default async function MarketplacePage() {
                     <a
                       key={p.id}
                       href={productUrl(storeSlug, p.slug)}
-                      className="shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
+                      className="shrink-0 w-36 bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md"
                     >
                       <div className="relative aspect-square bg-gray-100">
                         {img ? (
