@@ -1,6 +1,6 @@
-
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
+import Script from 'next/script';
 import './globals.css';
 import { Toaster } from 'sonner';
 
@@ -11,7 +11,6 @@ const SITE_URL = (
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
 
-  // Google Merchant Center website verification
   verification: {
     google: '6s738DDvwCSuDEBbie8C5Uca7Uo99RKTy3cIy6ocuO8',
   },
@@ -80,6 +79,7 @@ export const metadata: Metadata = {
 
   other: {
     monetag: '383b1b3cac9bec94eba8e7baaca0cf22',
+    'google-adsense-account': 'ca-pub-3957914903160068',
   },
 };
 
@@ -131,8 +131,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const requestHeaders = await headers();
   const appManifest =
-    (await headers()).get('x-app-manifest') || '/manifest.json';
+    requestHeaders.get('x-app-manifest') || '/manifest.json';
+
+  const host = (requestHeaders.get('host') || '')
+    .split(':')[0]
+    .toLowerCase();
+
+  const isMarketplace = host === 'marketplace.orizzoncart.com.ng';
 
   return (
     <html lang="en">
@@ -141,6 +148,16 @@ export default async function RootLayout({
       </head>
 
       <body className="antialiased">
+        {isMarketplace && (
+          <Script
+            id="google-adsense"
+            async
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3957914903160068"
+          />
+        )}
+
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
