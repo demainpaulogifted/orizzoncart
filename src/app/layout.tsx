@@ -12,7 +12,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
 
   verification: {
-    google: '6s738DDvwCSuDEBbie8C5Uca7Uo99RKTy3cIy6ocuO8',
+    google: [
+      '6s738DDvwCSuDEBbie8C5Uca7Uo99RKTy3cIy6ocuO8',
+      '92mO2JeFRDsbhFyushVRZ161Gqm7kU6PLJLtWenv7j0',
+    ],
   },
 
   title: {
