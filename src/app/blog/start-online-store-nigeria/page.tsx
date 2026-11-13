@@ -2,8 +2,8 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'How to Start an Online Store in Nigeria in 2024 | OrizzonCart',
-  description: 'The ultimate step-by-step guide to launching a profitable e-commerce business in Nigeria. Learn how to build your store, accept payments, and scale with OrizzonCart.',
+  title: 'How to Start an Online Store in Nigeria | OrizzonCart',
+  description: 'Learn how to start an online store in Nigeria, add products, accept payments, attract customers and grow your business with OrizzonCart.',
 };
 
 export default function StartOnlineStoreGuide() {
@@ -16,7 +16,7 @@ export default function StartOnlineStoreGuide() {
             The Ultimate E-commerce Guide
           </span>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 mb-6">
-            How to Start an Online Store in Nigeria in 2024
+            How to Start an Online Store in Nigeria
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Stop losing sales to "How much?" DMs. Here is the complete, step-by-step blueprint to building a professional, automated online store that accepts payments and scales your business.
