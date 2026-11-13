@@ -5,6 +5,8 @@ import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottom
 import { TrackProductView } from '@/components/TrackProductView';
 import { MarketplaceAddToCartButton } from '@/components/marketplace/MarketplaceAddToCartButton';
 import { ProductImageGallery } from '@/components/marketplace/ProductImageGallery';
+import { insertShuffledFeedAds } from '@/lib/adsense-feed';
+import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,7 +96,14 @@ export default async function MarketplaceProductPage({
         <section>
           <h2 className="font-extrabold text-lg mb-3">More to explore</h2>
           <div className="grid grid-cols-2 gap-3">
-            {(more || []).map((p: any) => {
+            {insertShuffledFeedAds(
+              more || [],
+              'more-to-explore:' + slug + ':' + new Date().toISOString().slice(0, 10)
+            ).map((entry: any) => {
+              if (entry.type === 'ad') {
+                return <AdSenseFeedCard key={entry.key} className="min-h-[220px]" />;
+              }
+              const p: any = entry.product;
               const pimg = p.images && p.images[0] ? (p.images[0].url || p.images[0]) : null;
               const storeName = p.merchants?.store_name || 'Store';
               return (

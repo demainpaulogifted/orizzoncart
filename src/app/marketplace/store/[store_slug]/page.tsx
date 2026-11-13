@@ -3,6 +3,8 @@ import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { TrackStoreView } from '@/components/marketplace/TrackStoreView';
 import { StoreReviews, Stars } from '@/components/reviews/StoreReviews';
+import { insertShuffledFeedAds } from '@/lib/adsense-feed';
+import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -176,34 +178,45 @@ return (
         </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {products.map((p) => (
-            <Link
-              key={p.id}
-              href={`/marketplace/p/${encodeURIComponent(p.slug)}`}
-              className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
-            >
-              <div className="aspect-square bg-gray-100">
-                {p.images?.[0]?.url ? (
-                  <img
-                    src={p.images[0].url}
-                    alt={p.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">
-                    📦
-                  </div>
-                )}
-              </div>
+          {insertShuffledFeedAds(
+            products,
+            'marketplace-store:' + store_slug + ':' + new Date().toISOString().slice(0, 10)
+          ).map((entry: any) => {
+            if (entry.type === 'ad') {
+              return <AdSenseFeedCard key={entry.key} className="min-h-[220px]" />;
+            }
 
-              <div className="p-2">
-                <p className="text-xs font-medium line-clamp-1">{p.name}</p>
-                <p className="text-sm font-extrabold text-purple-700">
-                  ₦{Number(p.price).toLocaleString()}
-                </p>
-              </div>
-            </Link>
-          ))}
+            const p: any = entry.product;
+
+            return (
+              <Link
+                key={entry.key}
+                href={`/marketplace/p/${encodeURIComponent(p.slug)}`}
+                className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm"
+              >
+                <div className="aspect-square bg-gray-100">
+                  {p.images?.[0]?.url ? (
+                    <img
+                      src={p.images[0].url}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl">
+                      📦
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-2">
+                  <p className="text-xs font-medium line-clamp-1">{p.name}</p>
+                  <p className="text-sm font-extrabold text-purple-700">
+                    ₦{Number(p.price).toLocaleString()}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     ) : (
