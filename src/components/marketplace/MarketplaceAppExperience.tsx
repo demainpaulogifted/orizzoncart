@@ -28,6 +28,10 @@ export function MarketplaceAppExperience() {
 
     checkInstalled();
 
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(console.error);
+    }
+
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as BeforeInstallPromptEvent);
@@ -51,7 +55,6 @@ export function MarketplaceAppExperience() {
     if (!installPrompt) return;
 
     await installPrompt.prompt();
-
     const choice = await installPrompt.userChoice;
 
     if (choice.outcome === 'accepted') {
@@ -59,7 +62,7 @@ export function MarketplaceAppExperience() {
     }
   };
 
-  if (!isAndroid || isInstalled || !installPrompt) return null;
+  if (!isAndroid || isInstalled) return null;
 
   return (
     <button
