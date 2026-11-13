@@ -10,6 +10,8 @@ import ConfirmWithSeller from '@/components/storefront/ConfirmWithSeller';
 import ReviewList from '@/components/reviews/ReviewList';
 import ReviewForm from '@/components/reviews/ReviewForm';
 import { addSharedCartItem } from '@/lib/marketplace-cart-client';
+import { insertShuffledFeedAds } from '@/lib/adsense-feed';
+import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
 
 interface ProductDetailClientProps {
   product: any;
@@ -594,13 +596,28 @@ export default function ProductDetailClient({
             </h2>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-              {relatedProducts.map((relatedProduct: any) => (
-                <ProductCard
-                  key={relatedProduct.id}
-                  product={{ ...relatedProduct, store_slug: storeSlug }}
-                  isShowcaseMode={false}
-                />
-              ))}
+              {insertShuffledFeedAds(
+                relatedProducts,
+                'merchant-you-might-also-like:' +
+                  storeSlug +
+                  ':' +
+                  productId +
+                  ':' +
+                  new Date().toISOString().slice(0, 10)
+              ).map((entry) =>
+                entry.type === 'ad' ? (
+                  <AdSenseFeedCard
+                    key={entry.key}
+                    className="min-h-[220px]"
+                  />
+                ) : (
+                  <ProductCard
+                    key={entry.key}
+                    product={{ ...entry.product, store_slug: storeSlug }}
+                    isShowcaseMode={false}
+                  />
+                )
+              )}
             </div>
           </div>
         )}
