@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 const POLICY_URL =
-  'https://marketplace.orizzoncart.com.ng/return-policy';
+  'https://marketplace.orizzoncart.com.ng/marketplace/return-policy';
 
 export const metadata: Metadata = {
   title: 'Returns, Refunds & Exchanges | OrizzonCart Marketplace',
