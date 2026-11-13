@@ -142,6 +142,8 @@ export default async function RootLayout({
     .split(':')[0]
     .toLowerCase();
 
+  const isMainSite =
+    host === 'orizzoncart.com.ng' || host === 'www.orizzoncart.com.ng';
   const isMarketplace = host === 'marketplace.orizzoncart.com.ng';
   const isMerchantStorefront =
     host.endsWith('.orizzoncart.com.ng') &&
@@ -156,7 +158,7 @@ export default async function RootLayout({
       </head>
 
       <body className="antialiased">
-        {(isMarketplace || isMerchantStorefront) && (
+        {(isMainSite || isMarketplace || isMerchantStorefront) && (
           <Script
             id="google-adsense"
             async

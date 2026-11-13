@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import AdSenseInArticle from '@/components/ads/AdSenseInArticle';
 
 export const metadata: Metadata = {
   title: 'How to Start an Online Store in Nigeria | OrizzonCart',
@@ -123,7 +124,9 @@ export default function StartOnlineStoreGuide() {
         </div>
 
         {/* Phase 3 */}
-        <section id="phase-3" className="mb-16">
+                  <AdSenseInArticle />
+
+<section id="phase-3" className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Phase 3: Building Your Store (The OrizzonCart Way)</h2>
           <div className="space-y-4 text-gray-700 text-lg leading-relaxed">
             <p>

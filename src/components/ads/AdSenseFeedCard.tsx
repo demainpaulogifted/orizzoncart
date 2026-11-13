@@ -32,7 +32,7 @@ export default function AdSenseFeedCard({
   return (
     <div
       className={`min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white p-2 ${className}`}
-      aria-label="Sponsored advertisement"
+      aria-label="Advertisement"
     >
       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
         Sponsored

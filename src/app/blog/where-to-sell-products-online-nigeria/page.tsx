@@ -1,6 +1,7 @@
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import AdSenseInArticle from '@/components/ads/AdSenseInArticle';
 
 export const metadata: Metadata = {
   title: 'Where to Sell Your Products Online in Nigeria (2026 Guide) | OrizzonCart',
@@ -503,6 +504,8 @@ export default function WhereToSellProductsGuide() {
               them as a route for Nigerian businesses to sell.
             </p>
           </section>
+
+          <AdSenseInArticle />
 
           <section className="mt-16">
             <p className="text-xs font-extrabold uppercase tracking-[.2em] text-violet-700">

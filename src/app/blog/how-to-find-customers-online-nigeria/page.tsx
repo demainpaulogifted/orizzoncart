@@ -1,6 +1,7 @@
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import AdSenseInArticle from '@/components/ads/AdSenseInArticle';
 
 const SITE_URL = 'https://orizzoncart.com.ng';
 const ARTICLE_URL = `${SITE_URL}/blog/how-to-find-customers-online-nigeria`;
@@ -415,6 +416,8 @@ export default function HowToFindCustomersOnlineNigeria() {
               ))}
             </div>
           </section>
+
+          <AdSenseInArticle />
 
           {/* SOCIAL PLATFORMS */}
           <section className="pt-16">

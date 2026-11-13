@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
+import AdSenseInArticle from '@/components/ads/AdSenseInArticle';
 
 export const metadata: Metadata = {
   title: 'How to Turn Your WhatsApp Business into a Fully Automated Store | OrizzonCart',
@@ -236,7 +237,9 @@ export default function WhatsAppAutomatedStoreGuide() {
         </section>
 
         {/* Step 1 */}
-        <section id="step-1" className="mb-16">
+                  <AdSenseInArticle />
+
+<section id="step-1" className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">
             Step 1: Set Up WhatsApp Business Properly
           </h2>
