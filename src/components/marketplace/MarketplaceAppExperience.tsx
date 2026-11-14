@@ -104,12 +104,11 @@ export function MarketplaceAppExperience() {
       return;
     }
 
-    // Fallback: direct user to browser install or APK
+    // No PWA prompt available — guide the user only (no APK)
     if (isIOS) {
       toast.info('On iPhone: tap Share → Add to Home Screen');
     } else {
-      // Try the APK as last resort for Android when PWA prompt is missing
-      window.location.href = '/marketplace/download-app';
+      toast.info('Use the browser menu (⋮) → Install app / Add to Home screen');
     }
   }
 
