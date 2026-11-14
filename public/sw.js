@@ -1,4 +1,4 @@
-const CACHE = 'orizzoncart-marketplace-v2';
+const CACHE = 'orizzoncart-marketplace-v3';
 const SHELL = ['/', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
