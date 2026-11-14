@@ -163,8 +163,10 @@ export default async function RootLayout({
               strategy="beforeInteractive"
             >
               {`window.dataLayer = window.dataLayer || [];
-function gtag(){window.dataLayer.push(arguments);}
-gtag('js', new Date());`}
+window.dataLayer.push({
+  'gtm.start': new Date().getTime(),
+  event: 'gtm.js'
+});`}
             </Script>
 
             <Script
