@@ -11,89 +11,70 @@ export function MarketplaceAppExperience() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
   const [installing, setInstalling] = useState(false);
-  const [tourDone, setTourDone] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('orz_market_tour_done') === '1';
-    } catch {
-      return true;
-    }
-  });
 
   useEffect(() => {
     const capacitor = (window as any).Capacitor;
     const nativeApp = Boolean(
       capacitor?.isNativePlatform?.() ||
-      (capacitor?.getPlatform && capacitor.getPlatform() !== 'web')
+        (capacitor?.getPlatform && capacitor.getPlatform() !== 'web')
     );
     setIsNativeApp(nativeApp);
-    if (nativeApp) {
-      setTourDone(true);
-      return;
+    if (nativeApp) return;
+
+    // Force marketplace manifest (this is what made it work before)
+    const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+    if (link) {
+      link.setAttribute('href', '/manifest-marketplace.json');
+    } else {
+      const l = document.createElement('link');
+      l.rel = 'manifest';
+      l.href = '/manifest-marketplace.json';
+      document.head.appendChild(l);
     }
 
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
     setIsStandalone(
       window.matchMedia('(display-mode: standalone)').matches ||
-        // @ts-expect-error iOS Safari
+        // @ts-expect-error iOS
         window.navigator.standalone === true
     );
 
-    // Register service worker — required for Chrome install prompt
+    // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/sw.js', { scope: '/' })
         .catch((err) => console.warn('SW register failed:', err));
     }
 
     const onPrompt = (e: any) => {
       e.preventDefault();
       setDeferred(e);
+      // Show the popup as soon as the browser says we can install
+      setShowPopup(true);
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
 
-    const onTourDone = () => setTourDone(true);
-    window.addEventListener('orz-market-tour-done', onTourDone);
-
-    // From dashboard: /marketplace?install=1
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('install') === '1') {
-      setTourDone(true);
-      setShowPopup(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('install');
-      window.history.replaceState({}, '', url.pathname + url.search);
-    }
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
-      window.removeEventListener('orz-market-tour-done', onTourDone);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!tourDone || isStandalone || isNativeApp) return;
-
+    // Fallback popup after a few seconds if the event never fires
     const seen = sessionStorage.getItem('mkt_app_popup');
     let t: any;
     if (!seen) {
-      t = setTimeout(() => setShowPopup(true), 2500);
+      t = setTimeout(() => setShowPopup(true), 4000);
     } else {
       setShowButton(true);
     }
 
     return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
       if (t) clearTimeout(t);
     };
-  }, [tourDone, isStandalone, isNativeApp]);
+  }, []);
 
   function closePopup() {
     setShowPopup(false);
     setShowButton(true);
     try {
       sessionStorage.setItem('mkt_app_popup', '1');
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   async function install() {
@@ -103,7 +84,6 @@ export function MarketplaceAppExperience() {
       return;
     }
 
-    // Native install prompt available (Chrome / Edge / Android)
     if (deferred) {
       setInstalling(true);
       try {
@@ -124,21 +104,12 @@ export function MarketplaceAppExperience() {
       return;
     }
 
-    // No prompt yet — try re-registering SW, then guide user
-    if ('serviceWorker' in navigator) {
-      try {
-        await navigator.serviceWorker.register('/sw.js');
-      } catch {
-        /* ignore */
-      }
-    }
-
+    // Fallback: direct user to browser install or APK
     if (isIOS) {
       toast.info('On iPhone: tap Share → Add to Home Screen');
     } else {
-      toast.info(
-        'Use the browser menu (⋮) → Install app / Add to Home screen'
-      );
+      // Try the APK as last resort for Android when PWA prompt is missing
+      window.location.href = '/marketplace/download-app';
     }
   }
 
@@ -182,32 +153,18 @@ export function MarketplaceAppExperience() {
                       : '📲 Install App Free'}
               </button>
 
-              {/* Always show steps when native prompt is not ready */}
-              {!deferred && (
-                isIOS ? (
-                  <ol className="text-left text-xs text-gray-600 space-y-1.5 border-t pt-3">
-                    <li>
-                      1. Tap the <strong>Share</strong> button (square with arrow)
-                    </li>
-                    <li>
-                      2. Scroll and tap <strong>Add to Home Screen</strong>
-                    </li>
-                    <li>
-                      3. Tap <strong>Add</strong>
-                    </li>
-                  </ol>
-                ) : (
-                  <ol className="text-left text-xs text-gray-600 space-y-1.5 border-t pt-3">
-                    <li>
-                      1. Tap the browser menu <strong>⋮</strong> (top right)
-                    </li>
-                    <li>
-                      2. Tap <strong>Install app</strong> or{' '}
-                      <strong>Add to Home screen</strong>
-                    </li>
-                    <li>3. Confirm — Marketplace opens like an app</li>
-                  </ol>
-                )
+              {!deferred && !isIOS && (
+                <p className="text-[11px] text-center text-gray-500">
+                  If the install dialog does not appear, the Android app will download instead.
+                </p>
+              )}
+
+              {!deferred && isIOS && (
+                <ol className="text-left text-xs text-gray-600 space-y-1.5 border-t pt-3">
+                  <li>1. Tap the <strong>Share</strong> button</li>
+                  <li>2. Tap <strong>Add to Home Screen</strong></li>
+                  <li>3. Tap <strong>Add</strong></li>
+                </ol>
               )}
 
               <button
