@@ -155,6 +155,25 @@ export default async function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href={appManifest} />
+
+        {(isMainSite || isMarketplace) && (
+          <>
+            <Script
+              id="google-tag-manager-init"
+              strategy="beforeInteractive"
+            >
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){window.dataLayer.push(arguments);}
+gtag('js', new Date());`}
+            </Script>
+
+            <Script
+              id="google-tag-manager"
+              src="https://www.googletagmanager.com/gtm.js?id=GTM-TDM43S9C"
+              strategy="beforeInteractive"
+            />
+          </>
+        )}
       </head>
 
       <body className="antialiased">
