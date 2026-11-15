@@ -40,7 +40,10 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         '/*?cart=',
       ],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: [
+      `${siteUrl}/sitemap.xml`,
+      `${siteUrl}/sitemap.txt`,
+    ],
     host: siteUrl,
   };
 }

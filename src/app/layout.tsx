@@ -158,6 +158,22 @@ export default async function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href={appManifest} />
+        {(isMainSite || isMarketplace) && (
+          <>
+            <link
+              rel="alternate"
+              type="application/rss+xml"
+              title={isMarketplace ? "OrizzonCart Marketplace RSS Feed" : "OrizzonCart Blog RSS Feed"}
+              href={`${isMarketplace ? "https://marketplace.orizzoncart.com.ng" : "https://orizzoncart.com.ng"}/rss.xml`}
+            />
+            <link
+              rel="alternate"
+              type="application/atom+xml"
+              title={isMarketplace ? "OrizzonCart Marketplace Atom Feed" : "OrizzonCart Blog Atom Feed"}
+              href={`${isMarketplace ? "https://marketplace.orizzoncart.com.ng" : "https://orizzoncart.com.ng"}/atom.xml`}
+            />
+          </>
+        )}
 
         {(isMainSite || isMarketplace) && (
           <>

@@ -91,33 +91,14 @@ function getAvailability(product: any): string {
 }
 
 function getProductUrl(
-  merchant: any,
+  _merchant: any,
   product: any
 ): string {
-  if (!merchant.store_slug) return '';
+  const slug = String(product.slug || '').trim();
 
-  const identifier = String(
-    product.slug || product.id || ''
-  ).trim();
+  if (!slug) return '';
 
-  if (!identifier) return '';
-
-  try {
-    const storeUrl = getStoreUrl(merchant.store_slug)
-      .replace(/\/$/, '');
-
-    const url = new URL(
-      `${storeUrl}/p/${encodeURIComponent(identifier)}`
-    );
-
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      return '';
-    }
-
-    return url.toString();
-  } catch {
-    return '';
-  }
+  return `${MARKETPLACE_URL}/marketplace/p/${encodeURIComponent(slug)}`;
 }
 
 function makeProductItem(

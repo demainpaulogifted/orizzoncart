@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${MAIN_URL}/privacy`, changeFrequency: 'yearly', priority: 0.5 },
       { url: `${MAIN_URL}/orizzoncart-journey`, changeFrequency: 'weekly', priority: 0.9 },
       { url: `${MAIN_URL}/platform`, changeFrequency: 'monthly', priority: 0.7 },
+      { url: `${MAIN_URL}/blog`, changeFrequency: 'daily', priority: 0.9 },
       { url: `${MAIN_URL}/blog/start-online-store-nigeria`, changeFrequency: 'monthly', priority: 0.8 },
       { url: `${MAIN_URL}/blog/where-to-sell-products-online-nigeria`, changeFrequency: 'monthly', priority: 0.9 },
       { url: `${MAIN_URL}/blog/how-to-find-customers-online-nigeria`, changeFrequency: 'monthly', priority: 0.9 },
