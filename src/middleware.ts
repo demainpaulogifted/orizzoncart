@@ -7,6 +7,7 @@ const PLATFORM_PATHS = [
   '/invite',
   '/icon.png', '/apple-icon.png', '/manifest.webmanifest', '/manifest.json',
   '/sw.js', '/robots.txt', '/sitemap.xml',
+  '/sitemap.txt', '/rss.xml', '/atom.xml',
 ];
 
 const MARKETPLACE_HOSTS = new Set([
