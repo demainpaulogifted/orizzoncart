@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -16,27 +16,68 @@ export default function AdSenseFeedCard({
   className = '',
 }: AdSenseFeedCardProps) {
   const adRef = useRef<HTMLModElement>(null);
+  const [adStatus, setAdStatus] = useState<
+    'pending' | 'filled' | 'unfilled' | 'optimized'
+  >('pending');
 
   useEffect(() => {
     const element = adRef.current;
     if (!element || element.dataset.adInitialized === 'true') return;
 
+    const updateStatus = () => {
+      const status = element.getAttribute('data-ad-status');
+
+      if (status === 'filled') {
+        setAdStatus('filled');
+      } else if (status === 'unfilled') {
+        setAdStatus('unfilled');
+      } else if (status === 'unfill-optimized') {
+        setAdStatus('optimized');
+      }
+    };
+
+    const observer = new MutationObserver(updateStatus);
+
+    observer.observe(element, {
+      attributes: true,
+      attributeFilter: ['data-ad-status'],
+    });
+
     try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
       element.dataset.adInitialized = 'true';
+
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+
+      updateStatus();
     } catch (error) {
       console.warn('AdSense feed ad could not be initialized.', error);
+      setAdStatus('unfilled');
     }
+
+    return () => observer.disconnect();
   }, []);
+
+  if (adStatus === 'unfilled') {
+    return null;
+  }
+
+  const isVisible = adStatus === 'filled' || adStatus === 'optimized';
 
   return (
     <div
-      className={`min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white p-2 ${className}`}
-      aria-label="Advertisement"
+      className={`min-w-0 overflow-hidden ${isVisible ? 'rounded-xl border border-gray-200 bg-white' : ''} ${className}`}
+      style={{
+        minHeight: 0,
+        display: 'block',
+      }}
+      aria-label={isVisible ? 'Sponsored advertisement' : undefined}
     >
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-        Sponsored
-      </p>
+      {isVisible && (
+        <p className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+          Sponsored
+        </p>
+      )}
+
       <ins
         ref={adRef}
         className="adsbygoogle"
