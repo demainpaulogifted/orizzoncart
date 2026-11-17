@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
@@ -203,10 +204,7 @@ export default function BlogPage() {
         </div>
       </section>
 
-      <footer className="border-t border-purple-100 bg-white px-5 py-8 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} OrizzonCart. Business resources for a
-        growing digital economy.
-      </footer>
+      <MainSiteFooter />
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import AdSenseInArticle from '@/components/ads/AdSenseInArticle';
@@ -214,6 +215,7 @@ export default function StartOnlineStoreGuide() {
         </section>
 
       </article>
+      <MainSiteFooter />
     </main>
   );
 }

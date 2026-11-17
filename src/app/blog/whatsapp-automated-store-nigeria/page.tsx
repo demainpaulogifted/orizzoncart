@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
@@ -777,6 +778,7 @@ export default function WhatsAppAutomatedStoreGuide() {
         </div>
 
       </article>
-    </main>
+    <MainSiteFooter />
+      </main>
   );
 }

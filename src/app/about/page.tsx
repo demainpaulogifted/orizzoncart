@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
@@ -182,6 +183,7 @@ export default function AboutPage() {
           </div>
         </section>
       </div>
+      <MainSiteFooter />
     </div>
   );
 }

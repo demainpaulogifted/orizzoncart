@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/admin';
 import type { Metadata } from 'next';
@@ -71,6 +72,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <div dangerouslySetInnerHTML={{ __html: blog.content }} />
         </div>
       </article>
+      <MainSiteFooter />
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -788,18 +789,7 @@ export default function WhereToSellProductsGuide() {
         </aside>
       </div>
 
-      <footer className="border-t border-violet-100 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <Link
-            href="/"
-            className="text-lg font-black tracking-tight text-slate-900"
-          >
-            orizzon<span className="text-violet-700">cart</span>
-          </Link>
-
-          <p>Helping businesses build their online presence.</p>
-        </div>
-      </footer>
+      <MainSiteFooter />
     </main>
   );
 }

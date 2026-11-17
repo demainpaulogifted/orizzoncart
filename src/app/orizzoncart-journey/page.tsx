@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
@@ -438,20 +439,7 @@ export default function OrizzonCartJourneyPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 px-4 py-10 text-center text-sm text-purple-200">
-        <div className="mb-4 flex flex-wrap justify-center gap-6">
-          <Link href="/" className="font-semibold text-white hover:underline">
-            OrizzonCart
-          </Link>
-          <Link href="/marketplace" className="font-semibold text-white hover:underline">
-            OrizzonCart Marketplace
-          </Link>
-          <Link href="/orizzoncart-journey" className="font-semibold text-white hover:underline">
-            OrizzonCart Journey
-          </Link>
-        </div>
-        <p>© {new Date().getFullYear()} OrizzonS · Create online stores · Sell online · OrizzonCart Marketplace</p>
-      </footer>
+      <MainSiteFooter />
 
       {/* JSON-LD */}
       <script

@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 import Link from 'next/link';
 
 export function MarketingShell({
@@ -45,41 +46,7 @@ export function MarketingShell({
       <main className={`flex-1 w-full ${wide ? '' : 'max-w-3xl mx-auto px-4 py-10 sm:py-14'}`}>
         {children}
       </main>
-      <footer className="bg-gray-900 text-gray-400 py-10 mt-auto">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <Link href="/" className="text-white font-extrabold text-lg">
-              Orizzon<span className="text-purple-400">Cart</span>
-            </Link>
-            <p className="text-sm text-center md:text-left">
-              Powered by OrizzonS • Built for Nigerian businesses 🇳🇬
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center md:justify-start gap-x-5 gap-y-2 text-sm">
-            <Link href="/marketplace" className="hover:text-white">
-              OrizzonCart Marketplace
-            </Link>
-            <Link href="/about" className="hover:text-white">
-              About
-            </Link>
-            <Link href="/contact" className="hover:text-white">
-              Contact
-            </Link>
-            <Link href="/privacy" className="hover:text-white">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-white">
-              Terms
-            </Link>
-            <Link href="/track-order" className="hover:text-white">
-              Track Order
-            </Link>
-            <Link href="/login" className="hover:text-white">
-              Log in
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <MainSiteFooter />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { MainSiteFooter } from '@/components/marketing/MainSiteFooter';
 
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -720,17 +721,7 @@ export default function HowToFindCustomersOnlineNigeria() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-purple-100 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 px-5 py-9 text-sm text-gray-500 sm:flex-row sm:items-center sm:px-8 lg:px-12">
-          <Link href="/" className="text-lg font-black text-[#27163c]">
-            Orizzon<span className="text-purple-700">Cart</span>
-          </Link>
-          <p>Helping businesses build their online presence.</p>
-          <Link href="/blog" className="font-semibold text-purple-800">
-            More business guides →
-          </Link>
-        </div>
-      </footer>
+      <MainSiteFooter />
     </main>
   );
 }
