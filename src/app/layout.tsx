@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
-import Script from 'next/script';
 import './globals.css';
 import { Toaster } from 'sonner';
+import { ConsentManager } from '@/components/privacy/ConsentManager';
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.com.ng'
@@ -175,38 +175,13 @@ export default async function RootLayout({
           </>
         )}
 
-        {(isMainSite || isMarketplace) && (
-          <>
-            <Script
-              id="google-tag-manager-init"
-              strategy="beforeInteractive"
-            >
-              {`window.dataLayer = window.dataLayer || [];
-window.dataLayer.push({
-  'gtm.start': new Date().getTime(),
-  event: 'gtm.js'
-});`}
-            </Script>
-
-            <Script
-              id="google-tag-manager"
-              src="https://www.googletagmanager.com/gtm.js?id=GTM-TDM43S9C"
-              strategy="beforeInteractive"
-            />
-          </>
-        )}
       </head>
 
       <body className="antialiased">
-        {(isMainSite || isMarketplace || isMerchantStorefront) && (
-          <Script
-            id="google-adsense"
-            async
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3957914903160068"
-          />
-        )}
+        <ConsentManager
+          enableAnalytics={isMainSite || isMarketplace}
+          enableAds={isMainSite || isMarketplace || isMerchantStorefront}
+        />
 
         <script
           type="application/ld+json"
