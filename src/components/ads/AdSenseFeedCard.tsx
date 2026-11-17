@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -16,23 +17,27 @@ export default function AdSenseFeedCard({
   className = '',
 }: AdSenseFeedCardProps) {
   const adRef = useRef<HTMLModElement>(null);
-  const [adStatus, setAdStatus] = useState<
-    'pending' | 'filled' | 'unfilled' | 'optimized'
+
+  const [status, setStatus] = useState<
+    'pending' | 'filled' | 'unfilled'
   >('pending');
 
   useEffect(() => {
     const element = adRef.current;
-    if (!element || element.dataset.adInitialized === 'true') return;
+
+    if (!element || element.dataset.adInitialized === 'true') {
+      return;
+    }
 
     const updateStatus = () => {
-      const status = element.getAttribute('data-ad-status');
+      const googleStatus = element.getAttribute('data-ad-status');
 
-      if (status === 'filled') {
-        setAdStatus('filled');
-      } else if (status === 'unfilled') {
-        setAdStatus('unfilled');
-      } else if (status === 'unfill-optimized') {
-        setAdStatus('optimized');
+      if (googleStatus === 'filled') {
+        setStatus('filled');
+      }
+
+      if (googleStatus === 'unfilled') {
+        setStatus('unfilled');
       }
     };
 
@@ -50,29 +55,23 @@ export default function AdSenseFeedCard({
 
       updateStatus();
     } catch (error) {
-      console.warn('AdSense feed ad could not be initialized.', error);
-      setAdStatus('unfilled');
+      console.warn('AdSense initialization failed:', error);
+      setStatus('unfilled');
     }
 
     return () => observer.disconnect();
   }, []);
 
-  if (adStatus === 'unfilled') {
+  if (status === 'unfilled') {
     return null;
   }
 
-  const isVisible = adStatus === 'filled' || adStatus === 'optimized';
-
   return (
     <div
-      className={`min-w-0 overflow-hidden ${isVisible ? 'rounded-xl border border-gray-200 bg-white' : ''} ${className}`}
-      style={{
-        minHeight: 0,
-        display: 'block',
-      }}
-      aria-label={isVisible ? 'Sponsored advertisement' : undefined}
+      className={`${status === 'pending' ? 'h-0 invisible overflow-hidden' : 'rounded-xl border border-gray-200 bg-white overflow-hidden'} min-w-0 ${className}`}
+      aria-label={status === 'filled' ? 'Sponsored advertisement' : undefined}
     >
-      {isVisible && (
+      {status === 'filled' && (
         <p className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
           Sponsored
         </p>
