@@ -123,9 +123,11 @@ function loadAdSense() {
 export function ConsentManager({
   enableAnalytics,
   enableAds,
+  showSettingsButton = true,
 }: {
   enableAnalytics: boolean;
   enableAds: boolean;
+  showSettingsButton?: boolean;
 }) {
   const [preferences, setPreferences] =
     useState<Preferences>(DEFAULTS);
@@ -305,7 +307,7 @@ export function ConsentManager({
             </div>
           </div>
         </div>
-      ) : (
+      ) : showSettingsButton ? (
         <button
           type="button"
           onClick={() => {
@@ -317,7 +319,7 @@ export function ConsentManager({
         >
           Cookie settings
         </button>
-      )}
+      ) : null}
     </>
   );
 }

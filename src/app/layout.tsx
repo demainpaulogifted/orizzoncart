@@ -181,6 +181,7 @@ export default async function RootLayout({
         <ConsentManager
           enableAnalytics={isMainSite || isMarketplace}
           enableAds={isMainSite || isMarketplace || isMerchantStorefront}
+          showSettingsButton={!isMarketplace}
         />
 
         <script
