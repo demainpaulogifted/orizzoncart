@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import './globals.css';
 import { Toaster } from 'sonner';
 import { ConsentManager } from '@/components/privacy/ConsentManager';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_APP_URL || 'https://www.orizzoncart.com.ng'
@@ -194,6 +195,7 @@ export default async function RootLayout({
         {children}
 
         <Toaster position="top-center" richColors />
+        <SpeedInsights />
       </body>
     </html>
   );
