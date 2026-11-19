@@ -20,6 +20,21 @@ export function middleware(req: NextRequest) {
   const host = (req.headers.get('host') || '').toLowerCase();
   const { pathname } = req.nextUrl;
 
+  // Permanently redirect the main domain's marketplace paths
+  // to the dedicated marketplace subdomain.
+  const hostname = host.split(':')[0];
+
+  if (
+    (hostname === 'orizzoncart.com.ng' ||
+      hostname === 'www.orizzoncart.com.ng') &&
+    (pathname === '/marketplace' || pathname.startsWith('/marketplace/'))
+  ) {
+    const url = req.nextUrl.clone();
+    url.protocol = 'https:';
+    url.hostname = 'marketplace.orizzoncart.com.ng';
+    return NextResponse.redirect(url, 308);
+  }
+
   const isMarketplaceHost = MARKETPLACE_HOSTS.has(host);
 
   // Invite deep link: /invite/{code} → cookie + signup (except join/dashboard)
