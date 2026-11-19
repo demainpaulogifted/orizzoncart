@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -50,9 +49,7 @@ export default function AdSenseFeedCard({
 
     try {
       element.dataset.adInitialized = 'true';
-
       (window.adsbygoogle = window.adsbygoogle || []).push({});
-
       updateStatus();
     } catch (error) {
       console.warn('AdSense initialization failed:', error);
@@ -68,11 +65,15 @@ export default function AdSenseFeedCard({
 
   return (
     <div
-      className={`${status === 'pending' ? 'h-0 invisible overflow-hidden' : 'rounded-xl border border-gray-200 bg-white overflow-hidden'} min-w-0 ${className}`}
+      className={
+        status === 'pending'
+          ? 'h-0 min-w-0 overflow-hidden invisible'
+          : `min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white p-2 ${className}`
+      }
       aria-label={status === 'filled' ? 'Sponsored advertisement' : undefined}
     >
       {status === 'filled' && (
-        <p className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
           Sponsored
         </p>
       )}
