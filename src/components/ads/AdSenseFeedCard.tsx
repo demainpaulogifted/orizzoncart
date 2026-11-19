@@ -16,42 +16,36 @@ export default function AdSenseFeedCard({
   className = '',
 }: AdSenseFeedCardProps) {
   const adRef = useRef<HTMLModElement>(null);
-
-  const [status, setStatus] = useState<
-    'pending' | 'filled' | 'unfilled'
-  >('pending');
+  const [status, setStatus] = useState<'pending' | 'filled' | 'unfilled'>('pending');
 
   useEffect(() => {
     const element = adRef.current;
 
-    if (!element || element.dataset.adInitialized === 'true') {
-      return;
-    }
+    if (!element || element.dataset.adInitialized === 'true') return;
 
-    let unfilledTimer: ReturnType<typeof setTimeout> | undefined;
+    let pendingTimer: ReturnType<typeof setTimeout>;
+    let unfilledTimer: ReturnType<typeof setTimeout>;
+
+    const hideIfUnfilled = () => {
+      if (element.getAttribute('data-ad-status') !== 'filled') {
+        setStatus('unfilled');
+      }
+    };
 
     const updateStatus = () => {
       const googleStatus = element.getAttribute('data-ad-status');
 
       if (googleStatus === 'filled') {
-        if (unfilledTimer) {
-          clearTimeout(unfilledTimer);
-          unfilledTimer = undefined;
-        }
+        clearTimeout(pendingTimer);
+        clearTimeout(unfilledTimer);
         setStatus('filled');
+        return;
       }
 
-      if (
-        googleStatus === 'unfilled' ||
-        googleStatus === 'unfill-optimized'
-      ) {
-        if (unfilledTimer) clearTimeout(unfilledTimer);
-
-        unfilledTimer = setTimeout(() => {
-          if (element.getAttribute('data-ad-status') !== 'filled') {
-            setStatus('unfilled');
-          }
-        }, 1500);
+      if (googleStatus === 'unfilled' || googleStatus === 'unfill-optimized') {
+        clearTimeout(pendingTimer);
+        clearTimeout(unfilledTimer);
+        unfilledTimer = setTimeout(hideIfUnfilled, 1500);
       }
     };
 
@@ -62,24 +56,26 @@ export default function AdSenseFeedCard({
       attributeFilter: ['data-ad-status'],
     });
 
+    pendingTimer = setTimeout(hideIfUnfilled, 8000);
+
     try {
       element.dataset.adInitialized = 'true';
       (window.adsbygoogle = window.adsbygoogle || []).push({});
       updateStatus();
     } catch (error) {
       console.warn('AdSense initialization failed:', error);
+      clearTimeout(pendingTimer);
       setStatus('unfilled');
     }
 
     return () => {
       observer.disconnect();
-      if (unfilledTimer) clearTimeout(unfilledTimer);
+      clearTimeout(pendingTimer);
+      clearTimeout(unfilledTimer);
     };
   }, []);
 
-  if (status === 'unfilled') {
-    return null;
-  }
+  if (status === 'unfilled') return null;
 
   return (
     <div
