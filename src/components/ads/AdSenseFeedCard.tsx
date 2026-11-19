@@ -28,15 +28,30 @@ export default function AdSenseFeedCard({
       return;
     }
 
+    let unfilledTimer: ReturnType<typeof setTimeout> | undefined;
+
     const updateStatus = () => {
       const googleStatus = element.getAttribute('data-ad-status');
 
       if (googleStatus === 'filled') {
+        if (unfilledTimer) {
+          clearTimeout(unfilledTimer);
+          unfilledTimer = undefined;
+        }
         setStatus('filled');
       }
 
-      if (googleStatus === 'unfilled') {
-        setStatus('unfilled');
+      if (
+        googleStatus === 'unfilled' ||
+        googleStatus === 'unfill-optimized'
+      ) {
+        if (unfilledTimer) clearTimeout(unfilledTimer);
+
+        unfilledTimer = setTimeout(() => {
+          if (element.getAttribute('data-ad-status') !== 'filled') {
+            setStatus('unfilled');
+          }
+        }, 1500);
       }
     };
 
@@ -56,7 +71,10 @@ export default function AdSenseFeedCard({
       setStatus('unfilled');
     }
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (unfilledTimer) clearTimeout(unfilledTimer);
+    };
   }, []);
 
   if (status === 'unfilled') {
@@ -67,7 +85,7 @@ export default function AdSenseFeedCard({
     <div
       className={
         status === 'pending'
-          ? 'h-0 min-w-0 overflow-hidden invisible'
+          ? 'min-w-0 overflow-hidden'
           : `min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white p-2 ${className}`
       }
       aria-label={status === 'filled' ? 'Sponsored advertisement' : undefined}
