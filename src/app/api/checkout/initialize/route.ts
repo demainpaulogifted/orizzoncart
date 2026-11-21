@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, store_name, store_slug, country_code, currency_code, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform, payout_method')
+      .select('id, store_name, store_slug, country_code, currency_code, is_active, is_verified, is_on_marketplace, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform, payout_method')
       .eq('store_slug', store_slug)
       .single();
 
@@ -82,8 +82,19 @@ export async function POST(request: NextRequest) {
     }
 
     const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
-    if (expired || merchant.payment_receiving_status !== 'ACTIVE' || merchant.checkout_status !== 'ENABLED') {
-      return NextResponse.json({ error: 'This store is currently not accepting orders.' }, { status: 403 });
+    if (
+      expired ||
+      merchant.is_active !== true ||
+      merchant.is_verified !== true ||
+      merchant.is_on_marketplace !== true ||
+      merchant.payment_receiving_status !== 'ACTIVE' ||
+      merchant.cart_status !== 'ENABLED' ||
+      merchant.checkout_status !== 'ENABLED'
+    ) {
+      return NextResponse.json(
+        { error: 'This store is in showcase mode and is not accepting orders yet.' },
+        { status: 403 }
+      );
     }
 
     const productIds = (items || []).map((i: any) => i.product_id);

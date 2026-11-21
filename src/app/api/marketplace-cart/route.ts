@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     const { data: merchant, error: merchantError } = await admin
       .from("merchants")
-      .select("id, store_slug, country_code")
+      .select("id, store_slug, country_code, is_active, is_verified, is_on_marketplace, payment_receiving_status, cart_status, checkout_status, maintenance_expires_at")
       .eq("store_slug", slug)
       .maybeSingle();
 
@@ -169,6 +169,25 @@ export async function POST(request: NextRequest) {
     const countryCode = await getMarketplaceCountryCode();
     if (merchant.country_code !== countryCode) {
       return NextResponse.json({ error: "This store is not part of your selected country marketplace." }, { status: 403 });
+    }
+
+    const expired =
+      merchant.maintenance_expires_at &&
+      new Date(merchant.maintenance_expires_at) < new Date();
+
+    if (
+      merchant.is_active !== true ||
+      merchant.is_verified !== true ||
+      merchant.is_on_marketplace !== true ||
+      merchant.payment_receiving_status !== "ACTIVE" ||
+      merchant.cart_status !== "ENABLED" ||
+      merchant.checkout_status !== "ENABLED" ||
+      !!expired
+    ) {
+      return NextResponse.json(
+        { error: "This store is in showcase mode and is not accepting orders yet." },
+        { status: 403 }
+      );
     }
 
     const { data: product, error: productError } = await admin

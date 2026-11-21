@@ -378,10 +378,6 @@ export default function AddProductPage() {
         merchant.payment_receiving_status === 'ACTIVE' &&
         merchant.is_on_marketplace === true;
 
-      if (form.show_in_marketplace && !canPublishToMarketplace) {
-        throw new Error('Your store must be active, verified, and approved for Marketplace before listing products there.');
-      }
-
       const isDigital =
         merchant.merchant_type === 'digital' ? form.is_digital : false;
 

@@ -17,6 +17,7 @@ interface ProductDetailClientProps {
   product: any;
   merchant: any;
   relatedProducts?: any[];
+  isShowcaseMode?: boolean;
 }
 
 function extractImageUrl(raw: any): string | null {
@@ -38,6 +39,7 @@ export default function ProductDetailClient({
   product,
   merchant,
   relatedProducts = [],
+  isShowcaseMode = false,
 }: ProductDetailClientProps) {
   const [quantity, setQuantity] = useState(1);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -379,6 +381,11 @@ export default function ProductDetailClient({
               </div>
             )}
 
+            {isShowcaseMode ? (
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm font-semibold text-amber-900">
+                This store is in showcase mode. Ordering and checkout will be available after store activation and approval.
+              </div>
+            ) : (
             <div className="space-y-4 pt-6 border-t">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -457,6 +464,7 @@ export default function ProductDetailClient({
                 </div>
               </div>
             </div>
+            )}
 
             <ConfirmWithSeller product={product} merchant={merchant} />
 
@@ -614,7 +622,7 @@ export default function ProductDetailClient({
                   <ProductCard
                     key={entry.key}
                     product={{ ...entry.product, store_slug: storeSlug }}
-                    isShowcaseMode={false}
+                    isShowcaseMode={isShowcaseMode}
                   />
                 )
               )}

@@ -121,7 +121,7 @@ export default async function StorePage({
     throw new Error('Unable to load this storefront.');
   }
 
-  if (!merchant || !merchant.is_active) {
+  if (!merchant) {
     notFound();
   }
 
@@ -130,7 +130,10 @@ export default async function StorePage({
     new Date(merchant.maintenance_expires_at) < new Date();
 
   const isShowcaseMode =
-    merchant.cart_status === 'LOCKED' ||
+    merchant.is_active !== true ||
+    merchant.is_verified !== true ||
+    merchant.is_on_marketplace !== true ||
+    merchant.cart_status !== 'ENABLED' ||
     merchant.checkout_status !== 'ENABLED' ||
     merchant.payment_receiving_status !== 'ACTIVE' ||
     !!expired;

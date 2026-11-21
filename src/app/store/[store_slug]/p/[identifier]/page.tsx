@@ -42,6 +42,20 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
   const admin = createAdminClient();
   const { data: merchant } = await admin.from('merchants').select('*').eq('store_slug', store_slug).maybeSingle();
   if (!merchant) notFound();
+
+  const expired =
+    merchant.maintenance_expires_at &&
+    new Date(merchant.maintenance_expires_at) < new Date();
+
+  const isShowcaseMode =
+    merchant.is_active !== true ||
+    merchant.is_verified !== true ||
+    merchant.is_on_marketplace !== true ||
+    merchant.cart_status !== 'ENABLED' ||
+    merchant.checkout_status !== 'ENABLED' ||
+    merchant.payment_receiving_status !== 'ACTIVE' ||
+    !!expired;
+
   const product = await findProduct(admin, merchant.id, decodeURIComponent(identifier));
   if (!product) notFound();
   
@@ -51,5 +65,5 @@ export default async function ProductPage({ params }: { params: Promise<{ store_
   
   const { data: relatedProducts } = await admin.from('products').select('id, name, price, images, slug').eq('merchant_id', merchant.id).eq('is_active', true).neq('id', product.id).limit(4);
   
-  return <ProductDetailClient product={product} merchant={merchant} relatedProducts={relatedProducts || []} />;
+  return <ProductDetailClient product={product} merchant={merchant} relatedProducts={relatedProducts || []} isShowcaseMode={isShowcaseMode} />;
 }
