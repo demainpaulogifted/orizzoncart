@@ -92,13 +92,30 @@ export async function POST(request: NextRequest) {
     if (!order) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     if (order.payment_status === 'paid') return NextResponse.json({ message: 'Already processed' }, { status: 200 });
 
-    const paid = amount / 100;
-    if (Math.abs(paid - order.total_amount) > 1) {
-      await admin.from('orders').update({ payment_status: 'failed' }).eq('id', order.id);
-      return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
+    const expectedMinorAmount = Math.round(Number(order.total_amount) * 100);
+    const expectedCurrency = String(order.currency || 'NGN').toUpperCase();
+    const receivedCurrency = String(event.data.currency || '').toUpperCase();
+
+    if (
+      Number(amount) !== expectedMinorAmount ||
+      receivedCurrency !== expectedCurrency ||
+      reference !== order.payment_intent_id
+    ) {
+      console.error('Customer order payment validation failed:', {
+        orderId: order.id,
+        expectedMinorAmount,
+        receivedAmount: amount,
+        expectedCurrency,
+        receivedCurrency,
+      });
+      return NextResponse.json({ error: 'Payment amount or currency mismatch' }, { status: 400 });
     }
 
-    await admin.from('orders').update({ payment_status: 'paid', status: 'processing' }).eq('id', order.id);
+    await admin.from('orders').update({
+      payment_status: 'paid',
+      status: 'processing',
+      payment_method: 'paystack',
+    }).eq('id', order.id).neq('payment_status', 'paid');
 
     // 📦 DROPSHIPPING AUTO-FULFILLMENT
     const { data: dsOrder } = await admin

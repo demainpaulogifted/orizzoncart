@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateOrderNumber } from '@/lib/utils';
 import { ensureOrizzonPay } from '@/lib/paystack-engine';
+import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,11 +12,74 @@ export async function POST(request: NextRequest) {
 
     const { data: merchant } = await supabase
       .from('merchants')
-      .select('id, store_name, store_slug, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform, payout_method')
+      .select('id, store_name, store_slug, country_code, currency_code, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform, payout_method')
       .eq('store_slug', store_slug)
       .single();
 
     if (!merchant) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+
+    const marketplaceCountry = await getMarketplaceCountryCode();
+    const merchantCountry = String(merchant.country_code || 'NG').toUpperCase();
+    const currencyCode = String(merchant.currency_code || 'NGN').toUpperCase();
+
+    if (merchantCountry !== marketplaceCountry) {
+      return NextResponse.json(
+        { error: 'This store does not belong to your selected country marketplace.' },
+        { status: 403 }
+      );
+    }
+
+    if (merchantCountry !== 'NG' || currencyCode !== 'NGN') {
+      return NextResponse.json(
+        { error: 'Online payment is not yet enabled for this country and currency. Please contact the seller for an available payment option.' },
+        { status: 400 }
+      );
+    }
+
+    // Preflight the same payment routes used below, before creating an order.
+    // Existing Nigerian OrizzonPay arrangements remain supported.
+    const preflightHasOwn = !!(merchant.paystack_secret_key || merchant.flutterwave_secret_key);
+    const preflightHasBank = !!(merchant.bank_name && merchant.account_number);
+    const preflightPlatformKey =
+      process.env.ORIZZONCART_PAY_SECRET_KEY ||
+      process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+
+    const preflightMethod =
+      merchant.payout_method ||
+      (preflightHasOwn ? 'own_keys' : preflightHasBank ? 'orizzonpay' : null);
+
+    const preflightUsesOwn =
+      preflightMethod === 'own_keys' && preflightHasOwn;
+
+    const preflightUsesOrizzon =
+      !preflightUsesOwn && preflightHasBank && !!preflightPlatformKey;
+
+    const preflightOwnSecret = preflightUsesOwn
+      ? (
+          merchant.preferred_gateway === 'flutterwave' && merchant.flutterwave_secret_key
+            ? merchant.flutterwave_secret_key
+            : merchant.paystack_secret_key || merchant.flutterwave_secret_key
+        )
+      : (!preflightUsesOrizzon && preflightHasOwn
+          ? merchant.paystack_secret_key || merchant.flutterwave_secret_key
+          : null);
+
+    const preflightIsFlutterwave =
+      !!preflightOwnSecret &&
+      (
+        (merchant.preferred_gateway === 'flutterwave' && !!merchant.flutterwave_secret_key) ||
+        (!merchant.paystack_secret_key && !!merchant.flutterwave_secret_key)
+      );
+
+    if (
+      !preflightUsesOrizzon &&
+      (!preflightOwnSecret || preflightIsFlutterwave)
+    ) {
+      return NextResponse.json(
+        { error: 'A supported Paystack payment account is not configured for this store. Flutterwave checkout is not enabled in this checkout flow yet.' },
+        { status: 400 }
+      );
+    }
 
     const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
     if (expired || merchant.payment_receiving_status !== 'ACTIVE' || merchant.checkout_status !== 'ENABLED') {
@@ -52,7 +116,7 @@ export async function POST(request: NextRequest) {
     // --- 🚚 SHIPPING CALCULATION ---
     const isPickup = shipping_mode === 'PICKUP';
     const isNeighbourhood = /neigh/i.test(shipping_mode || '');
-    const customerCountry = customer?.country || 'Nigeria';
+    const customerCountry = 'Nigeria'; // Server-enforced: this checkout currently supports NG only.
 
     let finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
     let supplierShippingCost = 0;
@@ -139,7 +203,7 @@ export async function POST(request: NextRequest) {
       supplier_shipping_cost: supplierShippingCost,
       shipping_country: customerCountry,
       total_amount: totalAmount,
-      currency: 'NGN',
+      currency: currencyCode,
       status: 'pending',
       payment_status: 'pending',
       shipping_address: shippingAddress,
@@ -196,7 +260,7 @@ export async function POST(request: NextRequest) {
         email: customer?.email || 'customer@orizzoncart.com.ng',
         amount: totalAmount * 100,
         reference,
-        callback_url: `${appUrl}/payment/verify?reference=${reference}`,
+        callback_url: `${appUrl}/checkout/success?order=${encodeURIComponent(order.id)}&reference=${encodeURIComponent(reference)}`,
         metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
       };
       if (split) b.split_code = split;

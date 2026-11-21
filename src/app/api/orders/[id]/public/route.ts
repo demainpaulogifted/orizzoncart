@@ -13,7 +13,7 @@ export async function GET(
   const { data: order, error } = await admin
     .from('orders')
     .select(
-      'id, order_number, total_amount, payment_status, payment_intent_id, tracking_number, customer_name, order_items(product_id, product_name, quantity, total_price, products(is_digital, digital_file_url, digital_file_name)), merchants(store_name, store_slug)'
+      'id, order_number, total_amount, currency, payment_status, payment_intent_id, tracking_number, customer_name, order_items(product_id, product_name, quantity, total_price, products(is_digital, digital_file_url, digital_file_name)), merchants(store_name, store_slug)'
     )
     .eq('id', id)
     .maybeSingle();
@@ -63,6 +63,7 @@ export async function GET(
     store_slug: merchantData?.store_slug || '',
     customer_name: order.customer_name,
     total_amount: order.total_amount,
+    currency_code: order.currency || 'NGN',
     tracking_number: order.tracking_number,
     items: orderItems.map((item) => ({
       product_id: item.product_id,
