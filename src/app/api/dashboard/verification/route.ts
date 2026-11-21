@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { getActiveMerchant } from '@/lib/active-merchant';
 
 async function getMerchant() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const admin = createAdminClient();
-  const { data } = await admin.from('merchants').select('*').eq('user_id', user.id).maybeSingle();
-  return data || null;
+  return await getActiveMerchant(user.id);
 }
 
 export async function GET() {

@@ -15,7 +15,8 @@ export default function PlansPage() {
     const load = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: m } = await supabase.from('merchants').select('*').eq('user_id', user?.id).single();
+      const { getClientActiveMerchant } = await import('@/lib/active-merchant-client');
+      const m = user ? await getClientActiveMerchant(supabase, user.id) : null;
       setMerchant(m);
       const { data: p } = await supabase.from('maintenance_plans').select('*').eq('is_active', true);
       setPlans(p || []);

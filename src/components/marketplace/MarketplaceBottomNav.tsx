@@ -27,15 +27,20 @@ export function MarketplaceBottomNav({ active }: { active?: string }) {
 
       if (mounted) setHasUser(true);
 
-      const { data } = await supabase
-        .from('merchants')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
+      try {
+        const { getClientActiveMerchant } = await import('@/lib/active-merchant-client');
+        const merchant = await getClientActiveMerchant(supabase, userId);
 
-      if (mounted) {
-        setIsMerchant(Boolean(data));
-        setChecking(false);
+        if (mounted) {
+          setIsMerchant(Boolean(merchant));
+          setChecking(false);
+        }
+      } catch (error) {
+        console.error('Merchant store lookup failed:', error);
+        if (mounted) {
+          setIsMerchant(false);
+          setChecking(false);
+        }
       }
     };
 

@@ -16,7 +16,8 @@ export default function MerchantSupportPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     setUserId(user.id);
-    const { data: merchant } = await supabase.from('merchants').select('id, store_name').eq('user_id', user.id).single();
+    const { getClientActiveMerchant } = await import('@/lib/active-merchant-client');
+    const merchant = await getClientActiveMerchant(supabase, user.id);
     if (!merchant) return;
     setMerchantId(merchant.id);
     setMyName(merchant.store_name);

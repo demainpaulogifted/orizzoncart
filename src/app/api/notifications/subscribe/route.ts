@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { getActiveMerchant } from '@/lib/active-merchant';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const admin = createAdminClient();
-  const { data: merchant } = await admin.from('merchants').select('id').eq('user_id', user.id).single();
+  const merchant = await getActiveMerchant(user.id);
   if (!merchant) return NextResponse.json({ error: 'Merchant not found' }, { status: 404 });
 
   const { error } = await admin.from('push_subscriptions').upsert(

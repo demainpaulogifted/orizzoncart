@@ -27,13 +27,8 @@ export default function LoginPage() {
       if (error) throw error;
       if (!data.user) throw new Error('Authentication failed. Please try again.');
 
-      const { data: merchant, error: merchantError } = await supabase
-        .from('merchants')
-        .select('id')
-        .eq('user_id', data.user.id)
-        .maybeSingle();
-
-      if (merchantError) throw merchantError;
+      const { getClientActiveMerchant } = await import('@/lib/active-merchant-client');
+      const merchant = await getClientActiveMerchant(supabase, data.user.id);
 
       if (merchant) {
         const requested = new URLSearchParams(window.location.search).get('next');

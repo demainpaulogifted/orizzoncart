@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { ShareButtons } from '@/components/storefront/ShareButtons';
 import { getStoreUrl } from '@/lib/store-url';
+import { getActiveMerchant } from '@/lib/active-merchant';
 import Link from 'next/link';
 
 export default async function StorePreviewPage() {
@@ -9,7 +10,7 @@ export default async function StorePreviewPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: merchant } = await supabase.from('merchants').select('*').eq('user_id', user.id).single();
+  const merchant = await getActiveMerchant(user.id);
   if (!merchant) redirect('/onboarding');
 
   const storeUrl = getStoreUrl(merchant.store_slug);
