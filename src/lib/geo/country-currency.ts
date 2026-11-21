@@ -16,20 +16,35 @@ export const COUNTRIES: CountryOption[] = countryCurrencies
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
+function safeCurrencyName(code: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) || code;
+  } catch {
+    return code;
+  }
+}
+
+function safeCurrencySymbol(code: string): string {
+  try {
+    return new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency: code,
+    })
+      .formatToParts(0)
+      .find((part) => part.type === 'currency')?.value || code;
+  } catch {
+    return code;
+  }
+}
+
 export const CURRENCIES = Array.from(
   new Set(countryCurrencies.map((item) => item.currency))
 )
   .sort()
   .map((code) => ({
     code,
-    name: new Intl.DisplayNames(['en'], { type: 'currency' }).of(code) || code,
-    symbol:
-      new Intl.NumberFormat('en', {
-        style: 'currency',
-        currency: code,
-      })
-        .formatToParts(0)
-        .find((part) => part.type === 'currency')?.value || code,
+    name: safeCurrencyName(code),
+    symbol: safeCurrencySymbol(code),
   }));
 
 export function isValidCountryCurrency(
