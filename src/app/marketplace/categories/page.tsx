@@ -1,3 +1,4 @@
+import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
 import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
 import { insertShuffledFeedAds } from '@/lib/adsense-feed';
 import Link from 'next/link'
@@ -76,6 +77,7 @@ export default async function ShopPage({
 }: {
   searchParams: Promise<{ q?: string; cat?: string }>;
 }) {
+  const countryCode = await getMarketplaceCountryCode();
   const params = await searchParams;
   const q = (params.q || '').trim().toLowerCase();
   const cat = (params.cat || '').trim();

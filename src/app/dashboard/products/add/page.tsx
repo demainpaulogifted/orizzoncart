@@ -17,6 +17,7 @@ type Merchant = {
   is_verified: boolean;
   payment_receiving_status: string | null;
   is_on_marketplace: boolean;
+  currency_code: string | null;
 };
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -75,6 +76,7 @@ export default function AddProductPage() {
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [merchantType, setMerchantType] = useState<string | null>(null);
   const [marketplaceEligible, setMarketplaceEligible] = useState(false);
+  const [currencyCode, setCurrencyCode] = useState('NGN');
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +98,7 @@ export default function AddProductPage() {
 
         const { data: merchants, error: merchantError } = await supabase
           .from('merchants')
-          .select('id, merchant_type, is_active, is_verified, payment_receiving_status, is_on_marketplace')
+          .select('id, merchant_type, is_active, is_verified, payment_receiving_status, is_on_marketplace, currency_code')
           .eq('user_id', user.id);
 
         if (merchantError) throw merchantError;
@@ -107,6 +109,7 @@ export default function AddProductPage() {
           merchantList[0];
 
         if (!cancelled && merchant) {
+          setCurrencyCode(merchant.currency_code || 'NGN');
           setMerchantType(merchant.merchant_type || 'physical');
           setMarketplaceEligible(
             merchant.is_active === true &&
@@ -355,7 +358,7 @@ export default function AddProductPage() {
 
       const { data: merchants, error: merchantError } = await supabase
         .from('merchants')
-        .select('id, merchant_type, is_active, is_verified, payment_receiving_status, is_on_marketplace')
+        .select('id, merchant_type, is_active, is_verified, payment_receiving_status, is_on_marketplace, currency_code')
         .eq('user_id', user.id);
 
       if (merchantError) throw merchantError;
@@ -385,6 +388,7 @@ export default function AddProductPage() {
       const productData = {
         name: productName,
         price,
+        currency_code: merchant.currency_code || currencyCode,
         description: form.description.trim(),
         category: form.category.trim() || null,
         images,
@@ -587,7 +591,7 @@ export default function AddProductPage() {
         {/* Normal Price */}
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Normal Price (₦) *
+            Normal Price ({currencyCode}) *
           </label>
           <input
             required
@@ -665,7 +669,7 @@ export default function AddProductPage() {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Flash Deal Price (₦) *
+                  Flash Deal Price ({currencyCode}) *
                 </label>
                 <input
                   type="number"

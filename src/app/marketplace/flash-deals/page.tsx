@@ -1,3 +1,4 @@
+import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
 import Link from 'next/link';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { ProductCardAddButton } from '@/components/marketplace/ProductCardAddButton';
@@ -6,6 +7,7 @@ import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottom
 export const dynamic = 'force-dynamic';
 
 export default async function FlashDealsPage() {
+  const countryCode = await getMarketplaceCountryCode();
   const admin = createAdminClient();
 
   const { data: merchants } = await admin

@@ -2,6 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@/lib/supabase/admin";
+import { getMarketplaceCountryCode } from "@/lib/geo/marketplace-country";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ function safeQuantity(value: unknown) {
   return Math.max(1, Math.min(MAX_QUANTITY, Math.floor(number)));
 }
 
-async function readCart(cartId: string) {
+async function readCart(cartId: string, countryCode: string) {
   const admin = createAdminClient();
 
   const { data: rows, error } = await admin
@@ -78,8 +79,9 @@ async function readCart(cartId: string) {
         .in("id", productIds),
       admin
         .from("merchants")
-        .select("id, store_name, store_slug")
-        .in("id", merchantIds),
+        .select("id, store_name, store_slug, country_code, currency_code")
+        .in("id", merchantIds)
+        .eq("country_code", countryCode),
     ]);
 
   if (productError) throw productError;
@@ -108,6 +110,7 @@ async function readCart(cartId: string) {
       merchant_id: String(row.merchant_id),
       merchant_name: merchant.store_name || merchant.store_slug || "Store",
       merchant_slug: merchant.store_slug || "",
+      currency_code: merchant.currency_code || "NGN",
       name: product.name,
       price: Number(product.price || 0),
       image: product.images,
@@ -121,7 +124,8 @@ async function readCart(cartId: string) {
 export async function GET(request: NextRequest) {
   try {
     const { cartId, isNew } = getCartId(request);
-    const items = await readCart(cartId);
+    const countryCode = await getMarketplaceCountryCode();
+    const items = await readCart(cartId, countryCode);
     const response = NextResponse.json({ items });
 
     return isNew
@@ -154,13 +158,17 @@ export async function POST(request: NextRequest) {
 
     const { data: merchant, error: merchantError } = await admin
       .from("merchants")
-      .select("id, store_slug")
+      .select("id, store_slug, country_code")
       .eq("store_slug", slug)
       .maybeSingle();
 
     if (merchantError) throw merchantError;
     if (!merchant) {
       return NextResponse.json({ error: "Store not found." }, { status: 404 });
+    }
+    const countryCode = await getMarketplaceCountryCode();
+    if (merchant.country_code !== countryCode) {
+      return NextResponse.json({ error: "This store is not part of your selected country marketplace." }, { status: 403 });
     }
 
     const { data: product, error: productError } = await admin
@@ -210,7 +218,8 @@ export async function POST(request: NextRequest) {
 
     if (saveError) throw saveError;
 
-    const items = await readCart(cartId);
+
+    const items = await readCart(cartId, countryCode);
     const response = NextResponse.json({ items });
 
     return isNew
@@ -240,6 +249,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { cartId, isNew } = getCartId(request);
+    const countryCode = await getMarketplaceCountryCode();
     const admin = createAdminClient();
 
     if (quantity <= 0) {
@@ -265,7 +275,8 @@ export async function PATCH(request: NextRequest) {
       if (error) throw error;
     }
 
-    const items = await readCart(cartId);
+
+    const items = await readCart(cartId, countryCode);
     const response = NextResponse.json({ items });
 
     return isNew
@@ -294,6 +305,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { cartId, isNew } = getCartId(request);
+    const countryCode = await getMarketplaceCountryCode();
     const admin = createAdminClient();
 
     const { error } = await admin
@@ -305,7 +317,8 @@ export async function DELETE(request: NextRequest) {
 
     if (error) throw error;
 
-    const items = await readCart(cartId);
+
+    const items = await readCart(cartId, countryCode);
     const response = NextResponse.json({ items });
 
     return isNew

@@ -31,6 +31,7 @@ export default function EditProductPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [currencyCode, setCurrencyCode] = useState('NGN');
 
   useEffect(() => {
     const load = async () => {
@@ -46,7 +47,7 @@ export default function EditProductPage() {
 
       const { data: merchants } = await supabase
         .from('merchants')
-        .select('id')
+        .select('id, currency_code')
         .eq('user_id', user.id);
 
       const merchant =
@@ -80,6 +81,8 @@ export default function EditProductPage() {
         else if (remaining >= 14) days = '14';
         else days = '7';
       }
+
+      setCurrencyCode(product.currency_code || merchant.currency_code || 'NGN');
 
       setForm({
         name: product.name || '',
@@ -218,6 +221,7 @@ export default function EditProductPage() {
       .update({
         name: form.name,
         price,
+        currency_code: currencyCode,
         description: form.description,
         is_digital: form.is_digital,
         category: form.category || null,
@@ -401,7 +405,7 @@ export default function EditProductPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Normal Price (₦) *
+            Normal Price ({currencyCode}) *
           </label>
           <input
             required
@@ -431,7 +435,7 @@ export default function EditProductPage() {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Flash Deal Price (₦) *
+                  Flash Deal Price ({currencyCode}) *
                 </label>
                 <input
                   type="number"
@@ -512,11 +516,17 @@ export default function EditProductPage() {
               {form.name || 'Product name'}
             </h3>
             <p className="mt-1 text-xl font-bold text-purple-600">
-              ₦{Number(form.price || 0).toLocaleString()}
+              {new Intl.NumberFormat(undefined, {
+                style: 'currency',
+                currency: currencyCode,
+              }).format(Number(form.price || 0))}
             </p>
             {form.is_flash_deal && form.flash_deal_price && (
               <p className="text-sm text-orange-600 mt-1 font-bold">
-                Flash: ₦{Number(form.flash_deal_price || 0).toLocaleString()}
+                Flash: {new Intl.NumberFormat(undefined, {
+                  style: 'currency',
+                  currency: currencyCode,
+                }).format(Number(form.flash_deal_price || 0))}
               </p>
             )}
             {form.is_digital && (

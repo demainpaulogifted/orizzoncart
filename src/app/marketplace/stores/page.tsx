@@ -1,3 +1,4 @@
+import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
@@ -34,6 +35,7 @@ function activityLabel(iso: string | null | undefined): string {
 }
 
 export default async function ActiveStoresPage() {
+  const countryCode = await getMarketplaceCountryCode();
   const admin = createAdminClient();
   const cookieStore = await cookies();
   const sessionSeed = cookieStore.get('mkt_seed')?.value || 'guest';

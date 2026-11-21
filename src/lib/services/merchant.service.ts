@@ -1,5 +1,6 @@
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateMerchantId } from '@/lib/utils';
+import { isValidCountryCurrency } from '@/lib/geo/country-currency';
 
 export class MerchantService {
   static async create(input: {
@@ -7,9 +8,16 @@ export class MerchantService {
     business_name: string;
     store_name: string;
     store_slug: string;
+    country_code: string;
+    currency_code: string;
     merchant_type?: 'physical' | 'digital';
   }) {
+    if (!isValidCountryCurrency(input.country_code, input.currency_code)) {
+      throw new Error('Invalid business country or selling currency');
+    }
+
     const supabase = createAdminClient();
+
     const { data, error } = await supabase
       .from('merchants')
       .insert({
@@ -19,7 +27,9 @@ export class MerchantService {
         store_name: input.store_name,
         store_slug: input.store_slug.toLowerCase(),
         merchant_type: input.merchant_type || 'physical',
-        payment_mode: 'platform', // physical stores can switch to own_keys in Payments settings
+        country_code: input.country_code,
+        currency_code: input.currency_code,
+        payment_mode: 'platform',
         payment_receiving_status: 'NOT_CONFIGURED',
         cart_status: 'LOCKED',
         checkout_status: 'LOCKED',
@@ -27,17 +37,20 @@ export class MerchantService {
       })
       .select()
       .single();
+
     if (error) throw error;
     return data;
   }
 
   static async validateStoreSlug(slug: string): Promise<boolean> {
     const supabase = createAdminClient();
+
     const { data } = await supabase
       .from('merchants')
       .select('id')
       .eq('store_slug', slug.toLowerCase())
       .single();
-    return !data; // true if available
+
+    return !data;
   }
 }

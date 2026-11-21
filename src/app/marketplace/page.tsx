@@ -11,6 +11,8 @@ import { MarketplaceInviteBanner } from '@/components/invite/InviteEarnBanners';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
 import { MarketplaceTour } from '@/components/marketplace/MarketplaceTour';
 import { parseAffinityCookie, rankActiveStores } from '@/lib/active-stores-feed';
+import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
+import { getCurrencySymbol } from '@/lib/geo/country-currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +97,7 @@ function categoryChipHref(cat: string) {
 }
 
 export default async function MarketplacePage() {
+  const countryCode = await getMarketplaceCountryCode();
   const admin = createAdminClient();
 
   const cookieStore = await cookies();
@@ -104,7 +107,8 @@ export default async function MarketplacePage() {
 
   const { data: merchants } = await admin
     .from('merchants')
-    .select('id, store_slug, store_name, logo_url, theme_id, last_dashboard_at')
+    .select('id, store_slug, store_name, logo_url, theme_id, last_dashboard_at, country_code, currency_code')
+    .eq('country_code', countryCode)
     .eq('is_on_marketplace', true)
     .eq('payment_receiving_status', 'ACTIVE')
     .eq('is_verified', true)
@@ -120,7 +124,7 @@ export default async function MarketplacePage() {
     ? await admin
         .from('products')
         .select(
-          'id, name, slug, price, compare_at_price, images, merchant_id, created_at, is_flash_deal, flash_deal_price, flash_deal_ends_at'
+          'id, name, slug, price, compare_at_price, images, merchant_id, currency_code, created_at, is_flash_deal, flash_deal_price, flash_deal_ends_at'
         )
         .in('merchant_id', merchantIds)
         .eq('is_active', true)
@@ -209,7 +213,7 @@ export default async function MarketplacePage() {
               offers: {
                 '@type': 'Offer',
                 price: Number(p.price),
-                priceCurrency: 'NGN',
+                priceCurrency: p.currency_code || 'NGN',
                 url: productUrl(p.merchant && p.merchant.store_slug, p.slug),
                 availability: 'https://schema.org/InStock',
               },
@@ -233,7 +237,7 @@ export default async function MarketplacePage() {
                 Orizzon<span className="text-yellow-300">Cart</span> Marketplace
               </Link>
               <span className="text-[9px] bg-white/15 rounded-full px-2 py-1 font-semibold">
-                🇳🇬 Verified sellers only
+                Verified sellers • {countryCode}
               </span>
             </div>
             <form action="/marketplace/categories" method="GET">
@@ -362,7 +366,7 @@ export default async function MarketplacePage() {
                           className="text-sm font-extrabold"
                           style={{ color: t.variables['--color-primary'] }}
                         >
-                          ₦{Number(p.price).toLocaleString()}
+                          {getCurrencySymbol(p.currency_code || 'NGN')}{Number(p.price).toLocaleString()}
                         </p>
                         <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                         <p className="text-[10px] text-gray-400 truncate">
@@ -415,7 +419,7 @@ export default async function MarketplacePage() {
                           className="text-sm font-extrabold"
                           style={{ color: t.variables['--color-primary'] }}
                         >
-                          ₦{Number(p.price).toLocaleString()}
+                          {getCurrencySymbol(p.currency_code || 'NGN')}{Number(p.price).toLocaleString()}
                         </p>
                         <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
                         <p className="text-[10px] text-gray-400 truncate">

@@ -1,3 +1,4 @@
+import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
 import Link from 'next/link';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
@@ -13,6 +14,7 @@ params,
 }: {
 params: Promise<{ store_slug: string }>;
 }) {
+const countryCode = await getMarketplaceCountryCode();
 const { store_slug } = await params;
 const admin = createAdminClient();
 
