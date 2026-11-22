@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import PayPalConnectCard from '@/components/dashboard/PayPalConnectCard';
 
 const NIGERIAN_BANKS = [
   { name: 'Access Bank', code: '044' },
@@ -535,7 +536,9 @@ export default function PaymentSettingsPage() {
             </p>
             <p className="text-sm text-blue-800 mt-1">
               Connect your own payment accounts to receive customer
-              payments directly. These integrations are coming soon.
+              payments directly. PayPal credential verification is
+              now available. Customer checkout activation is being
+              completed separately.
             </p>
           </div>
 
@@ -552,22 +555,12 @@ export default function PaymentSettingsPage() {
             </p>
           </div>
 
-          <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-bold text-lg">PayPal</h2>
-              <span className="text-xs font-bold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
-                Coming Soon
-              </span>
-            </div>
-            <p className="text-sm text-gray-600">
-              Connect your own PayPal business account to receive
-              payments directly from customers.
-            </p>
-          </div>
+          <PayPalConnectCard />
 
           <p className="text-xs text-gray-500 text-center">
-            Stripe and PayPal integrations are not yet available.
-            We will announce when merchants can connect their accounts.
+            Stripe integration is coming soon. PayPal credentials
+            can now be connected and verified. Customer checkout
+            activation is being completed separately.
           </p>
         </div>
       )}
