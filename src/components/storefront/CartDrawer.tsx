@@ -1,5 +1,6 @@
-import { formatCurrency } from '@/lib/format-currency';
 "use client";
+
+import { formatCurrency } from '@/lib/format-currency';
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
