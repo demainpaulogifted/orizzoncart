@@ -165,6 +165,9 @@ export default function PaymentSettingsPage() {
     load();
   }, []);
 
+  const isNigerianMerchant =
+    String(merchant?.country_code || '').toUpperCase() === 'NG';
+
   const feePaid =
     merchant &&
     (
@@ -524,7 +527,52 @@ export default function PaymentSettingsPage() {
         </div>
       )}
 
-      {feePaid && (
+      {feePaid && !isNigerianMerchant && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <p className="font-bold text-blue-900">
+              International Payment Integration
+            </p>
+            <p className="text-sm text-blue-800 mt-1">
+              Connect your own payment accounts to receive customer
+              payments directly. These integrations are coming soon.
+            </p>
+          </div>
+
+          <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-bold text-lg">Stripe</h2>
+              <span className="text-xs font-bold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-sm text-gray-600">
+              Connect your own Stripe account to receive payments
+              directly from customers purchasing your products.
+            </p>
+          </div>
+
+          <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-bold text-lg">PayPal</h2>
+              <span className="text-xs font-bold text-orange-700 bg-orange-50 px-3 py-1.5 rounded-full">
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-sm text-gray-600">
+              Connect your own PayPal business account to receive
+              payments directly from customers.
+            </p>
+          </div>
+
+          <p className="text-xs text-gray-500 text-center">
+            Stripe and PayPal integrations are not yet available.
+            We will announce when merchants can connect their accounts.
+          </p>
+        </div>
+      )}
+
+      {feePaid && isNigerianMerchant && (
         <>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
             <p className="font-bold mb-1">
