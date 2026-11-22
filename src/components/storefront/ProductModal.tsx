@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { FlyerCover, flyerColorKey } from '@/components/storefront/FlyerCover';
+import { formatCurrency } from '@/lib/format-currency';
 
 interface ProductModalProps {
   product: any;
@@ -56,7 +57,7 @@ export function ProductModal({ product, isOpen, onClose, storeSlug }: ProductMod
         <div className="p-6 space-y-4">
           <div>
             <h2 className="text-xl font-extrabold text-gray-900 leading-snug">{product.name}</h2>
-            <p className="mt-2 text-2xl font-black text-purple-700">₦{Number(product.price).toLocaleString()}</p>
+            <p className="mt-2 text-2xl font-black text-purple-700">{formatCurrency(product.price, product.currency_code)}</p>
           </div>
 
           {product.is_digital && (

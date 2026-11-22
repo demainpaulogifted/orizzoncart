@@ -76,7 +76,7 @@ export function StoreShop({ products, merchant, isShowcaseMode = false }: StoreS
           ) : (
             <div key={entry.key}>
               <ProductCard
-                product={{ ...entry.product, store_slug: storeSlug }}
+                product={{ ...entry.product, store_slug: storeSlug, currency_code: merchant?.currency_code || 'NGN' }}
                 isShowcaseMode={isShowcaseMode}
               />
             </div>

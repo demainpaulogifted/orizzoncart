@@ -6,6 +6,7 @@ export interface SharedCartItem {
   merchant_id: string;
   merchant_name: string;
   merchant_slug: string;
+  currency_code: string;
   name: string;
   price: number;
   image: unknown;

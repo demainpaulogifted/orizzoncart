@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatCurrency } from '@/lib/format-currency';
 
 export default function ProductCard({
   product,
@@ -43,7 +44,7 @@ export default function ProductCard({
       <div className="mt-4 space-y-1">
         <h3 className="text-sm font-medium text-gray-900 line-clamp-2">{product.name}</h3>
         <p className="text-sm font-bold text-gray-900">
-          ₦{Number(product.price || 0).toLocaleString()}
+          {formatCurrency(product.price, product.currency_code)}
         </p>
       </div>
     </>

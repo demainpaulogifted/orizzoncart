@@ -12,6 +12,7 @@ import ReviewForm from '@/components/reviews/ReviewForm';
 import { addSharedCartItem } from '@/lib/marketplace-cart-client';
 import { insertShuffledFeedAds } from '@/lib/adsense-feed';
 import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
+import { formatCurrency } from '@/lib/format-currency';
 
 interface ProductDetailClientProps {
   product: any;
@@ -331,7 +332,7 @@ export default function ProductDetailClient({
 
               <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="text-4xl font-black text-purple-700">
-                  ₦{Number(product.price || 0).toLocaleString('en-NG')}
+                  {formatCurrency(product.price, merchant?.currency_code)}
                 </div>
 
                 {isOutOfStock ? (
@@ -457,7 +458,7 @@ export default function ProductDetailClient({
                             d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                           />
                         </svg>
-                        Add to Cart - ₦{totalPrice}
+                        Add to Cart - {formatCurrency(Number(product.price || 0) * quantity, merchant?.currency_code)}
                       </>
                     )}
                   </button>

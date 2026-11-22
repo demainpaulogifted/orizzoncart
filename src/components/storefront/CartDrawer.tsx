@@ -1,3 +1,4 @@
+import { formatCurrency } from '@/lib/format-currency';
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -33,10 +34,6 @@ function getImageUrl(raw: unknown): string | null {
   }
 
   return null;
-}
-
-function formatNaira(value: number) {
-  return `₦${Number(value || 0).toLocaleString("en-NG")}`;
 }
 
 export function CartDrawer({
@@ -202,7 +199,7 @@ export function CartDrawer({
                       {item.name}
                     </p>
                     <p className="text-sm font-extrabold text-purple-700">
-                      {formatNaira(item.price)}
+                      {formatCurrency(item.price, item.currency_code)}
                     </p>
 
                     <div className="mt-2 flex items-center gap-2">
@@ -242,7 +239,7 @@ export function CartDrawer({
                   </div>
 
                   <p className="shrink-0 text-sm font-extrabold text-gray-900">
-                    {formatNaira(Number(item.price) * item.quantity)}
+                    {formatCurrency(Number(item.price) * item.quantity, item.currency_code)}
                   </p>
                 </div>
               );
@@ -255,7 +252,7 @@ export function CartDrawer({
             <div className="flex justify-between text-sm">
               <span className="font-bold text-gray-600">Store subtotal</span>
               <span className="font-extrabold text-gray-900">
-                {formatNaira(subtotal)}
+                {formatCurrency(subtotal, cart[0]?.currency_code)}
               </span>
             </div>
 

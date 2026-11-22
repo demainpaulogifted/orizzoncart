@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { formatCurrency } from '@/lib/format-currency';
 
 interface ConfirmWithSellerProps {
   product: {
@@ -11,6 +12,7 @@ interface ConfirmWithSellerProps {
   };
   merchant: {
     store_name?: string;
+    currency_code?: string | null;
     store_slug?: string;
     whatsapp_number?: string | null;
     business_state?: string | null;
@@ -73,7 +75,7 @@ export default function ConfirmWithSeller({ product, merchant }: ConfirmWithSell
       : 'https://' + (merchant.store_slug || 'store') + '.orizzoncart.com.ng/p/' + (product.slug || product.id);
 
   const priceText =
-    product.price != null ? '₦' + Number(product.price).toLocaleString() : '';
+    product.price != null ? formatCurrency(product.price, merchant.currency_code) : '';
   const pricePart = priceText ? ' (' + priceText + ')' : '';
 
   const message =
