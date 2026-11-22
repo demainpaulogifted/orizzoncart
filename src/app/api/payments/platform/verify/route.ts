@@ -1,64 +1,238 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { attributeStoreActivation } from '@/lib/invite';
 
-const DAYS: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
+const DAYS: Record<string, number> = {
+  monthly: 30,
+  quarterly: 90,
+  yearly: 365,
+};
 
 export async function GET(request: NextRequest) {
   try {
     const reference = request.nextUrl.searchParams.get('reference');
-    if (!reference) return NextResponse.json({ error: 'Missing reference' }, { status: 400 });
+
+    if (!reference) {
+      return NextResponse.json(
+        { error: 'Missing reference' },
+        { status: 400 }
+      );
+    }
 
     const admin = createAdminClient();
-    const { data: tx } = await admin.from('platform_transactions').select('*').eq('payment_reference', reference).single();
-    if (!tx) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
 
+    const { data: tx, error: txError } = await admin
+      .from('platform_transactions')
+      .select('*')
+      .eq('payment_reference', reference)
+      .maybeSingle();
+
+    if (txError) throw txError;
+
+    if (!tx) {
+      return NextResponse.json(
+        { error: 'Transaction not found' },
+        { status: 404 }
+      );
+    }
+
+    // PayPal payments must be captured by the dedicated PayPal callback.
+    // Do not attempt to verify them through Paystack.
+    const activationGateway = String(
+      tx.metadata?.activation_gateway || 'paystack'
+    ).toLowerCase();
+
+    if (tx.status !== 'paid' && activationGateway === 'paypal') {
+      return NextResponse.json({
+        transaction: tx,
+        awaiting_confirmation: true,
+        message: 'Waiting for PayPal payment confirmation.',
+      });
+    }
+
+    // Verify pending Paystack transactions.
     if (tx.status !== 'paid') {
-      const { data: keys } = await admin.from('platform_payment_keys').select('secret_key').eq('gateway', 'paystack').maybeSingle();
-      const secret = keys?.secret_key || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
-      if (secret) {
-        const res = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-          headers: { Authorization: `Bearer ${secret}` },
-        });
-        const ps = await res.json();
+      const { data: keys, error: keysError } = await admin
+        .from('platform_payment_keys')
+        .select('secret_key')
+        .eq('gateway', 'paystack')
+        .maybeSingle();
 
-        if (ps.status && ps.data?.status === 'success') {
-          await admin.from('platform_transactions').update({ status: 'paid' }).eq('id', tx.id);
-          tx.status = 'paid';
+      if (keysError) throw keysError;
 
-          if (tx.transaction_type === 'payment_activation') {
-            try { await attributeStoreActivation(tx.merchant_id); } catch (e) { console.error('Invite activation attr failed', e); }
-            const { data: m } = await admin.from('merchants').select('paystack_secret_key, flutterwave_secret_key').eq('id', tx.merchant_id).single();
-            const hasKeys = !!(m?.paystack_secret_key || m?.flutterwave_secret_key);
-            const now = new Date().toISOString();
-            await admin.from('merchants').update(
-              hasKeys
-                ? { payment_receiving_status: 'ACTIVE', cart_status: 'ENABLED', checkout_status: 'ENABLED', payment_activated_at: now }
-                : { payment_receiving_status: 'PENDING_KEYS', cart_status: 'LOCKED', checkout_status: 'DISABLED', payment_activated_at: now }
-            ).eq('id', tx.merchant_id);
-          }
+      const secret =
+        keys?.secret_key ||
+        process.env.PLATFORM_PAYSTACK_SECRET_KEY;
 
-          if (tx.transaction_type === 'theme_purchase' && tx.metadata?.theme_name) {
-            await admin.from('merchants').update({ theme_id: tx.metadata.theme_name }).eq('id', tx.merchant_id);
-          }
+      if (!secret) {
+        return NextResponse.json(
+          { error: 'Platform Paystack credentials are not configured.' },
+          { status: 503 }
+        );
+      }
 
-          if (tx.transaction_type === 'maintenance_payment' && tx.metadata?.frequency) {
-            const days = DAYS[tx.metadata.frequency] || 30;
-            await admin.from('merchants').update({
-              maintenance_plan: tx.metadata.frequency,
-              maintenance_status: 'active',
-              maintenance_expires_at: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-              payment_receiving_status: 'ACTIVE',
-              cart_status: 'ENABLED',
-              checkout_status: 'ENABLED',
-            }).eq('id', tx.merchant_id);
-          }
+      const response = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${secret}`,
+          },
+          cache: 'no-store',
         }
+      );
+
+      const result = await response.json();
+
+      if (
+        !response.ok ||
+        !result.status ||
+        result.data?.status !== 'success'
+      ) {
+        return NextResponse.json(
+          {
+            transaction: tx,
+            awaiting_confirmation: true,
+            message: 'Payment has not been confirmed yet.',
+          },
+          { status: 200 }
+        );
+      }
+
+      // Confirm the exact reference, currency and amount.
+      const expectedCurrency = String(tx.currency || 'NGN').toUpperCase();
+      const receivedCurrency = String(
+        result.data.currency || ''
+      ).toUpperCase();
+
+      const expectedAmount = Math.round(Number(tx.amount) * 100);
+      const receivedAmount = Number(result.data.amount);
+
+      if (
+        result.data.reference !== reference ||
+        receivedCurrency !== expectedCurrency ||
+        !Number.isFinite(expectedAmount) ||
+        !Number.isFinite(receivedAmount) ||
+        expectedAmount !== receivedAmount
+      ) {
+        console.error('Platform payment verification mismatch:', {
+          reference,
+          expectedCurrency,
+          receivedCurrency,
+          expectedAmount,
+          receivedAmount,
+        });
+
+        return NextResponse.json(
+          { error: 'Payment details could not be verified.' },
+          { status: 400 }
+        );
+      }
+
+      const { error: updateError } = await admin
+        .from('platform_transactions')
+        .update({ status: 'paid' })
+        .eq('id', tx.id)
+        .neq('status', 'paid');
+
+      if (updateError) throw updateError;
+
+      tx.status = 'paid';
+
+      // Apply the relevant purchase or activation.
+      if (tx.transaction_type === 'payment_activation') {
+        try {
+          await attributeStoreActivation(tx.merchant_id);
+        } catch (error) {
+          console.error('Invite activation attribution failed:', error);
+        }
+
+        const { data: merchant, error: merchantError } = await admin
+          .from('merchants')
+          .select('paystack_secret_key, flutterwave_secret_key')
+          .eq('id', tx.merchant_id)
+          .single();
+
+        if (merchantError) throw merchantError;
+
+        const hasKeys = !!(
+          merchant?.paystack_secret_key ||
+          merchant?.flutterwave_secret_key
+        );
+
+        const now = new Date().toISOString();
+
+        const { error } = await admin
+          .from('merchants')
+          .update(
+            hasKeys
+              ? {
+                  payment_receiving_status: 'ACTIVE',
+                  cart_status: 'ENABLED',
+                  checkout_status: 'ENABLED',
+                  payment_activated_at: now,
+                }
+              : {
+                  payment_receiving_status: 'PENDING_KEYS',
+                  cart_status: 'LOCKED',
+                  checkout_status: 'DISABLED',
+                  payment_activated_at: now,
+                }
+          )
+          .eq('id', tx.merchant_id);
+
+        if (error) throw error;
+      }
+
+      if (
+        tx.transaction_type === 'theme_purchase' &&
+        tx.metadata?.theme_name
+      ) {
+        const { error } = await admin
+          .from('merchants')
+          .update({ theme_id: tx.metadata.theme_name })
+          .eq('id', tx.merchant_id);
+
+        if (error) throw error;
+      }
+
+      if (
+        tx.transaction_type === 'maintenance_payment' &&
+        tx.metadata?.frequency
+      ) {
+        const frequency = String(tx.metadata.frequency);
+        const days = DAYS[frequency] || 30;
+
+        const { error } = await admin
+          .from('merchants')
+          .update({
+            maintenance_plan: frequency,
+            maintenance_status: 'active',
+            maintenance_expires_at: new Date(
+              Date.now() + days * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            payment_receiving_status: 'ACTIVE',
+            cart_status: 'ENABLED',
+            checkout_status: 'ENABLED',
+          })
+          .eq('id', tx.merchant_id);
+
+        if (error) throw error;
       }
     }
 
     return NextResponse.json({ transaction: tx });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Verification failed' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('Platform payment verification failed:', error);
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Payment verification failed.',
+      },
+      { status: 500 }
+    );
   }
 }
