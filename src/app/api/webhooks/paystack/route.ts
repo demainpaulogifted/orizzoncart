@@ -18,7 +18,11 @@ function minorUnits(amount: number, currency: string) {
   );
 }
 
-function validSignature(body: string, signature: string | null, secret: string) {
+function validSignature(
+  body: string,
+  signature: string | null,
+  secret: string
+) {
   if (!signature) return false;
 
   const expected = crypto
@@ -33,6 +37,54 @@ function validSignature(body: string, signature: string | null, secret: string) 
     expectedBuffer.length === receivedBuffer.length &&
     crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
   );
+}
+
+async function completeMerchantActivation(admin: any, tx: any) {
+  try {
+    await attributeStoreActivation(tx.merchant_id);
+  } catch (error) {
+    console.error('Invite activation attribution failed:', error);
+  }
+
+  const { data: merchant, error: merchantError } = await admin
+    .from('merchants')
+    .select(
+      'paystack_secret_key, flutterwave_secret_key, bank_name, account_number, payment_activated_at'
+    )
+    .eq('id', tx.merchant_id)
+    .single();
+
+  if (merchantError) throw merchantError;
+
+  const hasPaymentMethod = Boolean(
+    merchant?.paystack_secret_key ||
+    merchant?.flutterwave_secret_key ||
+    (merchant?.bank_name && merchant?.account_number)
+  );
+
+  const activationTimestamp =
+    merchant.payment_activated_at || new Date().toISOString();
+
+  const { error } = await admin
+    .from('merchants')
+    .update(
+      hasPaymentMethod
+        ? {
+            payment_receiving_status: 'ACTIVE',
+            cart_status: 'ENABLED',
+            checkout_status: 'ENABLED',
+            payment_activated_at: activationTimestamp,
+          }
+        : {
+            payment_receiving_status: 'PENDING_KEYS',
+            cart_status: 'LOCKED',
+            checkout_status: 'DISABLED',
+            payment_activated_at: activationTimestamp,
+          }
+    )
+    .eq('id', tx.merchant_id);
+
+  if (error) throw error;
 }
 
 export async function GET(request: NextRequest) {
@@ -148,10 +200,10 @@ export async function POST(request: NextRequest) {
     if (txError) throw txError;
 
     if (tx) {
-      if (tx.status === 'paid') {
+      if (!['pending', 'paid'].includes(tx.status)) {
         return NextResponse.json(
-          { message: 'Already processed' },
-          { status: 200 }
+          { error: 'Transaction is not payable.' },
+          { status: 409 }
         );
       }
 
@@ -183,11 +235,13 @@ export async function POST(request: NextRequest) {
           receivedCurrency,
         });
 
-        await admin
-          .from('platform_transactions')
-          .update({ status: 'failed' })
-          .eq('id', tx.id)
-          .eq('status', 'pending');
+        if (tx.status === 'pending') {
+          await admin
+            .from('platform_transactions')
+            .update({ status: 'failed' })
+            .eq('id', tx.id)
+            .eq('status', 'pending');
+        }
 
         return NextResponse.json(
           { error: 'Payment amount or currency mismatch' },
@@ -195,61 +249,24 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { error: updateError } = await admin
-        .from('platform_transactions')
-        .update({ status: 'paid' })
-        .eq('id', tx.id)
-        .eq('status', 'pending');
+      // Mark the transaction paid once. Activation below is deliberately
+      // retryable when Paystack sends the same successful webhook again.
+      if (tx.status === 'pending') {
+        const { error: updateError } = await admin
+          .from('platform_transactions')
+          .update({ status: 'paid' })
+          .eq('id', tx.id)
+          .eq('status', 'pending');
 
-      if (updateError) throw updateError;
-
-      if (tx.transaction_type === 'payment_activation') {
-        try {
-          await attributeStoreActivation(tx.merchant_id);
-        } catch (error) {
-          console.error('Invite activation attribution failed:', error);
-        }
-
-        const { data: merchant, error: merchantError } = await admin
-          .from('merchants')
-          .select(
-            'paystack_secret_key, flutterwave_secret_key, bank_name, account_number'
-          )
-          .eq('id', tx.merchant_id)
-          .single();
-
-        if (merchantError) throw merchantError;
-
-        const hasPaymentMethod = Boolean(
-          merchant?.paystack_secret_key ||
-          merchant?.flutterwave_secret_key ||
-          (merchant?.bank_name && merchant?.account_number)
-        );
-
-        const now = new Date().toISOString();
-
-        const { error } = await admin
-          .from('merchants')
-          .update(
-            hasPaymentMethod
-              ? {
-                  payment_receiving_status: 'ACTIVE',
-                  cart_status: 'ENABLED',
-                  checkout_status: 'ENABLED',
-                  payment_activated_at: now,
-                }
-              : {
-                  payment_receiving_status: 'PENDING_KEYS',
-                  cart_status: 'LOCKED',
-                  checkout_status: 'DISABLED',
-                  payment_activated_at: now,
-                }
-          )
-          .eq('id', tx.merchant_id);
-
-        if (error) throw error;
+        if (updateError) throw updateError;
       }
 
+      if (tx.transaction_type === 'payment_activation') {
+        await completeMerchantActivation(admin, tx);
+      }
+
+      // These operations are idempotent assignments, so they can safely
+      // be repeated if the successful webhook is delivered more than once.
       if (
         tx.transaction_type === 'theme_purchase' &&
         tx.metadata?.theme_name
@@ -262,7 +279,11 @@ export async function POST(request: NextRequest) {
         if (error) throw error;
       }
 
+      // Do not extend a maintenance period on duplicate webhook delivery.
+      // Maintenance is processed only when this delivery first changes
+      // the transaction from pending to paid.
       if (
+        tx.status === 'pending' &&
         tx.transaction_type === 'maintenance_payment' &&
         tx.metadata?.frequency
       ) {
