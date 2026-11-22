@@ -37,8 +37,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // PayPal payments must be captured by the dedicated PayPal callback.
-    // Do not attempt to verify them through Paystack.
     const activationGateway = String(
       tx.metadata?.activation_gateway || 'paystack'
     ).toLowerCase();
@@ -51,7 +49,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Verify pending Paystack transactions.
     if (tx.status !== 'paid') {
       const { data: keys, error: keysError } = await admin
         .from('platform_payment_keys')
@@ -99,8 +96,10 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Confirm the exact reference, currency and amount.
-      const expectedCurrency = String(tx.currency || 'NGN').toUpperCase();
+      const expectedCurrency = String(
+        tx.currency || 'NGN'
+      ).toUpperCase();
+
       const receivedCurrency = String(
         result.data.currency || ''
       ).toUpperCase();
@@ -138,87 +137,91 @@ export async function GET(request: NextRequest) {
       if (updateError) throw updateError;
 
       tx.status = 'paid';
+    }
 
-      // Apply the relevant purchase or activation.
-      if (tx.transaction_type === 'payment_activation') {
-        try {
-          await attributeStoreActivation(tx.merchant_id);
-        } catch (error) {
-          console.error('Invite activation attribution failed:', error);
-        }
-
-        const { data: merchant, error: merchantError } = await admin
-          .from('merchants')
-          .select('paystack_secret_key, flutterwave_secret_key')
-          .eq('id', tx.merchant_id)
-          .single();
-
-        if (merchantError) throw merchantError;
-
-        const hasKeys = !!(
-          merchant?.paystack_secret_key ||
-          merchant?.flutterwave_secret_key
-        );
-
-        const now = new Date().toISOString();
-
-        const { error } = await admin
-          .from('merchants')
-          .update(
-            hasKeys
-              ? {
-                  payment_receiving_status: 'ACTIVE',
-                  cart_status: 'ENABLED',
-                  checkout_status: 'ENABLED',
-                  payment_activated_at: now,
-                }
-              : {
-                  payment_receiving_status: 'PENDING_KEYS',
-                  cart_status: 'LOCKED',
-                  checkout_status: 'DISABLED',
-                  payment_activated_at: now,
-                }
-          )
-          .eq('id', tx.merchant_id);
-
-        if (error) throw error;
+    // Apply activation after payment is confirmed.
+    // This also keeps bank-account merchants consistent with the webhook.
+    if (tx.transaction_type === 'payment_activation') {
+      try {
+        await attributeStoreActivation(tx.merchant_id);
+      } catch (error) {
+        console.error('Invite activation attribution failed:', error);
       }
 
-      if (
-        tx.transaction_type === 'theme_purchase' &&
-        tx.metadata?.theme_name
-      ) {
-        const { error } = await admin
-          .from('merchants')
-          .update({ theme_id: tx.metadata.theme_name })
-          .eq('id', tx.merchant_id);
+      const { data: merchant, error: merchantError } = await admin
+        .from('merchants')
+        .select(
+          'paystack_secret_key, flutterwave_secret_key, bank_name, account_number, payment_activated_at'
+        )
+        .eq('id', tx.merchant_id)
+        .single();
 
-        if (error) throw error;
-      }
+      if (merchantError) throw merchantError;
 
-      if (
-        tx.transaction_type === 'maintenance_payment' &&
-        tx.metadata?.frequency
-      ) {
-        const frequency = String(tx.metadata.frequency);
-        const days = DAYS[frequency] || 30;
+      const hasPaymentMethod = Boolean(
+        merchant?.paystack_secret_key ||
+        merchant?.flutterwave_secret_key ||
+        (merchant?.bank_name && merchant?.account_number)
+      );
 
-        const { error } = await admin
-          .from('merchants')
-          .update({
-            maintenance_plan: frequency,
-            maintenance_status: 'active',
-            maintenance_expires_at: new Date(
-              Date.now() + days * 24 * 60 * 60 * 1000
-            ).toISOString(),
-            payment_receiving_status: 'ACTIVE',
-            cart_status: 'ENABLED',
-            checkout_status: 'ENABLED',
-          })
-          .eq('id', tx.merchant_id);
+      const { error: activationError } = await admin
+        .from('merchants')
+        .update(
+          hasPaymentMethod
+            ? {
+                payment_receiving_status: 'ACTIVE',
+                cart_status: 'ENABLED',
+                checkout_status: 'ENABLED',
+                payment_activated_at:
+                  merchant.payment_activated_at || new Date().toISOString(),
+              }
+            : {
+                payment_receiving_status: 'PENDING_KEYS',
+                cart_status: 'LOCKED',
+                checkout_status: 'DISABLED',
+                payment_activated_at:
+                  merchant.payment_activated_at || new Date().toISOString(),
+              }
+        )
+        .eq('id', tx.merchant_id);
 
-        if (error) throw error;
-      }
+      if (activationError) throw activationError;
+    }
+
+    if (
+      tx.transaction_type === 'theme_purchase' &&
+      tx.metadata?.theme_name
+    ) {
+      const { error } = await admin
+        .from('merchants')
+        .update({ theme_id: tx.metadata.theme_name })
+        .eq('id', tx.merchant_id);
+
+      if (error) throw error;
+    }
+
+    if (
+      tx.transaction_type === 'maintenance_payment' &&
+      tx.metadata?.frequency
+    ) {
+      const frequency = String(tx.metadata.frequency);
+      const days = DAYS[frequency] || 30;
+
+      const { error } = await admin
+        .from('merchants')
+        .update({
+          maintenance_plan: frequency,
+          maintenance_status: 'active',
+          maintenance_expires_at: new Date(
+            Date.now() + days * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          payment_receiving_status: 'ACTIVE',
+          cart_status: 'ENABLED',
+          checkout_status: 'ENABLED',
+        })
+        .eq('id', tx.merchant_id);
+
+      if (error) throw error;
     }
 
     return NextResponse.json({ transaction: tx });
