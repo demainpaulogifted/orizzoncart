@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { NavigationFeedback } from '@/components/ui/NavigationFeedback';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -13,6 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-slate-100">
+      <NavigationFeedback />
       <AdminSidebar role={profile?.role} />
       <main className="pt-14 min-w-0">
         <div className="w-full max-w-full px-3 sm:px-5 lg:px-8 py-4 sm:py-6 lg:py-8 min-w-0">

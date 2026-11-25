@@ -1,9 +1,9 @@
-
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { MerchantTour } from '@/components/dashboard/MerchantTour';
+import { NavigationFeedback } from '@/components/ui/NavigationFeedback';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -63,6 +63,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-slate-100">
+      <NavigationFeedback />
       <DashboardSidebar
         merchant={merchant}
         merchants={list}
