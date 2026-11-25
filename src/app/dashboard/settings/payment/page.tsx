@@ -6,61 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import PayPalConnectCard from '@/components/dashboard/PayPalConnectCard';
 
-const NIGERIAN_BANKS = [
-  { name: 'Access Bank', code: '044' },
-  { name: 'Citibank Nigeria', code: '023' },
-  { name: 'Ecobank Nigeria', code: '050' },
-  { name: 'Fidelity Bank', code: '070' },
-  { name: 'First Bank of Nigeria', code: '011' },
-  { name: 'First City Monument Bank (FCMB)', code: '214' },
-  { name: 'Globus Bank', code: '00103' },
-  { name: 'Guaranty Trust Bank (GTBank)', code: '058' },
-  { name: 'Heritage Bank', code: '030' },
-  { name: 'Keystone Bank', code: '082' },
-  { name: 'Polaris Bank', code: '076' },
-  { name: 'Providus Bank', code: '101' },
-  { name: 'Stanbic IBTC Bank', code: '221' },
-  { name: 'Standard Chartered Bank', code: '068' },
-  { name: 'Sterling Bank', code: '232' },
-  { name: 'SunTrust Bank', code: '100' },
-  { name: 'Titan Trust Bank', code: '102' },
-  { name: 'Union Bank of Nigeria', code: '032' },
-  { name: 'United Bank for Africa (UBA)', code: '033' },
-  { name: 'Unity Bank', code: '215' },
-  { name: 'Wema Bank (ALAT)', code: '035' },
-  { name: 'Zenith Bank', code: '057' },
-  { name: 'Parallex Bank', code: '104' },
-  { name: 'PremiumTrust Bank', code: '105' },
-  { name: 'Optimus Bank', code: '107' },
-  { name: 'Signature Bank', code: '106' },
-  { name: 'Jaiz Bank', code: '301' },
-  { name: 'Taj Bank', code: '302' },
-  { name: 'Lotus Bank', code: '303' },
-  { name: 'Moniepoint MFB', code: '50515' },
-  { name: 'Kuda Bank', code: '50211' },
-  { name: 'Sparkle MFB', code: '51310' },
-  { name: 'Rubies MFB', code: '125' },
-  { name: 'VFD MFB (V Bank)', code: '566' },
-  { name: 'Carbon (OneFi)', code: '565' },
-  { name: 'FairMoney MFB', code: '51318' },
-  { name: 'GoMoney', code: '100022' },
-  { name: 'Accion MFB', code: '602' },
-  { name: 'AB Microfinance Bank', code: '401' },
-  { name: 'LAPO MFB', code: '403' },
-  { name: 'Bainescredit MFB', code: '51229' },
-  { name: 'NPF Microfinance Bank', code: '50629' },
-  { name: 'Nirsal MFB', code: '50115' },
-  { name: 'Bowen MFB', code: '50931' },
-  { name: 'Amju MFB', code: '50926' },
-  { name: 'Mutual Benefits MFB', code: '50604' },
-  { name: 'FCT MFB', code: '50267' },
-  { name: 'Microvis MFB', code: '50819' },
-  { name: 'OPay', code: '999992' },
-  { name: 'PalmPay', code: '999991' },
-  { name: 'Flutterwave Send', code: '110004' },
-  { name: 'EcoMobile (Xpress)', code: '307' },
-];
-
 function mask(key: string) {
   return key ? '••••••••' + key.slice(-4) : '';
 }
@@ -84,7 +29,6 @@ export default function PaymentSettingsPage() {
   const [feePaying, setFeePaying] = useState(false);
 
   const [showKeysForm, setShowKeysForm] = useState(false);
-  const [showBankForm, setShowBankForm] = useState(false);
 
   const [keysForm, setKeysForm] = useState({
     gateway: 'paystack',
@@ -95,12 +39,6 @@ export default function PaymentSettingsPage() {
   });
 
   const [savingKeys, setSavingKeys] = useState(false);
-  const [bankQuery, setBankQuery] = useState('');
-  const [bankCode, setBankCode] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [accountName, setAccountName] = useState('');
-  const [resolving, setResolving] = useState(false);
-  const [savingBank, setSavingBank] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -181,12 +119,9 @@ export default function PaymentSettingsPage() {
     merchant &&
     (merchant.paystack_secret_key || merchant.flutterwave_secret_key);
 
-  const hasBank =
-    merchant && merchant.bank_name && merchant.account_number;
-
   const method =
     merchant?.payout_method ||
-    (hasOwnKeys ? 'own_keys' : hasBank ? 'orizzonpay' : null);
+    (hasOwnKeys ? 'own_keys' : null);
 
   const payActivationFee = async () => {
     setFeePaying(true);
@@ -292,142 +227,12 @@ export default function PaymentSettingsPage() {
     });
   };
 
-  const filteredBanks = bankQuery
-    ? NIGERIAN_BANKS.filter((b) =>
-        b.name.toLowerCase().includes(bankQuery.toLowerCase())
-      )
-    : NIGERIAN_BANKS;
-
-  const selectedBank = NIGERIAN_BANKS.find(
-    (b) => b.code === bankCode
-  );
-
-  const options =
-    selectedBank &&
-    !filteredBanks.some((b) => b.code === selectedBank.code)
-      ? [selectedBank, ...filteredBanks]
-      : filteredBanks;
-
-  const resolveBank = async () => {
-    if (accountNumber.length !== 10) {
-      toast.error('Account number must be 10 digits');
-      return;
-    }
-
-    if (!bankCode) {
-      toast.error('Select a bank first');
-      return;
-    }
-
-    setResolving(true);
-    setAccountName('');
-
-    try {
-      const res = await fetch(
-        '/api/merchants/resolve-bank',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            account_number: accountNumber,
-            bank_code: bankCode,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (data.account_name) {
-        setAccountName(data.account_name);
-        toast.success('Account verified!');
-      } else {
-        toast.error(data.error || 'Could not verify account');
-      }
-    } catch {
-      toast.error('Network error — try again');
-    }
-
-    setResolving(false);
-  };
-
-  const saveBank = async () => {
-    setSavingBank(true);
-
-    const supabase = createClient();
-    const isPending =
-      merchant?.payment_receiving_status === 'PENDING_KEYS';
-
-    const payload: any = {
-      bank_name:
-        NIGERIAN_BANKS.find((b) => b.code === bankCode)?.name || '',
-      account_number: accountNumber,
-      account_name: accountName,
-      paystack_subaccount_code: null,
-      split_code_platform: null,
-      payout_method: merchant?.payout_method || 'orizzonpay',
-    };
-
-    if (isPending) {
-      payload.payment_receiving_status = 'ACTIVE';
-      payload.cart_status = 'ENABLED';
-      payload.checkout_status = 'ENABLED';
-    }
-
-    const { error } = await supabase
-      .from('merchants')
-      .update(payload)
-      .eq('id', merchant.id);
-
-    if (error) {
-      setSavingBank(false);
-      toast.error('Failed: ' + error.message);
-      return;
-    }
-
-    const setup = await fetch(
-      '/api/merchants/orizzonpay-setup',
-      { method: 'POST' }
-    )
-      .then((r) => r.json())
-      .catch(() => null);
-
-    setSavingBank(false);
-
-    toast.success('Bank saved — OrizzonPay active (5% fee)!');
-
-    if (setup?.ok) {
-      toast.success('95/5 split created — merchant protected!');
-    } else {
-      toast.info(
-        'Bank saved. Split will finalize automatically at first sale.'
-      );
-    }
-
-    setMerchant({
-      ...merchant,
-      ...payload,
-      split_code_platform: setup?.split_code || null,
-      paystack_subaccount_code: setup?.subaccount || null,
-      payment_receiving_status:
-        payload.payment_receiving_status ||
-        merchant.payment_receiving_status,
-    });
-
-    setShowBankForm(false);
-    setAccountName('');
-    setAccountNumber('');
-    setBankCode('');
-    setBankQuery('');
-  };
-
-  const switchMethod = async (
-    m: 'own_keys' | 'orizzonpay'
-  ) => {
+  const switchMethod = async () => {
     const supabase = createClient();
 
     const { error } = await supabase
       .from('merchants')
-      .update({ payout_method: m })
+      .update({ payout_method: 'own_keys' })
       .eq('id', merchant.id);
 
     if (error) {
@@ -435,12 +240,10 @@ export default function PaymentSettingsPage() {
       return;
     }
 
-    setMerchant({ ...merchant, payout_method: m });
+    setMerchant({ ...merchant, payout_method: 'own_keys' });
 
     toast.success(
-      m === 'own_keys'
-        ? 'Now receiving via YOUR keys (0% fee). OrizzonPay locked.'
-        : 'Now receiving via OrizzonPay (5% fee). Your keys locked.'
+      'Now receiving via YOUR keys (0% fee).'
     );
   };
 
@@ -467,8 +270,7 @@ export default function PaymentSettingsPage() {
           💳 Payment Settings
         </h1>
         <p className="text-gray-600 text-sm">
-          Set up one method to start selling. You can save both —
-          only ONE receives payments at a time.
+          Connect your own payment gateway to receive customer payments directly.
         </p>
       </div>
 
@@ -569,26 +371,19 @@ export default function PaymentSettingsPage() {
         <>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
             <p className="font-bold mb-1">
-              Currently receiving payments via:
+              Payment Method
             </p>
 
             {method === 'own_keys' && (
               <p>
                 🔑 Your own payment keys —{' '}
-                <strong>0% platform fee</strong> (OrizzonPay locked)
-              </p>
-            )}
-
-            {method === 'orizzonpay' && (
-              <p>
-                🏦 OrizzonPay bank account —{' '}
-                <strong>5% platform fee</strong> (your keys locked)
+                <strong>0% platform fee</strong>
               </p>
             )}
 
             {!method && (
               <p>
-                ⚠️ Nothing yet — set up one method below to start selling.
+                ⚠️ No payment keys saved yet — set up your payment gateway below.
               </p>
             )}
           </div>
@@ -604,7 +399,7 @@ export default function PaymentSettingsPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-bold text-lg">
-                  🔑 Option A — My Own Payment Keys
+                  🔑 My Own Payment Keys
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
                   Connect your Paystack/Flutterwave. Money lands directly with you.
@@ -643,7 +438,7 @@ export default function PaymentSettingsPage() {
                     </p>
 
                     <button
-                      onClick={() => switchMethod('own_keys')}
+                      onClick={switchMethod}
                       className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700"
                     >
                       Switch to this method
@@ -744,164 +539,6 @@ export default function PaymentSettingsPage() {
                   className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
                 >
                   {savingKeys ? 'Saving...' : 'Save Keys'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* OPTION B: ORIZZONPAY */}
-          <div
-            className={`bg-white border-2 rounded-2xl p-6 space-y-4 ${
-              method === 'orizzonpay'
-                ? 'border-green-400'
-                : 'border-gray-200'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="font-bold text-lg">
-                  🏦 Option B — OrizzonPay (Bank Account)
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  No payment account needed. Money routes straight to your bank.
-                </p>
-              </div>
-
-              <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full shrink-0">
-                5% fee
-              </span>
-            </div>
-
-            {hasBank ? (
-              <div className="space-y-3">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="font-extrabold text-gray-900">
-                    {merchant.account_name}
-                  </p>
-
-                  <p className="text-sm text-gray-600">
-                    {merchant.bank_name} • ••••{' '}
-                    {String(merchant.account_number).slice(-4)}
-                  </p>
-
-                  {merchant.split_code_platform && (
-                    <p className="text-[10px] font-mono text-green-600 mt-1">
-                      Split active: {merchant.split_code_platform}
-                    </p>
-                  )}
-                </div>
-
-                {method === 'orizzonpay' ? (
-                  <p className="text-xs font-bold text-green-700 bg-green-50 rounded-lg px-3 py-2">
-                    ✅ ACTIVE — receiving payments here (you keep 95%)
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg px-3 py-2">
-                      🔒 Saved but LOCKED — not receiving
-                    </p>
-
-                    <button
-                      onClick={() => switchMethod('orizzonpay')}
-                      className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700"
-                    >
-                      Switch to this method
-                    </button>
-                  </>
-                )}
-
-                <button
-                  onClick={() => setShowBankForm(!showBankForm)}
-                  className="w-full py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200"
-                >
-                  {showBankForm ? 'Close' : '✏️ Change bank account'}
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowBankForm(!showBankForm)}
-                className="w-full py-3.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700"
-              >
-                {showBankForm
-                  ? 'Close'
-                  : '🏦 Set Up OrizzonPay (Add Bank)'}
-              </button>
-            )}
-
-            {showBankForm && (
-              <div className="space-y-3 pt-2 border-t">
-                <input
-                  type="text"
-                  value={bankQuery}
-                  onChange={(e) => setBankQuery(e.target.value)}
-                  placeholder="Search bank name..."
-                  className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
-                />
-
-                <select
-                  value={bankCode}
-                  onChange={(e) => setBankCode(e.target.value)}
-                  className="w-full min-w-0 px-4 py-3 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select bank...</option>
-                  {options.map((b: any) => (
-                    <option key={b.code} value={b.code}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Account Number (10 digits)
-                  </label>
-
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={10}
-                      value={accountNumber}
-                      onChange={(e) =>
-                        setAccountNumber(
-                          e.target.value.replace(/\D/g, '')
-                        )
-                      }
-                      placeholder="0123456789"
-                      className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-
-                    <button
-                      onClick={resolveBank}
-                      disabled={
-                        !bankCode ||
-                        accountNumber.length !== 10 ||
-                        resolving
-                      }
-                      className="px-4 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm disabled:opacity-50 whitespace-nowrap"
-                    >
-                      {resolving ? '...' : 'Verify'}
-                    </button>
-                  </div>
-                </div>
-
-                {accountName && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
-                    <p className="text-xs text-purple-800 font-bold uppercase">
-                      Verified Name
-                    </p>
-                    <p className="font-extrabold text-gray-900">
-                      {accountName}
-                    </p>
-                  </div>
-                )}
-
-                <button
-                  onClick={saveBank}
-                  disabled={!accountName || savingBank}
-                  className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {savingBank ? 'Saving...' : 'Save Bank Account'}
                 </button>
               </div>
             )}
