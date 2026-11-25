@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    // Avoid pulling unused modules from large barrel-export packages into route bundles.
+    optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
   },
   images: {
     remotePatterns: [
