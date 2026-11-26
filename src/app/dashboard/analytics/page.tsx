@@ -1,4 +1,6 @@
+
 'use client';
+
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -10,74 +12,251 @@ function fmtDuration(sec: number) {
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch('/api/analytics').then((r) => r.json()).then(setData).catch(() => setData({}));
+    let cancelled = false;
+
+    fetch('/api/analytics', {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('Analytics unavailable');
+        return response.json();
+      })
+      .then((result) => {
+        if (!cancelled) setData(result);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (!data) return <div className="p-10 text-center text-gray-500">Loading analytics...</div>;
+  if (!data && !error) {
+    return (
+      <div className="p-10 text-center text-gray-500">
+        Loading analytics...
+      </div>
+    );
+  }
 
-  const maxSource = Math.max(1, ...(data.sources || []).map((s: any) => s.count));
+  if (error || !data) {
+    return (
+      <div className="rounded-2xl border bg-white p-8 text-center">
+        <p className="font-bold text-gray-800">
+          Analytics could not be loaded.
+        </p>
+        <p className="mt-2 text-sm text-gray-500">
+          Please refresh the page and try again.
+        </p>
+      </div>
+    );
+  }
+
+  const maxSource = Math.max(
+    1,
+    ...(data.sources || []).map((s: any) => s.count)
+  );
+
+  const metrics = [
+    {
+      label: 'Unique Visitors',
+      value: data.visitors || 0,
+      color: 'text-blue-600',
+    },
+    {
+      label: 'Page Views',
+      value: data.pageviews || 0,
+      color: 'text-indigo-600',
+    },
+    {
+      label: 'Average Time on Store',
+      value: fmtDuration(data.avg_duration || 0),
+      color: 'text-teal-600',
+    },
+    {
+      label: 'All Orders',
+      value: data.orders || 0,
+      color: 'text-green-600',
+    },
+    {
+      label: 'Paid Orders',
+      value: data.paid_orders || 0,
+      color: 'text-emerald-600',
+    },
+    {
+      label: 'Pending Payments',
+      value: data.pending_orders || 0,
+      color: 'text-amber-600',
+    },
+    {
+      label: 'Total Sales',
+      value: formatCurrency(data.revenue || 0),
+      color: 'text-purple-600',
+    },
+    {
+      label: 'Conversion',
+      value: `${Number(data.conversion_rate || 0).toFixed(1)}%`,
+      color: 'text-orange-600',
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-gray-600 text-sm">Real visitors, real sources, real time-on-store. Last 30 days.</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-purple-600">
+          Business intelligence
+        </p>
+        <h1 className="mt-1 text-2xl font-extrabold text-gray-900">
+          Store Analytics
+        </h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Understand your visitors, orders and actual business revenue.
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase">Unique Visitors</p>
-          <p className="text-3xl font-extrabold text-blue-600 mt-1">{data.visitors || 0}</p>
-        </div>
-        <div className="bg-white rounded-2xl border p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase">Page Views</p>
-          <p className="text-3xl font-extrabold text-indigo-600 mt-1">{data.pageviews || 0}</p>
-        </div>
-        <div className="bg-white rounded-2xl border p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase">Avg Time on Store</p>
-          <p className="text-3xl font-extrabold text-teal-600 mt-1">{fmtDuration(data.avg_duration || 0)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase">Paid Orders</p>
-          <p className="text-3xl font-extrabold text-green-600 mt-1">{data.orders || 0}</p>
-        </div>
-        <div className="bg-white rounded-2xl border p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase">Total Revenue</p>
-          <p className="text-2xl font-extrabold text-purple-600 mt-1">{formatCurrency(data.revenue || 0)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase">Conversion</p>
-          <p className="text-3xl font-extrabold text-orange-600 mt-1">
-            {data.visitors ? ((data.orders / data.visitors) * 100).toFixed(1) : '0.0'}%
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {metrics.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
+          >
+            <p className="text-xs font-bold text-gray-500">
+              {item.label}
+            </p>
+            <p className={`mt-2 break-words text-2xl font-extrabold ${item.color}`}>
+              {item.value}
+            </p>
+          </div>
+        ))}
       </div>
 
-      <div className="bg-white rounded-2xl border p-6">
-        <h2 className="font-bold mb-4">📍 Where visitors come from</h2>
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h2 className="font-extrabold text-gray-900">
+          Sales performance
+        </h2>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[
+            {
+              label: 'Today',
+              orders: data.today_orders,
+              sales: data.today_revenue,
+            },
+            {
+              label: 'This week',
+              orders: data.week_orders,
+              sales: data.week_revenue,
+            },
+            {
+              label: 'This month',
+              orders: data.month_orders,
+              sales: data.month_revenue,
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl bg-gray-50 p-4"
+            >
+              <p className="text-xs font-bold text-gray-500">
+                {item.label}
+              </p>
+              <p className="mt-2 text-xl font-extrabold text-gray-900">
+                {formatCurrency(item.sales || 0)}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {item.orders || 0} orders
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h2 className="font-extrabold text-gray-900">
+          Order status overview
+        </h2>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            {
+              label: 'Pending payment',
+              value: data.pending_orders,
+              color: 'text-amber-700',
+            },
+            {
+              label: 'Delivered',
+              value: data.completed_orders,
+              color: 'text-green-700',
+            },
+            {
+              label: 'Cancelled',
+              value: data.cancelled_orders,
+              color: 'text-red-700',
+            },
+            {
+              label: 'Refunded',
+              value: data.refunded_orders,
+              color: 'text-purple-700',
+            },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl bg-gray-50 p-3">
+              <p className="text-xs text-gray-500">{item.label}</p>
+              <p className={`mt-2 text-2xl font-extrabold ${item.color}`}>
+                {item.value || 0}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 font-extrabold text-gray-900">
+          Where visitors come from
+        </h2>
+
         {(!data.sources || data.sources.length === 0) ? (
-          <p className="text-sm text-gray-500">No traffic yet. Share your store link on WhatsApp & Instagram — sources will appear here automatically.</p>
+          <p className="text-sm text-gray-500">
+            No recorded visitor sources yet. Share your store link to
+            start attracting visitors.
+          </p>
         ) : (
-          <div className="space-y-3">
-            {data.sources.map((s: any) => (
-              <div key={s.name}>
-                <div className="flex justify-between text-xs font-bold mb-1">
-                  <span className="text-gray-700">{s.name}</span>
-                  <span className="text-gray-500">{s.count} visits</span>
+          <div className="space-y-4">
+            {data.sources.map((source: any) => (
+              <div key={source.name}>
+                <div className="mb-1 flex justify-between text-xs font-bold">
+                  <span className="text-gray-700">
+                    {source.name}
+                  </span>
+                  <span className="text-gray-500">
+                    {source.count} visits
+                  </span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full" style={{ width: `${(s.count / maxSource) * 100}%` }} />
+
+                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
+                    style={{
+                      width: `${(source.count / maxSource) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800">
-        💡 Genuine visitors only: bots, previews and your own logged-in visits are automatically excluded.
+      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-800">
+        Orders include all successfully created orders, even when payment
+        is pending. Sales include paid orders that have not been cancelled
+        or refunded. Visitor and conversion statistics cover the last
+        30 days.
       </div>
     </div>
   );
