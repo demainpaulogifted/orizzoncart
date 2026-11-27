@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -176,22 +175,13 @@ export function MarketplaceAppExperience() {
       )}
 
       {showButton && !showPopup && (
-        <div className="fixed right-3 bottom-20 z-[60] flex items-center gap-2">
-          <a
-            href="/invite/join"
-            className="rounded-full border border-purple-200 bg-white px-4 py-2.5 text-[11px] font-extrabold text-purple-800 shadow-xl"
-          >
-            Invite & Earn
-          </a>
-
-          <button
-            type="button"
-            onClick={() => setShowPopup(true)}
-            className="rounded-full border border-white/20 bg-blue-600 px-4 py-2.5 text-[11px] font-extrabold text-white shadow-xl hover:bg-blue-700"
-          >
-            📲 Install App
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowPopup(true)}
+          className="fixed right-[122px] bottom-20 z-[60] px-4 py-2.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold shadow-xl hover:bg-blue-700 border border-white/20"
+        >
+          📲 Install App
+        </button>
       )}
     </>
   );
