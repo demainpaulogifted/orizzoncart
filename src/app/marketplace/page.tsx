@@ -1,3 +1,4 @@
+
 import AdSenseFeedCard from '@/components/ads/AdSenseFeedCard';
 import { insertShuffledFeedAds } from '@/lib/adsense-feed';
 import Link from 'next/link';
@@ -7,7 +8,6 @@ import { THEMES } from '@/lib/themes';
 import { ProductCardAddButton } from '@/components/marketplace/ProductCardAddButton';
 import { MarketplaceBottomNav } from '@/components/marketplace/MarketplaceBottomNav';
 import { FlashSaleBanner } from '@/components/marketplace/FlashSaleBanner';
-import { MarketplaceInviteBanner } from '@/components/invite/InviteEarnBanners';
 import { MarketplaceAppExperience } from '@/components/marketplace/MarketplaceAppExperience';
 import { MarketplaceTour } from '@/components/marketplace/MarketplaceTour';
 import { parseAffinityCookie, rankActiveStores } from '@/lib/active-stores-feed';
@@ -40,6 +40,7 @@ export const metadata = {
 };
 
 const themeList: any[] = Object.values(THEMES);
+
 function themeFor(themeId: string | null | undefined) {
   return (THEMES as any)[themeId as any] || themeList[0];
 }
@@ -74,16 +75,19 @@ function hashString(str: string): number {
 function seededShuffle<T>(arr: T[], seed: number): T[] {
   const a = [...arr];
   let s = seed >>> 0;
+
   const rnd = () => {
     s = (s + 0x6d2b79f5) >>> 0;
     let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
+
   return a;
 }
 
@@ -146,18 +150,22 @@ export default async function MarketplacePage() {
       ? (merchantRank.get(p.merchant_id) as number)
       : 999;
     const created = p.created_at ? new Date(p.created_at).getTime() : 0;
+
     return { affinity: affinity, mRank: mRank, created: created };
   }
 
   const sortedProducts = productRows.slice().sort(function (a, b) {
     const sa = scoreProduct(a);
     const sb = scoreProduct(b);
+
     if (sa.affinity !== sb.affinity) return sa.affinity - sb.affinity;
     if (sa.mRank !== sb.mRank) return sa.mRank - sb.mRank;
+
     return sb.created - sa.created;
   });
 
   const windowed: any[] = [];
+
   for (let i = 0; i < sortedProducts.length; i += 6) {
     const chunk = sortedProducts.slice(i, i + 6);
     windowed.push.apply(windowed, seededShuffle(chunk, seed + i));
@@ -170,10 +178,12 @@ export default async function MarketplacePage() {
   const deals = all.filter(function (p: any) {
     if (!p.is_flash_deal || p.flash_deal_price == null) return false;
     if (Number(p.flash_deal_price) >= Number(p.price)) return false;
+
     if (p.flash_deal_ends_at) {
       const ends = new Date(p.flash_deal_ends_at).getTime();
       if (ends < now) return false;
     }
+
     return true;
   });
 
@@ -236,10 +246,12 @@ export default async function MarketplacePage() {
               <Link href="/marketplace" className="font-extrabold text-base tracking-tight">
                 Orizzon<span className="text-yellow-300">Cart</span> Marketplace
               </Link>
+
               <span className="text-[9px] bg-white/15 rounded-full px-2 py-1 font-semibold">
                 Verified sellers • {countryCode}
               </span>
             </div>
+
             <form action="/marketplace/categories" method="GET">
               <input
                 name="q"
@@ -254,7 +266,7 @@ export default async function MarketplacePage() {
           <h1 className="sr-only">
             OrizzonCart Marketplace — Shop Verified Nigerian Stores Online
           </h1>
-          <MarketplaceInviteBanner />
+
           <FlashSaleBanner />
 
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
@@ -275,6 +287,7 @@ export default async function MarketplacePage() {
             <section>
               <div className="flex items-center justify-between gap-2 mb-3">
                 <h2 className="font-extrabold text-lg">🟢 Active Stores</h2>
+
                 <Link
                   href="/marketplace/stores"
                   className="shrink-0 text-xs font-extrabold text-purple-700 hover:text-purple-900"
@@ -282,9 +295,11 @@ export default async function MarketplacePage() {
                   See all →
                 </Link>
               </div>
+
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
                 {displayMerchants.map(function (m: any) {
                   const t = themeFor(m.theme_id);
+
                   return (
                     <Link
                       key={m.id}
@@ -295,6 +310,7 @@ export default async function MarketplacePage() {
                         className="h-1.5"
                         style={{ backgroundColor: t.variables['--color-primary'] }}
                       />
+
                       <div className="p-2">
                         <div className="flex items-center gap-1.5">
                           {m.logo_url ? (
@@ -314,8 +330,10 @@ export default async function MarketplacePage() {
                               ).toUpperCase()}
                             </span>
                           )}
+
                           <p className="text-[11px] font-bold truncate">{m.store_name}</p>
                         </div>
+
                         <p
                           className="mt-1.5 text-[9px] font-bold text-center rounded-full py-1 text-white"
                           style={{ backgroundColor: t.variables['--color-primary'] }}
@@ -329,22 +347,34 @@ export default async function MarketplacePage() {
               </div>
             </section>
           )}
+
           <section>
             <h2 className="font-extrabold text-lg mb-3">✨ Fresh For You</h2>
+
             {fresh.length === 0 ? (
               <div className="bg-white border rounded-2xl p-10 text-center text-gray-500 text-sm">
                 No products yet. Merchants are onboarding! 🏪
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-                {insertShuffledFeedAds(fresh, 'home-fresh:' + new Date().toISOString().slice(0, 10)).map(function (entry: any) {
-        if (entry.type === 'ad') {
-          return <AdSenseFeedCard key={entry.key} className="shrink-0 w-36 min-h-[190px]" />;
-        }
-        const p: any = entry.product;
+                {insertShuffledFeedAds(
+                  fresh,
+                  'home-fresh:' + new Date().toISOString().slice(0, 10)
+                ).map(function (entry: any) {
+                  if (entry.type === 'ad') {
+                    return (
+                      <AdSenseFeedCard
+                        key={entry.key}
+                        className="shrink-0 w-36 min-h-[190px]"
+                      />
+                    );
+                  }
+
+                  const p: any = entry.product;
                   const t = themeFor(p.merchant && p.merchant.theme_id);
                   const img = p.images && p.images[0] ? p.images[0].url : null;
                   const storeSlug = p.merchant && p.merchant.store_slug;
+
                   return (
                     <a
                       key={p.id}
@@ -360,15 +390,23 @@ export default async function MarketplacePage() {
                           </div>
                         )}
                       </div>
+
                       <div className="p-2 space-y-1">
                         <p className="text-xs font-medium line-clamp-2">{p.name}</p>
+
                         <p
                           className="text-sm font-extrabold"
                           style={{ color: t.variables['--color-primary'] }}
                         >
-                          {getCurrencySymbol(p.currency_code || 'NGN')}{Number(p.price).toLocaleString()}
+                          {getCurrencySymbol(p.currency_code || 'NGN')}
+                          {Number(p.price).toLocaleString()}
                         </p>
-                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
+
+                        <ProductCardAddButton
+                          productId={p.id}
+                          storeSlug={storeSlug || ''}
+                        />
+
                         <p className="text-[10px] text-gray-400 truncate">
                           🏪 {p.merchant && p.merchant.store_name}
                         </p>
@@ -389,15 +427,26 @@ export default async function MarketplacePage() {
           {discover.length > 0 && (
             <section>
               <h2 className="font-extrabold text-lg mb-3">🧭 Discover</h2>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {insertShuffledFeedAds(discover, 'home-discover:' + new Date().toISOString().slice(0, 10)).map(function (entry: any) {
-        if (entry.type === 'ad') {
-          return <AdSenseFeedCard key={entry.key} className="min-h-[220px]" />;
-        }
-        const p: any = entry.product;
+                {insertShuffledFeedAds(
+                  discover,
+                  'home-discover:' + new Date().toISOString().slice(0, 10)
+                ).map(function (entry: any) {
+                  if (entry.type === 'ad') {
+                    return (
+                      <AdSenseFeedCard
+                        key={entry.key}
+                        className="min-h-[220px]"
+                      />
+                    );
+                  }
+
+                  const p: any = entry.product;
                   const t = themeFor(p.merchant && p.merchant.theme_id);
                   const img = p.images && p.images[0] ? p.images[0].url : null;
                   const storeSlug = p.merchant && p.merchant.store_slug;
+
                   return (
                     <a
                       key={'d-' + p.id}
@@ -413,15 +462,23 @@ export default async function MarketplacePage() {
                           </div>
                         )}
                       </div>
+
                       <div className="p-2 space-y-1">
                         <p className="text-xs font-medium line-clamp-2">{p.name}</p>
+
                         <p
                           className="text-sm font-extrabold"
                           style={{ color: t.variables['--color-primary'] }}
                         >
-                          {getCurrencySymbol(p.currency_code || 'NGN')}{Number(p.price).toLocaleString()}
+                          {getCurrencySymbol(p.currency_code || 'NGN')}
+                          {Number(p.price).toLocaleString()}
                         </p>
-                        <ProductCardAddButton productId={p.id} storeSlug={storeSlug || ''} />
+
+                        <ProductCardAddButton
+                          productId={p.id}
+                          storeSlug={storeSlug || ''}
+                        />
+
                         <p className="text-[10px] text-gray-400 truncate">
                           🏪 {p.merchant && p.merchant.store_name}
                         </p>
