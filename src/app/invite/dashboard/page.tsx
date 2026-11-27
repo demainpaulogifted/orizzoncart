@@ -1,3 +1,4 @@
+
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -92,7 +93,7 @@ function DashboardInner() {
             <button type="button" onClick={() => downloadFlyer('long')} className="py-3 bg-amber-500 text-white text-sm font-bold rounded-xl">Long flyer</button>
           </div>
         </div>
-        <p className="text-center text-xs text-gray-400">₦500 pending when a referred store completes activation. You pay partners manually.</p>
+        <p className="text-center text-xs text-gray-400">₦1,500 pending when a referred store completes activation. You pay partners manually.</p>
       </div>
     </div>
   );
