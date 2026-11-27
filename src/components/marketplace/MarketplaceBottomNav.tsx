@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -89,37 +90,46 @@ export function MarketplaceBottomNav({ active }: { active?: string }) {
     (active === key ? 'text-purple-600' : 'text-gray-400');
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)]">
-      <div className="max-w-3xl mx-auto grid grid-cols-5 h-16">
-        <button type="button" onClick={() => router.push('/marketplace')} className={item('home')}>
-          <span className="text-lg leading-none">🏠</span>
-          Home
-        </button>
+    <>
+      <Link
+        href="/invite/join"
+        className="fixed right-3 bottom-20 z-[60] rounded-full border border-purple-200 bg-white px-4 py-2.5 text-[11px] font-extrabold text-purple-800 shadow-xl hover:bg-purple-50"
+      >
+        Invite & Earn
+      </Link>
 
-        <button type="button" onClick={() => router.push('/marketplace/categories')} className={item('shop')}>
-          <span className="text-lg leading-none">🛍️</span>
-          Shop
-        </button>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-3xl mx-auto grid grid-cols-5 h-16">
+          <button type="button" onClick={() => router.push('/marketplace')} className={item('home')}>
+            <span className="text-lg leading-none">🏠</span>
+            Home
+          </button>
 
-        <button
-          type="button"
-          onClick={openPublish}
-          disabled={checking}
-          className="flex flex-col items-center justify-end pb-1 -mt-5"
-        >
-          <span className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-2xl font-extrabold flex items-center justify-center shadow-lg border-4 border-white">
-            +
-          </span>
-          <span className="text-[9px] font-bold text-purple-600 mt-0.5">Publish</span>
-        </button>
+          <button type="button" onClick={() => router.push('/marketplace/categories')} className={item('shop')}>
+            <span className="text-lg leading-none">🛍️</span>
+            Shop
+          </button>
 
-        <button type="button" onClick={openMerchant} disabled={checking} className={item('merchant')}>
-          <span className="text-lg leading-none">🏪</span>
-          Merchant
-        </button>
+          <button
+            type="button"
+            onClick={openPublish}
+            disabled={checking}
+            className="flex flex-col items-center justify-end pb-1 -mt-5"
+          >
+            <span className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-2xl font-extrabold flex items-center justify-center shadow-lg border-4 border-white">
+              +
+            </span>
+            <span className="text-[9px] font-bold text-purple-600 mt-0.5">Publish</span>
+          </button>
 
-        <MarketplaceCartButton active={active} />
-      </div>
-    </nav>
+          <button type="button" onClick={openMerchant} disabled={checking} className={item('merchant')}>
+            <span className="text-lg leading-none">🏪</span>
+            Merchant
+          </button>
+
+          <MarketplaceCartButton active={active} />
+        </div>
+      </nav>
+    </>
   );
 }
