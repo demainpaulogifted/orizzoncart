@@ -1,87 +1,89 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 import { generateOrderNumber } from '@/lib/utils';
 import { ensureOrizzonPay } from '@/lib/paystack-engine';
 import { getMarketplaceCountryCode } from '@/lib/geo/marketplace-country';
+import { decryptMerchantSecret } from '@/lib/payments/merchant-credentials';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { store_slug, items, customer, shipping_mode, shipping_cost } = body;
+    const {
+      store_slug,
+      items,
+      customer,
+      shipping_mode,
+      shipping_cost,
+    } = body;
+
     const supabase = createAdminClient();
 
-    const { data: merchant } = await supabase
+    const { data: merchant, error: merchantError } = await supabase
       .from('merchants')
-      .select('id, store_name, store_slug, country_code, currency_code, is_active, is_verified, is_on_marketplace, payment_receiving_status, cart_status, checkout_status, preferred_gateway, paystack_secret_key, flutterwave_secret_key, maintenance_expires_at, shipping_mode, shipping_flat_fee, bank_name, account_number, paystack_subaccount_code, split_code_platform, payout_method')
+      .select(`
+        id,
+        store_name,
+        store_slug,
+        country_code,
+        currency_code,
+        is_active,
+        is_verified,
+        is_on_marketplace,
+        payment_receiving_status,
+        cart_status,
+        checkout_status,
+        maintenance_expires_at,
+        bank_name,
+        account_number,
+        paystack_subaccount_code,
+        split_code_platform,
+        payout_method
+      `)
       .eq('store_slug', store_slug)
       .single();
 
-    if (!merchant) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
+    if (merchantError || !merchant) {
+      return NextResponse.json(
+        { error: 'Store not found.' },
+        { status: 404 }
+      );
+    }
 
     const marketplaceCountry = await getMarketplaceCountryCode();
-    const merchantCountry = String(merchant.country_code || 'NG').toUpperCase();
-    const currencyCode = String(merchant.currency_code || 'NGN').toUpperCase();
+    const merchantCountry = String(
+      merchant.country_code || 'NG'
+    ).toUpperCase();
+    const currencyCode = String(
+      merchant.currency_code || 'NGN'
+    ).toUpperCase();
 
     if (merchantCountry !== marketplaceCountry) {
       return NextResponse.json(
-        { error: 'This store does not belong to your selected country marketplace.' },
+        {
+          error:
+            'This store does not belong to your selected country marketplace.',
+        },
         { status: 403 }
       );
     }
 
     if (merchantCountry !== 'NG' || currencyCode !== 'NGN') {
       return NextResponse.json(
-        { error: 'Online payment is not yet enabled for this country and currency. Please contact the seller for an available payment option.' },
+        {
+          error:
+            'Online payment is not yet enabled for this country and currency. Please contact the seller for an available payment option.',
+        },
         { status: 400 }
       );
     }
 
-    // Preflight the same payment routes used below, before creating an order.
-    // Existing Nigerian OrizzonPay arrangements remain supported.
-    const preflightHasOwn = !!(merchant.paystack_secret_key || merchant.flutterwave_secret_key);
-    const preflightHasBank = !!(merchant.bank_name && merchant.account_number);
-    const preflightPlatformKey =
-      process.env.ORIZZONCART_PAY_SECRET_KEY ||
-      process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+    const expired =
+      merchant.maintenance_expires_at &&
+      new Date(merchant.maintenance_expires_at) < new Date();
 
-    const preflightMethod =
-      merchant.payout_method ||
-      (preflightHasOwn ? 'own_keys' : preflightHasBank ? 'orizzonpay' : null);
-
-    const preflightUsesOwn =
-      preflightMethod === 'own_keys' && preflightHasOwn;
-
-    const preflightUsesOrizzon =
-      !preflightUsesOwn && preflightHasBank && !!preflightPlatformKey;
-
-    const preflightOwnSecret = preflightUsesOwn
-      ? (
-          merchant.preferred_gateway === 'flutterwave' && merchant.flutterwave_secret_key
-            ? merchant.flutterwave_secret_key
-            : merchant.paystack_secret_key || merchant.flutterwave_secret_key
-        )
-      : (!preflightUsesOrizzon && preflightHasOwn
-          ? merchant.paystack_secret_key || merchant.flutterwave_secret_key
-          : null);
-
-    const preflightIsFlutterwave =
-      !!preflightOwnSecret &&
-      (
-        (merchant.preferred_gateway === 'flutterwave' && !!merchant.flutterwave_secret_key) ||
-        (!merchant.paystack_secret_key && !!merchant.flutterwave_secret_key)
-      );
-
-    if (
-      !preflightUsesOrizzon &&
-      (!preflightOwnSecret || preflightIsFlutterwave)
-    ) {
-      return NextResponse.json(
-        { error: 'A supported Paystack payment account is not configured for this store. Flutterwave checkout is not enabled in this checkout flow yet.' },
-        { status: 400 }
-      );
-    }
-
-    const expired = merchant.maintenance_expires_at && new Date(merchant.maintenance_expires_at) < new Date();
     if (
       expired ||
       merchant.is_active !== true ||
@@ -92,71 +94,226 @@ export async function POST(request: NextRequest) {
       merchant.checkout_status !== 'ENABLED'
     ) {
       return NextResponse.json(
-        { error: 'This store is in showcase mode and is not accepting orders yet.' },
+        {
+          error:
+            'This store is in showcase mode and is not accepting orders yet.',
+        },
         { status: 403 }
       );
     }
 
-    const productIds = (items || []).map((i: any) => i.product_id);
-    const { data: products } = await supabase
+    // Retrieve the merchant's encrypted Paystack credentials.
+    const { data: credential, error: credentialError } =
+      await supabase
+        .from('merchant_payment_credentials')
+        .select(
+          'client_id, environment, secret_ciphertext, secret_iv, secret_auth_tag'
+        )
+        .eq('merchant_id', merchant.id)
+        .eq('provider', 'paystack')
+        .maybeSingle();
+
+    if (credentialError) throw credentialError;
+
+    const hasOwnPaystack = Boolean(credential);
+
+    const hasBank = Boolean(
+      merchant.bank_name && merchant.account_number
+    );
+
+    const platformKey =
+      process.env.ORIZZONCART_PAY_SECRET_KEY ||
+      process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+
+    const method =
+      merchant.payout_method ||
+      (hasOwnPaystack
+        ? 'own_keys'
+        : hasBank
+          ? 'orizzonpay'
+          : null);
+
+    let secretKey: string | null = null;
+    let splitCode: string | null = null;
+
+    if (method === 'own_keys') {
+      if (!credential) {
+        return NextResponse.json(
+          {
+            error:
+              'Your Paystack account is not configured. Please reconnect your Paystack credentials in Payment Settings.',
+          },
+          { status: 400 }
+        );
+      }
+
+      if (
+        credential.environment !== 'live' &&
+        credential.environment !== 'sandbox'
+      ) {
+        return NextResponse.json(
+          { error: 'Invalid Paystack credential environment.' },
+          { status: 400 }
+        );
+      }
+
+      secretKey = decryptMerchantSecret({
+        secret_ciphertext: credential.secret_ciphertext,
+        secret_iv: credential.secret_iv,
+        secret_auth_tag: credential.secret_auth_tag,
+      });
+
+      splitCode = null;
+    } else if (hasBank && platformKey) {
+      const enriched = await ensureOrizzonPay(merchant);
+      secretKey = platformKey;
+      splitCode = enriched.split_code_platform || null;
+    } else {
+      return NextResponse.json(
+        {
+          error:
+            'No supported payment method is configured for this store.',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!secretKey) {
+      return NextResponse.json(
+        { error: 'Payment gateway not configured.' },
+        { status: 500 }
+      );
+    }
+
+    const productIds = (items || [])
+      .map((item: any) => item.product_id)
+      .filter(Boolean);
+
+    if (!productIds.length) {
+      return NextResponse.json(
+        { error: 'Your cart is empty.' },
+        { status: 400 }
+      );
+    }
+
+    const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, name, price, is_active, is_digital, supplier, supplier_product_id')
+      .select(
+        'id, name, price, is_active, is_digital, supplier, supplier_product_id'
+      )
       .in('id', productIds)
       .eq('merchant_id', merchant.id);
 
-    const validProducts = (products || []).filter((p: any) => p.is_active);
-    if (validProducts.length === 0) {
-      return NextResponse.json({ error: 'No available products in your cart.' }, { status: 400 });
+    if (productsError) throw productsError;
+
+    const validProducts = (products || []).filter(
+      (product: any) => product.is_active
+    );
+
+    if (!validProducts.length) {
+      return NextResponse.json(
+        { error: 'No available products in your cart.' },
+        { status: 400 }
+      );
     }
 
     let subtotal = 0;
     const orderItems: any[] = [];
+
     for (const item of items || []) {
-      const product = validProducts.find((p: any) => p.id === item.product_id);
+      const product = validProducts.find(
+        (p: any) => p.id === item.product_id
+      );
+
       if (!product) continue;
-      subtotal += product.price * item.quantity;
+
+      const quantity = Number(item.quantity);
+
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        return NextResponse.json(
+          { error: 'Invalid product quantity.' },
+          { status: 400 }
+        );
+      }
+
+      const price = Number(product.price);
+
+      if (!Number.isFinite(price) || price < 0) {
+        return NextResponse.json(
+          { error: 'Invalid product price.' },
+          { status: 400 }
+        );
+      }
+
+      subtotal += price * quantity;
+
       orderItems.push({
         product_id: product.id,
         product_name: product.name,
-        quantity: item.quantity,
-        unit_price: product.price,
-        total_price: product.price * item.quantity,
+        quantity,
+        unit_price: price,
+        total_price: price * quantity,
       });
     }
 
-    // --- 🚚 SHIPPING CALCULATION ---
+    if (!orderItems.length || subtotal <= 0) {
+      return NextResponse.json(
+        { error: 'Your cart contains no valid products.' },
+        { status: 400 }
+      );
+    }
+
+    // SHIPPING CALCULATION
     const isPickup = shipping_mode === 'PICKUP';
     const isNeighbourhood = /neigh/i.test(shipping_mode || '');
-    const customerCountry = 'Nigeria'; // Server-enforced: this checkout currently supports NG only.
+    const customerCountry = 'Nigeria';
 
-    let finalShippingCost = Math.max(0, Number(shipping_cost) || 0);
+    let finalShippingCost = Math.max(
+      0,
+      Number(shipping_cost) || 0
+    );
+
     let supplierShippingCost = 0;
 
-    // Check if order has dropship items
-    const hasDropshipItems = validProducts.some((p: any) => p.supplier && p.supplier_product_id);
+    const hasDropshipItems = validProducts.some(
+      (p: any) => p.supplier && p.supplier_product_id
+    );
 
     if (hasDropshipItems && !isPickup && !isNeighbourhood) {
-      // Fetch real-time shipping cost from supplier (CJ, etc.)
       try {
-        const shippingRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/dropshipping/shipping-rate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            merchantId: merchant.id,
-            items: orderItems,
-            country: customerCountry,
-          }),
-        });
+        const shippingRes = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/dropshipping/shipping-rate`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              merchantId: merchant.id,
+              items: orderItems,
+              country: customerCountry,
+            }),
+          }
+        );
+
         const shippingData = await shippingRes.json();
-        supplierShippingCost = shippingData.shipping_cost || 0;
-      } catch (e) {
-        console.error('Failed to fetch supplier shipping rate:', e);
-        supplierShippingCost = 0;
+
+        if (shippingRes.ok) {
+          supplierShippingCost =
+            Number(shippingData.shipping_cost) || 0;
+        }
+      } catch (error) {
+        console.error(
+          'Failed to fetch supplier shipping rate:',
+          error
+        );
       }
     }
 
-    // If merchant has custom zones AND no dropship items, use zone pricing
-    if (!hasDropshipItems && !isPickup && !isNeighbourhood && customer?.state) {
+    if (
+      !hasDropshipItems &&
+      !isPickup &&
+      !isNeighbourhood &&
+      customer?.state
+    ) {
       const { data: zones } = await supabase
         .from('shipping_zones')
         .select('*')
@@ -164,13 +321,16 @@ export async function POST(request: NextRequest) {
 
       if (zones && zones.length > 0) {
         const zone =
-          (zones as any[]).find((z) => (z.states || []).includes(customer.state)) ||
+          (zones as any[]).find((z) =>
+            (z.states || []).includes(customer.state)
+          ) ||
           (zones as any[]).find((z) => z.is_default) ||
           null;
 
         if (zone) {
           finalShippingCost =
-            zone.free_shipping_threshold && subtotal >= Number(zone.free_shipping_threshold)
+            zone.free_shipping_threshold &&
+            subtotal >= Number(zone.free_shipping_threshold)
               ? 0
               : Number(zone.flat_fee) || 0;
         }
@@ -180,52 +340,69 @@ export async function POST(request: NextRequest) {
       supplierShippingCost = 0;
     }
 
-    // For dropship orders, use supplier shipping cost
     if (hasDropshipItems && supplierShippingCost > 0) {
       finalShippingCost = supplierShippingCost;
     }
 
     const totalAmount = subtotal + finalShippingCost;
-    // -------------------------------
 
     const shippingAddress =
       shipping_mode === 'PICKUP' || !customer?.address_line1
         ? {
-            address_line1: shipping_mode === 'PICKUP' ? 'Store pickup' : 'Digital delivery — no shipping required',
+            address_line1:
+              shipping_mode === 'PICKUP'
+                ? 'Store pickup'
+                : 'Digital delivery — no shipping required',
             city: customer?.city || 'N/A',
             state: customer?.state || 'N/A',
             country: customerCountry,
           }
-        : { 
-            address_line1: customer.address_line1, 
-            city: customer.city, 
+        : {
+            address_line1: customer.address_line1,
+            city: customer.city,
             state: customer.state,
             country: customerCountry,
           };
 
-    const { data: order, error: orderError } = await supabase.from('orders').insert({
-      order_number: generateOrderNumber(),
-      merchant_id: merchant.id,
-      customer_name: customer?.name || 'Customer',
-      customer_email: customer?.email || '',
-      customer_phone: customer?.phone || '',
-      subtotal,
-      shipping_cost: finalShippingCost,
-      supplier_shipping_cost: supplierShippingCost,
-      shipping_country: customerCountry,
-      total_amount: totalAmount,
-      currency: currencyCode,
-      status: 'pending',
-      payment_status: 'pending',
-      shipping_address: shippingAddress,
-      tracking_number: `TRK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-    }).select().single();
+    // CREATE ORDER
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        order_number: generateOrderNumber(),
+        merchant_id: merchant.id,
+        customer_name: customer?.name || 'Customer',
+        customer_email: customer?.email || '',
+        customer_phone: customer?.phone || '',
+        subtotal,
+        shipping_cost: finalShippingCost,
+        supplier_shipping_cost: supplierShippingCost,
+        shipping_country: customerCountry,
+        total_amount: totalAmount,
+        currency: currencyCode,
+        status: 'pending',
+        payment_status: 'pending',
+        shipping_address: shippingAddress,
+        tracking_number: `TRK-${Math.random()
+          .toString(36)
+          .substring(2, 8)
+          .toUpperCase()}`,
+      })
+      .select()
+      .single();
 
     if (orderError) throw orderError;
 
-    await supabase.from('order_items').insert(orderItems.map((i: any) => ({ ...i, order_id: order.id })));
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(
+        orderItems.map((item: any) => ({
+          ...item,
+          order_id: order.id,
+        }))
+      );
 
-    // --- 📦 DROPSHIPPING DETECTION LOGIC ---
+    if (itemsError) throw itemsError;
+
     if (hasDropshipItems) {
       await supabase
         .from('orders')
@@ -235,69 +412,106 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', order.id);
     }
-    // ------------------------------------
 
     const reference = `ORD-${order.id.substring(0, 8)}-${Date.now()}`;
-    await supabase.from('orders').update({ payment_intent_id: reference }).eq('id', order.id);
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://orizzoncart.com.ng';
+    await supabase
+      .from('orders')
+      .update({ payment_intent_id: reference })
+      .eq('id', order.id);
 
-    const hasOwn = !!(merchant.paystack_secret_key || merchant.flutterwave_secret_key);
-    const hasBank = !!(merchant.bank_name && merchant.account_number);
-    const orizzonKey = process.env.ORIZZONCART_PAY_SECRET_KEY || process.env.PLATFORM_PAYSTACK_SECRET_KEY;
-    const method = merchant.payout_method || (hasOwn ? 'own_keys' : hasBank ? 'orizzonpay' : null);
-
-    let secretKey: string | null = null;
-    let splitCode: string | null = null;
-
-    if (method === 'own_keys' && hasOwn) {
-      secretKey = merchant.preferred_gateway === 'flutterwave' && merchant.flutterwave_secret_key
-        ? merchant.flutterwave_secret_key
-        : (merchant.paystack_secret_key || merchant.flutterwave_secret_key);
-      splitCode = null;
-    } else if (hasBank && orizzonKey) {
-      const enriched = await ensureOrizzonPay(merchant);
-      secretKey = orizzonKey;
-      splitCode = enriched.split_code_platform || null;
-    } else if (hasOwn) {
-      secretKey = merchant.paystack_secret_key || merchant.flutterwave_secret_key;
-      splitCode = null;
-    }
-
-    if (!secretKey) return NextResponse.json({ error: 'Payment gateway not configured.' }, { status: 500 });
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      'https://marketplace.orizzoncart.com.ng';
 
     const buildBody = (split: string | null) => {
-      const b: any = {
+      const paymentBody: any = {
         email: customer?.email || 'customer@orizzoncart.com.ng',
-        amount: totalAmount * 100,
+        amount: Math.round(totalAmount * 100),
+        currency: currencyCode,
         reference,
-        callback_url: `${appUrl}/checkout/success?order=${encodeURIComponent(order.id)}&reference=${encodeURIComponent(reference)}`,
-        metadata: { order_id: order.id, merchant_id: merchant.id, type: 'customer_order' },
+        callback_url:
+          `${appUrl}/checkout/success?order=${encodeURIComponent(order.id)}` +
+          `&reference=${encodeURIComponent(reference)}`,
+        metadata: {
+          order_id: order.id,
+          merchant_id: merchant.id,
+          type: 'customer_order',
+        },
       };
-      if (split) b.split_code = split;
-      return b;
+
+      if (split) paymentBody.split_code = split;
+
+      return paymentBody;
     };
 
-    let paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildBody(splitCode)),
-    });
+    let paystackRes = await fetch(
+      'https://api.paystack.co/transaction/initialize',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(buildBody(splitCode)),
+        cache: 'no-store',
+      }
+    );
+
     let paystackData = await paystackRes.json();
 
-    if (!paystackData.status && /split/i.test(paystackData.message || '')) {
-      await supabase.from('merchants').update({ paystack_subaccount_code: null, split_code_platform: null }).eq('id', merchant.id);
-      const fresh = await ensureOrizzonPay({ ...merchant, paystack_subaccount_code: null, split_code_platform: null });
-      splitCode = fresh.split_code_platform || null;
-      paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildBody(splitCode)),
+    if (
+      !paystackData.status &&
+      splitCode &&
+      /split/i.test(paystackData.message || '')
+    ) {
+      await supabase
+        .from('merchants')
+        .update({
+          paystack_subaccount_code: null,
+          split_code_platform: null,
+        })
+        .eq('id', merchant.id);
+
+      const fresh = await ensureOrizzonPay({
+        ...merchant,
+        paystack_subaccount_code: null,
+        split_code_platform: null,
       });
+
+      splitCode = fresh.split_code_platform || null;
+
+      paystackRes = await fetch(
+        'https://api.paystack.co/transaction/initialize',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(buildBody(splitCode)),
+          cache: 'no-store',
+        }
+      );
+
       paystackData = await paystackRes.json();
     }
 
-    if (!paystackData.status) throw new Error(paystackData.message);
+    if (!paystackRes.ok || !paystackData.status) {
+      console.error('Paystack initialization failed:', paystackData);
+
+      await supabase
+        .from('orders')
+        .update({
+          payment_status: 'failed',
+          status: 'cancelled',
+        })
+        .eq('id', order.id);
+
+      throw new Error(
+        paystackData.message || 'Paystack payment initialization failed.'
+      );
+    }
 
     return NextResponse.json({
       authorization_url: paystackData.data.authorization_url,
@@ -306,6 +520,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Checkout error:', error);
-    return NextResponse.json({ error: error.message || 'Checkout failed' }, { status: 500 });
+
+    return NextResponse.json(
+      { error: error.message || 'Checkout failed.' },
+      { status: 500 }
+    );
   }
 }
