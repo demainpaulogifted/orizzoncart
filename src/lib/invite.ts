@@ -1,6 +1,7 @@
+
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
-export const INVITE_REWARD_KOBO = 50000;
+export const INVITE_REWARD_KOBO = 150000;
 export const INVITE_COOKIE = 'invite_ref';
 export const INVITE_EARN_ENABLED = process.env.NEXT_PUBLIC_INVITE_EARN_ENABLED !== 'false';
 
@@ -75,6 +76,7 @@ export async function attributeStoreActivation(merchantId: string) {
     .update({
       status: 'activated',
       reward_status: 'pending',
+      reward_amount_kobo: INVITE_REWARD_KOBO,
       activated_at: new Date().toISOString(),
     })
     .eq('id', row.id);
