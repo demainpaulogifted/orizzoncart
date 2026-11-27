@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -21,7 +22,6 @@ export function MarketplaceAppExperience() {
     setIsNativeApp(nativeApp);
     if (nativeApp) return;
 
-    // Force marketplace manifest (this is what made it work before)
     const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
     if (link) {
       link.setAttribute('href', '/manifest-marketplace.json');
@@ -39,7 +39,6 @@ export function MarketplaceAppExperience() {
         window.navigator.standalone === true
     );
 
-    // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
@@ -49,12 +48,10 @@ export function MarketplaceAppExperience() {
     const onPrompt = (e: any) => {
       e.preventDefault();
       setDeferred(e);
-      // Show the popup as soon as the browser says we can install
       setShowPopup(true);
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
 
-    // Fallback popup after a few seconds if the event never fires
     const seen = sessionStorage.getItem('mkt_app_popup');
     let t: any;
     if (!seen) {
@@ -104,7 +101,6 @@ export function MarketplaceAppExperience() {
       return;
     }
 
-    // No PWA prompt available — guide the user only (no APK)
     if (isIOS) {
       toast.info('On iPhone: tap Share → Add to Home Screen');
     } else {
@@ -130,6 +126,7 @@ export function MarketplaceAppExperience() {
                 Install the app for faster shopping & order tracking
               </p>
             </div>
+
             <div className="p-5 space-y-3">
               <ul className="text-xs text-gray-600 space-y-1.5">
                 <li>⚡ One-tap access to hundreds of verified stores</li>
@@ -154,7 +151,7 @@ export function MarketplaceAppExperience() {
 
               {!deferred && !isIOS && (
                 <p className="text-[11px] text-center text-gray-500">
-                  If the install dialog does not appear, the Android app will download instead.
+                  If the install dialog does not appear, use your browser menu to install the app.
                 </p>
               )}
 
@@ -179,13 +176,22 @@ export function MarketplaceAppExperience() {
       )}
 
       {showButton && !showPopup && (
-        <button
-          type="button"
-          onClick={() => setShowPopup(true)}
-          className="fixed right-3 bottom-20 z-[60] px-4 py-2.5 rounded-full bg-blue-600 text-white text-[11px] font-extrabold shadow-xl hover:bg-blue-700 border border-white/20"
-        >
-          📲 Install App
-        </button>
+        <div className="fixed right-3 bottom-20 z-[60] flex items-center gap-2">
+          <a
+            href="/invite/join"
+            className="rounded-full border border-purple-200 bg-white px-4 py-2.5 text-[11px] font-extrabold text-purple-800 shadow-xl"
+          >
+            Invite & Earn
+          </a>
+
+          <button
+            type="button"
+            onClick={() => setShowPopup(true)}
+            className="rounded-full border border-white/20 bg-blue-600 px-4 py-2.5 text-[11px] font-extrabold text-white shadow-xl hover:bg-blue-700"
+          >
+            📲 Install App
+          </button>
+        </div>
       )}
     </>
   );
