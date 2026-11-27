@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient as createAdminClient } from '@/lib/supabase/admin';
+import { decryptMerchantSecret } from '@/lib/payments/merchant-credentials';
 import { sendOrderAlert } from '@/lib/notify';
 import { attributeStoreActivation } from '@/lib/invite';
 
@@ -13,6 +14,7 @@ const DAYS: Record<string, number> = {
 
 function minorUnits(amount: number, currency: string) {
   const zeroDecimal = ['JPY', 'KRW', 'XAF', 'XOF', 'CLP', 'VND'];
+
   return Math.round(
     amount * (zeroDecimal.includes(currency) ? 1 : 100)
   );
@@ -21,9 +23,11 @@ function minorUnits(amount: number, currency: string) {
 function validSignature(
   body: string,
   signature: string | null,
-  secret: string
+  secret: string | null
 ) {
-  if (!signature) return false;
+  if (!signature || !secret || !/^[a-fA-F0-9]{128}$/.test(signature)) {
+    return false;
+  }
 
   const expected = crypto
     .createHmac('sha512', secret)
@@ -39,6 +43,81 @@ function validSignature(
   );
 }
 
+async function getPlatformSecrets(admin: any) {
+  const { data: keys, error } = await admin
+    .from('platform_payment_keys')
+    .select('secret_key')
+    .eq('gateway', 'paystack')
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return [
+    keys?.secret_key,
+    process.env.ORIZZONCART_PAY_SECRET_KEY,
+    process.env.PLATFORM_PAYSTACK_SECRET_KEY,
+  ].filter(Boolean) as string[];
+}
+
+async function verifyMerchantOrderSignature(
+  admin: any,
+  order: any,
+  body: string,
+  signature: string | null,
+  platformSecrets: string[]
+) {
+  const { data: merchant, error: merchantError } = await admin
+    .from('merchants')
+    .select(
+      'id, payout_method, bank_name, account_number'
+    )
+    .eq('id', order.merchant_id)
+    .maybeSingle();
+
+  if (merchantError || !merchant) {
+    return false;
+  }
+
+  const { data: credential, error: credentialError } = await admin
+    .from('merchant_payment_credentials')
+    .select(
+      'secret_ciphertext, secret_iv, secret_auth_tag'
+    )
+    .eq('merchant_id', merchant.id)
+    .eq('provider', 'paystack')
+    .maybeSingle();
+
+  if (credentialError) throw credentialError;
+
+  const hasBank = Boolean(
+    merchant.bank_name && merchant.account_number
+  );
+
+  const method =
+    merchant.payout_method ||
+    (credential ? 'own_keys' : hasBank ? 'orizzonpay' : null);
+
+  if (method === 'own_keys') {
+    if (!credential) return false;
+
+    const secret = decryptMerchantSecret({
+      secret_ciphertext: credential.secret_ciphertext,
+      secret_iv: credential.secret_iv,
+      secret_auth_tag: credential.secret_auth_tag,
+    });
+
+    return validSignature(body, signature, secret);
+  }
+
+  if (method === 'orizzonpay' && hasBank) {
+    return platformSecrets.some((secret) =>
+      validSignature(body, signature, secret)
+    );
+  }
+
+  return false;
+}
+
 async function completeMerchantActivation(admin: any, tx: any) {
   try {
     await attributeStoreActivation(tx.merchant_id);
@@ -49,16 +128,25 @@ async function completeMerchantActivation(admin: any, tx: any) {
   const { data: merchant, error: merchantError } = await admin
     .from('merchants')
     .select(
-      'paystack_secret_key, flutterwave_secret_key, bank_name, account_number, payment_activated_at'
+      'paystack_secret_key, bank_name, account_number, payment_activated_at'
     )
     .eq('id', tx.merchant_id)
     .single();
 
   if (merchantError) throw merchantError;
 
+  const { data: credentials, error: credentialsError } = await admin
+    .from('merchant_payment_credentials')
+    .select('id')
+    .eq('merchant_id', tx.merchant_id)
+    .eq('provider', 'paystack')
+    .maybeSingle();
+
+  if (credentialsError) throw credentialsError;
+
   const hasPaymentMethod = Boolean(
+    credentials ||
     merchant?.paystack_secret_key ||
-    merchant?.flutterwave_secret_key ||
     (merchant?.bank_name && merchant?.account_number)
   );
 
@@ -107,34 +195,13 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get('x-paystack-signature');
     const admin = createAdminClient();
 
-    const { data: keys } = await admin
-      .from('platform_payment_keys')
-      .select('secret_key')
-      .eq('gateway', 'paystack')
-      .maybeSingle();
-
-    const platformSecret =
-      keys?.secret_key ||
-      process.env.PLATFORM_PAYSTACK_SECRET_KEY;
-
-    const orizzonSecret = process.env.ORIZZONCART_PAY_SECRET_KEY;
-
-    const candidates = [
-      platformSecret,
-      orizzonSecret,
-    ].filter(Boolean) as string[];
-
-    let verified = candidates.some((secret) =>
-      validSignature(body, signature, secret)
-    );
-
     let event: any;
 
     try {
       event = JSON.parse(body);
     } catch {
       return NextResponse.json(
-        { error: 'Invalid webhook payload' },
+        { error: 'Invalid webhook payload.' },
         { status: 400 }
       );
     }
@@ -150,47 +217,14 @@ export async function POST(request: NextRequest) {
 
     if (!reference || !Number.isFinite(Number(amount))) {
       return NextResponse.json(
-        { error: 'Invalid payment details' },
+        { error: 'Invalid payment details.' },
         { status: 400 }
       );
     }
 
-    // Verify merchant-owned Paystack webhook signatures for customer orders.
-    if (!verified) {
-      const { data: order } = await admin
-        .from('orders')
-        .select('merchant_id')
-        .eq('payment_intent_id', reference)
-        .maybeSingle();
+    const platformSecrets = await getPlatformSecrets(admin);
 
-      if (order) {
-        const { data: merchant } = await admin
-          .from('merchants')
-          .select('paystack_secret_key')
-          .eq('id', order.merchant_id)
-          .maybeSingle();
-
-        if (
-          merchant?.paystack_secret_key &&
-          validSignature(
-            body,
-            signature,
-            merchant.paystack_secret_key
-          )
-        ) {
-          verified = true;
-        }
-      }
-    }
-
-    if (!verified) {
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      );
-    }
-
-    // 1. PLATFORM TRANSACTIONS
+    // First check whether this reference belongs to a platform transaction.
     const { data: tx, error: txError } = await admin
       .from('platform_transactions')
       .select('*')
@@ -200,6 +234,17 @@ export async function POST(request: NextRequest) {
     if (txError) throw txError;
 
     if (tx) {
+      const platformVerified = platformSecrets.some((secret) =>
+        validSignature(body, signature, secret)
+      );
+
+      if (!platformVerified) {
+        return NextResponse.json(
+          { error: 'Invalid platform payment signature.' },
+          { status: 401 }
+        );
+      }
+
       if (!['pending', 'paid'].includes(tx.status)) {
         return NextResponse.json(
           { error: 'Transaction is not payable.' },
@@ -244,13 +289,11 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(
-          { error: 'Payment amount or currency mismatch' },
+          { error: 'Payment amount or currency mismatch.' },
           { status: 400 }
         );
       }
 
-      // Mark the transaction paid once. Activation below is deliberately
-      // retryable when Paystack sends the same successful webhook again.
       if (tx.status === 'pending') {
         const { error: updateError } = await admin
           .from('platform_transactions')
@@ -265,8 +308,6 @@ export async function POST(request: NextRequest) {
         await completeMerchantActivation(admin, tx);
       }
 
-      // These operations are idempotent assignments, so they can safely
-      // be repeated if the successful webhook is delivered more than once.
       if (
         tx.transaction_type === 'theme_purchase' &&
         tx.metadata?.theme_name
@@ -279,9 +320,6 @@ export async function POST(request: NextRequest) {
         if (error) throw error;
       }
 
-      // Do not extend a maintenance period on duplicate webhook delivery.
-      // Maintenance is processed only when this delivery first changes
-      // the transaction from pending to paid.
       if (
         tx.status === 'pending' &&
         tx.transaction_type === 'maintenance_payment' &&
@@ -313,7 +351,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. CUSTOMER ORDERS
+    // Customer order: locate the merchant using the payment reference.
     const { data: order, error: orderError } = await admin
       .from('orders')
       .select('*')
@@ -324,8 +362,25 @@ export async function POST(request: NextRequest) {
 
     if (!order) {
       return NextResponse.json(
-        { error: 'Transaction not found' },
+        { error: 'Transaction not found.' },
         { status: 404 }
+      );
+    }
+
+    // Verify using the merchant's encrypted Paystack key,
+    // or the platform key for the existing OrizzonPay route.
+    const merchantVerified = await verifyMerchantOrderSignature(
+      admin,
+      order,
+      body,
+      signature,
+      platformSecrets
+    );
+
+    if (!merchantVerified) {
+      return NextResponse.json(
+        { error: 'Invalid merchant payment signature.' },
+        { status: 401 }
       );
     }
 
@@ -363,12 +418,13 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(
-        { error: 'Payment amount or currency mismatch' },
+        { error: 'Payment amount or currency mismatch.' },
         { status: 400 }
       );
     }
 
-    const { error: orderUpdateError } = await admin
+    // Only one webhook delivery can change the order from unpaid to paid.
+    const { data: updatedOrder, error: orderUpdateError } = await admin
       .from('orders')
       .update({
         payment_status: 'paid',
@@ -376,9 +432,18 @@ export async function POST(request: NextRequest) {
         payment_method: 'paystack',
       })
       .eq('id', order.id)
-      .neq('payment_status', 'paid');
+      .neq('payment_status', 'paid')
+      .select('id')
+      .maybeSingle();
 
     if (orderUpdateError) throw orderUpdateError;
+
+    if (!updatedOrder) {
+      return NextResponse.json(
+        { message: 'Already processed' },
+        { status: 200 }
+      );
+    }
 
     // DROPSHIPPING AUTO-FULFILLMENT
     const { data: dropshipOrder } = await admin
@@ -393,7 +458,7 @@ export async function POST(request: NextRequest) {
     ) {
       const appUrl =
         process.env.NEXT_PUBLIC_APP_URL ||
-        'https://orizzoncart.com.ng';
+        'https://marketplace.orizzoncart.com.ng';
 
       fetch(`${appUrl}/api/dropshipping/fulfill`, {
         method: 'POST',
@@ -410,20 +475,25 @@ export async function POST(request: NextRequest) {
       .eq('order_id', order.id);
 
     const itemList = (items || [])
-      .map((item: any) => `${item.product_name} x${item.quantity}`)
+      .map(
+        (item: any) =>
+          `${item.product_name} x${item.quantity}`
+      )
       .join(', ');
 
-    sendOrderAlert(order.merchant_id, order, itemList).catch(() => {});
+    sendOrderAlert(order.merchant_id, order, itemList).catch(
+      (error) => console.error('Order notification failed:', error)
+    );
 
     return NextResponse.json(
       { message: 'Processed' },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Paystack webhook error:', error);
 
     return NextResponse.json(
-      { error: 'Webhook failed' },
+      { error: 'Webhook failed.' },
       { status: 500 }
     );
   }
