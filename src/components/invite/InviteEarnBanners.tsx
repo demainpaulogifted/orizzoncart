@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -12,7 +13,7 @@ export function MarketplaceInviteBanner() {
         href="/invite/join"
         className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold text-amber-800 hover:bg-amber-100"
       >
-        Invite merchants <span className="text-amber-600">· Earn ₦500</span> →
+        Invite merchants <span className="text-amber-600">· Earn ₦1,500</span> →
       </Link>
     </div>
   );
@@ -25,7 +26,7 @@ export function DashboardInviteBanner() {
     <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2">
       <p className="text-xs text-amber-900">
         <span className="font-bold">Invite &amp; Earn</span>
-        <span className="text-amber-800/80"> — ₦500 when a store activates</span>
+        <span className="text-amber-800/80"> — ₦1,500 when a store activates</span>
       </p>
       <Link
         href="/invite/join"
