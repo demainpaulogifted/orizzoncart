@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +12,7 @@ type Merchant = {
   store_slug?: string | null;
   shipping_mode?: string | null;
   payment_receiving_status?: string | null;
+  payment_activated_at?: string | null;
   payout_method?: string | null;
   bank_name?: string | null;
   paystack_secret_key?: string | null;
@@ -143,6 +143,7 @@ export default function DashboardHome() {
 
   const [showSteps, setShowSteps] = useState(false);
   const [showMarketplaceSteps, setShowMarketplaceSteps] = useState(false);
+  const [setupGuidesDismissed, setSetupGuidesDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(false);
 
@@ -292,6 +293,8 @@ export default function DashboardHome() {
     );
   }
 
+  const canDismissSetup = Boolean(merchant.payment_activated_at);
+
   const storeUrl = merchant.store_slug
     ? `https://${merchant.store_slug}.orizzoncart.com.ng`
     : '/dashboard';
@@ -412,6 +415,7 @@ export default function DashboardHome() {
       )}
 
       {/* STORE SETUP */}
+      {!setupGuidesDismissed && (
       <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
         <div className="p-5">
           <div className="flex items-center justify-between gap-3">
@@ -448,13 +452,24 @@ export default function DashboardHome() {
                 : `${pendingSetup} setup ${pendingSetup === 1 ? 'task' : 'tasks'} remaining.`}
             </p>
 
-            <button
-              type="button"
-              onClick={() => setShowSteps(!showSteps)}
-              className="shrink-0 rounded-xl border border-purple-100 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700"
-            >
-              {showSteps ? 'Hide steps ↑' : 'View steps ↓'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSteps(!showSteps)}
+                className="shrink-0 rounded-xl border border-purple-100 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700"
+              >
+                {showSteps ? 'Hide steps ↑' : 'View steps ↓'}
+              </button>
+              {canDismissSetup && (
+                <button
+                  type="button"
+                  onClick={() => setSetupGuidesDismissed(true)}
+                  className="shrink-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-500"
+                >
+                  Dismiss guides
+                </button>
+              )}
+            </div>
           </div>
 
           {showSteps && (
@@ -513,10 +528,24 @@ export default function DashboardHome() {
           </div>
         )}
       </section>
+      )}
 
       <DashboardInviteBanner />
 
+      {setupGuidesDismissed && canDismissSetup && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setSetupGuidesDismissed(false)}
+            className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-bold text-orange-700"
+          >
+            Marketplace setup ↑
+          </button>
+        </div>
+      )}
+
       {/* OPTIONAL MARKETPLACE SETUP */}
+      {!setupGuidesDismissed && (
       <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -634,6 +663,7 @@ export default function DashboardHome() {
           </p>
         )}
       </section>
+      )}
 
       {/* BUSINESS ANALYTICS */}
       <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
