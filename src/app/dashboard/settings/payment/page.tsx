@@ -6,10 +6,6 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import PayPalConnectCard from '@/components/dashboard/PayPalConnectCard';
 
-function mask(key: string) {
-  return key ? '••••••••' + key.slice(-4) : '';
-}
-
 function formatActivationFee(amount: number, currency: string) {
   try {
     return new Intl.NumberFormat('en', {
@@ -28,19 +24,20 @@ export default function PaymentSettingsPage() {
   const [feeLoading, setFeeLoading] = useState(true);
   const [feePaying, setFeePaying] = useState(false);
 
+  const [configured, setConfigured] = useState(false);
+  const [publicKey, setPublicKey] = useState('');
+  const [environment, setEnvironment] = useState('');
+  const [lastVerified, setLastVerified] = useState<string | null>(null);
+  const [credentialLoading, setCredentialLoading] = useState(false);
   const [showKeysForm, setShowKeysForm] = useState(false);
 
-  const [keysForm, setKeysForm] = useState({
-    gateway: 'paystack',
-    ps_secret: '',
-    ps_public: '',
-    fw_secret: '',
-    fw_public: '',
-  });
-
+  const [secretKey, setSecretKey] = useState('');
+  const [newPublicKey, setNewPublicKey] = useState('');
   const [savingKeys, setSavingKeys] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       const supabase = createClient();
 
@@ -61,8 +58,12 @@ export default function PaymentSettingsPage() {
 
       const { data: merchants } = await supabase
         .from('merchants')
-        .select('*')
+        .select(
+          'id, country_code, payment_receiving_status, payment_activated_at'
+        )
         .eq('user_id', user.id);
+
+      if (cancelled) return;
 
       const active =
         (merchants || []).find((m: any) => m.id === cookieId) ||
@@ -71,10 +72,29 @@ export default function PaymentSettingsPage() {
       setMerchant(active || null);
 
       if (active) {
-        setKeysForm((k) => ({
-          ...k,
-          gateway: active.preferred_gateway || 'paystack',
-        }));
+        setCredentialLoading(true);
+
+        try {
+          const response = await fetch(
+            '/api/merchant/paystack-credentials',
+            { cache: 'no-store' }
+          );
+
+          const data = await response.json();
+
+          if (!cancelled && response.ok) {
+            setConfigured(Boolean(data.configured));
+            setPublicKey(data.public_key || '');
+            setEnvironment(data.environment || '');
+            setLastVerified(data.last_verified_at || null);
+          }
+        } catch {
+          if (!cancelled) {
+            toast.error('Could not load Paystack settings.');
+          }
+        } finally {
+          if (!cancelled) setCredentialLoading(false);
+        }
       }
 
       try {
@@ -85,6 +105,8 @@ export default function PaymentSettingsPage() {
 
         const fee = await response.json();
 
+        if (cancelled) return;
+
         if (!response.ok) {
           setFeeInfo({
             error: fee.error || 'Could not load activation fee.',
@@ -93,15 +115,21 @@ export default function PaymentSettingsPage() {
           setFeeInfo(fee);
         }
       } catch {
-        setFeeInfo({
-          error: 'Could not load activation fee. Please refresh.',
-        });
+        if (!cancelled) {
+          setFeeInfo({
+            error: 'Could not load activation fee. Please refresh.',
+          });
+        }
       } finally {
-        setFeeLoading(false);
+        if (!cancelled) setFeeLoading(false);
       }
     };
 
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const isNigerianMerchant =
@@ -114,14 +142,6 @@ export default function PaymentSettingsPage() {
       merchant.payment_receiving_status === 'PENDING_KEYS' ||
       !!merchant.payment_activated_at
     );
-
-  const hasOwnKeys =
-    merchant &&
-    (merchant.paystack_secret_key || merchant.flutterwave_secret_key);
-
-  const method =
-    merchant?.payout_method ||
-    (hasOwnKeys ? 'own_keys' : null);
 
   const payActivationFee = async () => {
     setFeePaying(true);
@@ -155,96 +175,62 @@ export default function PaymentSettingsPage() {
 
       window.location.href = redirectUrl;
     } catch (err: any) {
-      toast.error(err.message || 'Could not start payment');
+      toast.error(err.message || 'Could not start payment.');
       setFeePaying(false);
     }
   };
 
   const saveKeys = async () => {
+    if (!secretKey.trim() || !newPublicKey.trim()) {
+      toast.error('Enter both your Paystack Secret Key and Public Key.');
+      return;
+    }
+
     setSavingKeys(true);
 
-    const supabase = createClient();
-    const isPending =
-      merchant?.payment_receiving_status === 'PENDING_KEYS';
+    try {
+      const response = await fetch(
+        '/api/merchant/paystack-credentials',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            secret_key: secretKey.trim(),
+            public_key: newPublicKey.trim(),
+          }),
+        }
+      );
 
-    const payload: any = {
-      preferred_gateway: keysForm.gateway,
-      paystack_secret_key:
-        keysForm.ps_secret ||
-        merchant?.paystack_secret_key ||
-        null,
-      paystack_public_key:
-        keysForm.ps_public ||
-        merchant?.paystack_public_key ||
-        null,
-      flutterwave_secret_key:
-        keysForm.fw_secret ||
-        merchant?.flutterwave_secret_key ||
-        null,
-      flutterwave_public_key:
-        keysForm.fw_public ||
-        merchant?.flutterwave_public_key ||
-        null,
-      payout_method: merchant?.payout_method || 'own_keys',
-    };
+      const data = await response.json();
 
-    if (isPending) {
-      payload.payment_receiving_status = 'ACTIVE';
-      payload.cart_status = 'ENABLED';
-      payload.checkout_status = 'ENABLED';
+      if (!response.ok) {
+        throw new Error(
+          data.error || 'Could not securely save your Paystack keys.'
+        );
+      }
+
+      setConfigured(true);
+      setPublicKey(data.public_key || newPublicKey);
+      setEnvironment(data.environment || '');
+      setLastVerified(data.last_verified_at || null);
+
+      setSecretKey('');
+      setNewPublicKey('');
+      setShowKeysForm(false);
+
+      setMerchant((current: any) => ({
+        ...current,
+        payment_receiving_status: 'ACTIVE',
+      }));
+
+      toast.success('Your Paystack credentials have been saved securely.');
+    } catch (error: any) {
+      toast.error(error.message || 'Could not save Paystack credentials.');
+    } finally {
+      setSavingKeys(false);
     }
-
-    const { error } = await supabase
-      .from('merchants')
-      .update(payload)
-      .eq('id', merchant.id);
-
-    setSavingKeys(false);
-
-    if (error) {
-      toast.error('Failed: ' + error.message);
-      return;
-    }
-
-    toast.success('Keys saved — you keep 100% of every sale!');
-
-    setMerchant({
-      ...merchant,
-      ...payload,
-      payment_receiving_status:
-        payload.payment_receiving_status ||
-        merchant.payment_receiving_status,
-    });
-
-    setShowKeysForm(false);
-
-    setKeysForm({
-      gateway: keysForm.gateway,
-      ps_secret: '',
-      ps_public: '',
-      fw_secret: '',
-      fw_public: '',
-    });
-  };
-
-  const switchMethod = async () => {
-    const supabase = createClient();
-
-    const { error } = await supabase
-      .from('merchants')
-      .update({ payout_method: 'own_keys' })
-      .eq('id', merchant.id);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    setMerchant({ ...merchant, payout_method: 'own_keys' });
-
-    toast.success(
-      'Now receiving via YOUR keys (0% fee).'
-    );
   };
 
   if (!merchant) {
@@ -267,10 +253,10 @@ export default function PaymentSettingsPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold">
-          💳 Payment Settings
+          Payment Settings
         </h1>
-        <p className="text-gray-600 text-sm">
-          Connect your own payment gateway to receive customer payments directly.
+        <p className="text-gray-600 text-sm mt-1">
+          Connect your payment account to receive customer payments.
         </p>
       </div>
 
@@ -337,10 +323,9 @@ export default function PaymentSettingsPage() {
               International Payment Integration
             </p>
             <p className="text-sm text-blue-800 mt-1">
-              Connect your own payment accounts to receive customer
-              payments directly. PayPal credential verification is
-              now available. Customer checkout activation is being
-              completed separately.
+              Connect your supported international payment account.
+              PayPal credential verification is available.
+              Customer checkout activation is handled separately.
             </p>
           </div>
 
@@ -353,17 +338,11 @@ export default function PaymentSettingsPage() {
             </div>
             <p className="text-sm text-gray-600">
               Connect your own Stripe account to receive payments
-              directly from customers purchasing your products.
+              directly from customers.
             </p>
           </div>
 
           <PayPalConnectCard />
-
-          <p className="text-xs text-gray-500 text-center">
-            Stripe integration is coming soon. PayPal credentials
-            can now be connected and verified. Customer checkout
-            activation is being completed separately.
-          </p>
         </div>
       )}
 
@@ -371,174 +350,125 @@ export default function PaymentSettingsPage() {
         <>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
             <p className="font-bold mb-1">
-              Payment Method
+              Your Customer Payment Gateway
             </p>
-
-            {method === 'own_keys' && (
-              <p>
-                🔑 Your own payment keys —{' '}
-                <strong>0% platform fee</strong>
-              </p>
-            )}
-
-            {!method && (
-              <p>
-                ⚠️ No payment keys saved yet — set up your payment gateway below.
-              </p>
-            )}
+            <p>
+              Paystack is the supported merchant payment gateway.
+              Your customer payments are processed using your own
+              Paystack credentials.
+            </p>
           </div>
 
-          {/* OPTION A: OWN PAYMENT KEYS */}
-          <div
-            className={`bg-white border-2 rounded-2xl p-6 space-y-4 ${
-              method === 'own_keys'
-                ? 'border-green-400'
-                : 'border-gray-200'
-            }`}
-          >
+          <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-bold text-lg">
-                  🔑 My Own Payment Keys
+                  Paystack
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Connect your Paystack/Flutterwave. Money lands directly with you.
+                  Securely connect your Paystack account.
                 </p>
               </div>
 
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full shrink-0">
-                0% fee
+              <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-full">
+                0% platform fee
               </span>
             </div>
 
-            {hasOwnKeys ? (
-              <div className="space-y-3">
-                <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-                  {merchant.paystack_secret_key && (
-                    <p className="text-sm font-mono break-all">
-                      Paystack: {mask(merchant.paystack_secret_key)}
-                    </p>
-                  )}
+            {credentialLoading ? (
+              <p className="text-sm text-gray-500">
+                Checking your saved credentials...
+              </p>
+            ) : configured ? (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                <p className="font-bold text-green-800">
+                  Paystack credentials connected
+                </p>
 
-                  {merchant.flutterwave_secret_key && (
-                    <p className="text-sm font-mono break-all">
-                      Flutterwave: {mask(merchant.flutterwave_secret_key)}
-                    </p>
-                  )}
-                </div>
+                <p className="text-sm text-green-800 break-all">
+                  Public Key: {publicKey}
+                </p>
 
-                {method === 'own_keys' ? (
-                  <p className="text-xs font-bold text-green-700 bg-green-50 rounded-lg px-3 py-2">
-                    ✅ ACTIVE — receiving payments here
+                <p className="text-xs text-green-700">
+                  Environment: {environment || 'Not specified'}
+                </p>
+
+                {lastVerified && (
+                  <p className="text-xs text-green-700">
+                    Last verified: {new Date(lastVerified).toLocaleString()}
                   </p>
-                ) : (
-                  <>
-                    <p className="text-xs font-bold text-gray-500 bg-gray-100 rounded-lg px-3 py-2">
-                      🔒 Saved but LOCKED — not receiving
-                    </p>
-
-                    <button
-                      onClick={switchMethod}
-                      className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700"
-                    >
-                      Switch to this method
-                    </button>
-                  </>
                 )}
 
-                <button
-                  onClick={() => setShowKeysForm(!showKeysForm)}
-                  className="w-full py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200"
-                >
-                  {showKeysForm ? 'Close' : '✏️ Update keys'}
-                </button>
+                <p className="text-xs text-green-700">
+                  Your secret key is encrypted and is never displayed here.
+                </p>
               </div>
             ) : (
-              <button
-                onClick={() => setShowKeysForm(!showKeysForm)}
-                className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800"
-              >
-                {showKeysForm ? 'Close' : '🔑 Set Up My Own Keys'}
-              </button>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="font-bold text-amber-800">
+                  Paystack is not connected yet.
+                </p>
+                <p className="text-sm text-amber-700 mt-1">
+                  Enter your Paystack Secret Key and Public Key below.
+                </p>
+              </div>
             )}
 
+            <button
+              onClick={() => setShowKeysForm(!showKeysForm)}
+              className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800"
+            >
+              {showKeysForm
+                ? 'Close'
+                : configured
+                  ? 'Update Paystack Credentials'
+                  : 'Connect Paystack'}
+            </button>
+
             {showKeysForm && (
-              <div className="space-y-3 pt-2 border-t">
-                <select
-                  value={keysForm.gateway}
-                  onChange={(e) =>
-                    setKeysForm({
-                      ...keysForm,
-                      gateway: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="paystack">Preferred: Paystack</option>
-                  <option value="flutterwave">Preferred: Flutterwave</option>
-                </select>
+              <div className="space-y-3 pt-3 border-t">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Paystack Secret Key
+                  </label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={secretKey}
+                    onChange={(e) => setSecretKey(e.target.value)}
+                    placeholder="sk_live_..."
+                    className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                  />
+                </div>
 
-                <input
-                  type="password"
-                  value={keysForm.ps_secret}
-                  onChange={(e) =>
-                    setKeysForm({
-                      ...keysForm,
-                      ps_secret: e.target.value,
-                    })
-                  }
-                  placeholder="Paystack Secret Key (sk_test_...)"
-                  className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-                />
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Paystack Public Key
+                  </label>
+                  <input
+                    value={newPublicKey}
+                    onChange={(e) => setNewPublicKey(e.target.value)}
+                    placeholder="pk_live_..."
+                    className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
+                  />
+                </div>
 
-                <input
-                  value={keysForm.ps_public}
-                  onChange={(e) =>
-                    setKeysForm({
-                      ...keysForm,
-                      ps_public: e.target.value,
-                    })
-                  }
-                  placeholder="Paystack Public Key (pk_test_...)"
-                  className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-                />
-
-                <input
-                  type="password"
-                  value={keysForm.fw_secret}
-                  onChange={(e) =>
-                    setKeysForm({
-                      ...keysForm,
-                      fw_secret: e.target.value,
-                    })
-                  }
-                  placeholder="Flutterwave Secret Key (optional)"
-                  className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-                />
-
-                <input
-                  value={keysForm.fw_public}
-                  onChange={(e) =>
-                    setKeysForm({
-                      ...keysForm,
-                      fw_public: e.target.value,
-                    })
-                  }
-                  placeholder="Flutterwave Public Key (optional)"
-                  className="w-full min-w-0 px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500 font-mono text-sm"
-                />
+                <p className="text-xs text-gray-500">
+                  Your Secret Key is encrypted on the server.
+                  Never share it with anyone.
+                  Both keys must belong to the same Paystack environment.
+                </p>
 
                 <button
                   onClick={saveKeys}
                   disabled={
                     savingKeys ||
-                    (!keysForm.ps_secret &&
-                      !keysForm.fw_secret &&
-                      !hasOwnKeys)
+                    !secretKey.trim() ||
+                    !newPublicKey.trim()
                   }
                   className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
                 >
-                  {savingKeys ? 'Saving...' : 'Save Keys'}
+                  {savingKeys ? 'Verifying and Saving...' : 'Save Paystack Credentials'}
                 </button>
               </div>
             )}
