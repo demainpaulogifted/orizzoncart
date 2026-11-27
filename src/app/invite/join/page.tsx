@@ -55,9 +55,9 @@ const steps = [
   },
   {
     number: '04',
-    title: 'Earn ₦500 per activated store',
+    title: 'Earn ₦1,500 per activated store',
     description:
-      'When a merchant referred through your link completes the required payment activation, ₦500 is credited to your pending referral earnings.',
+      'When a merchant referred through your link completes the required payment activation, ₦1,500 is credited to your pending referral earnings.',
   },
 ];
 
@@ -417,7 +417,7 @@ export default function InviteJoinPage() {
                   Your reward
                 </p>
                 <p className="mt-1 text-4xl font-black text-amber-300 sm:text-5xl">
-                  ₦500
+                  ₦1,500
                 </p>
               </div>
 
@@ -632,7 +632,7 @@ export default function InviteJoinPage() {
             </p>
 
             <h2 className="mt-3 text-3xl font-black sm:text-4xl">
-              Every qualifying store adds another ₦500.
+              Every qualifying store adds another ₦1,500.
             </h2>
 
             <p className="mt-4 text-sm leading-7 text-purple-200">
@@ -643,9 +643,9 @@ export default function InviteJoinPage() {
 
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {[
-              { stores: '5 stores', amount: '₦2,500' },
-              { stores: '10 stores', amount: '₦5,000' },
-              { stores: '50 stores', amount: '₦25,000' },
+              { stores: '5 stores', amount: '₦7,500' },
+              { stores: '10 stores', amount: '₦15,000' },
+              { stores: '50 stores', amount: '₦75,000' },
             ].map((item) => (
               <div
                 key={item.stores}
@@ -691,7 +691,7 @@ export default function InviteJoinPage() {
             <p className="mt-3 text-sm leading-7 text-green-900">
               A merchant must register through your referral link and
               successfully complete the required payment activation process.
-              When the activation is recorded, ₦500 is added to your pending
+              When the activation is recorded, ₦1,500 is added to your pending
               earnings.
             </p>
           </div>
