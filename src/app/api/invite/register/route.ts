@@ -27,13 +27,14 @@ export async function POST(request: NextRequest) {
       !accountName
     ) {
       return NextResponse.json(
-        { error: 'Complete all fields and verify your bank account.' },
+        { error: 'Complete all fields and provide valid bank details.' },
         { status: 400 }
       );
     }
 
     const admin = createAdminClient();
 
+    // Prevent duplicate partner registrations.
     const { data: existing, error: lookupError } = await admin
       .from('invite_partners')
       .select('id')
@@ -49,8 +50,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify the bank account directly with Paystack on the server.
+    const secretKey = process.env.PLATFORM_PAYSTACK_SECRET_KEY;
+
+    if (!secretKey) {
+      throw new Error('Paystack is not configured.');
+    }
+
+    const params = new URLSearchParams({
+      account_number: accountNumber,
+      bank_code: bankCode,
+    });
+
+    const verificationResponse = await fetch(
+      `https://api.paystack.co/bank/resolve?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+        },
+        cache: 'no-store',
+      }
+    );
+
+    const verification = await verificationResponse.json();
+
+    if (
+      !verificationResponse.ok ||
+      !verification.status ||
+      !verification.data?.account_name
+    ) {
+      return NextResponse.json(
+        { error: 'Paystack could not verify this bank account.' },
+        { status: 400 }
+      );
+    }
+
+    const verifiedAccountName = String(
+      verification.data.account_name
+    ).trim();
+
+    if (
+      verifiedAccountName.toLowerCase() !== accountName.toLowerCase()
+    ) {
+      return NextResponse.json(
+        { error: 'Bank account verification did not match.' },
+        { status: 400 }
+      );
+    }
+
+    // Hash the account number before using it as the initial password.
     const passwordHash = await hashInvitePassword(accountNumber);
 
+    // Generate a unique referral code.
     let code = generateInviteCode(8);
     let unique = false;
 
@@ -75,6 +126,7 @@ export async function POST(request: NextRequest) {
       throw new Error('Could not generate a unique invite code.');
     }
 
+    // Create the partner account only after Paystack verification.
     const { data: partner, error: insertError } = await admin
       .from('invite_partners')
       .insert({
@@ -83,7 +135,7 @@ export async function POST(request: NextRequest) {
         bank_name: bankName,
         bank_code: bankCode,
         account_number: accountNumber,
-        account_name: accountName,
+        account_name: verifiedAccountName,
         password_hash: passwordHash,
       })
       .select('id, email, invite_code')
@@ -91,6 +143,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw insertError;
 
+    // Establish the partner's authenticated session.
     const response = NextResponse.json(
       {
         success: true,
