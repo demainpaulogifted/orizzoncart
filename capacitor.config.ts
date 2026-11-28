@@ -1,3 +1,4 @@
+
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -5,9 +6,13 @@ const config: CapacitorConfig = {
   appName: 'OrizzonCart Marketplace',
   webDir: 'public',
   server: {
-    url: 'https://orizzoncart.com.ng/marketplace',
-    cleartext: false
-  }
+    url: 'https://marketplace.orizzoncart.com.ng/',
+    cleartext: false,
+    allowNavigation: [
+      'orizzoncart.com.ng',
+      '*.orizzoncart.com.ng',
+    ],
+  },
 };
 
 export default config;
