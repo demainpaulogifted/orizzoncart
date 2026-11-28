@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
+import Script from 'next/script';                       // ← added
 import './globals.css';
 import { Toaster } from 'sonner';
 import { ConsentManager } from '@/components/privacy/ConsentManager';
@@ -177,6 +178,14 @@ export default async function RootLayout({
           </>
         )}
 
+        {/* AdSense script – always present so Google crawler can verify the site */}
+        <Script
+          id="adsense-script"
+          async
+          strategy="afterInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3957914903160068"
+          crossOrigin="anonymous"
+        />
       </head>
 
       <body className="antialiased">
