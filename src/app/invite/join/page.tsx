@@ -105,17 +105,125 @@ function SectionHeading({
 export default function InviteJoinPage() {
   const router = useRouter();
 
+  type Mode = 'login' | 'register' | null;
+  type Step = 'choice' | 'email' | 'password' | 'bank';
+
+  const [mode, setMode] = useState<Mode>(null);
+  const [step, setStep] = useState<Step>('choice');
   const [email, setEmail] = useState('');
-  const [bankName, setBankName] = useState(BANKS[0].name);
   const [accountNumber, setAccountNumber] = useState('');
+  const [bankName, setBankName] = useState(BANKS[0].name);
   const [accountName, setAccountName] = useState('');
   const [verifying, setVerifying] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const bankCode = useMemo(
     () => BANKS.find((bank) => bank.name === bankName)?.code || '',
     [bankName]
   );
+
+  function chooseMode(nextMode: Exclude<Mode, null>) {
+    setMode(nextMode);
+    setStep('email');
+    setAccountNumber('');
+    setAccountName('');
+  }
+
+  async function continueWithEmail(e: React.FormEvent) {
+    e.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (
+      !normalizedEmail ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    ) {
+      toast.error('Enter a valid email address');
+      return;
+    }
+
+    setCheckingEmail(true);
+
+    try {
+      const res = await fetch('/api/invite/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not check this email');
+      }
+
+      setEmail(normalizedEmail);
+
+      if (data.exists) {
+        setMode('login');
+        setStep('password');
+
+        toast.info(
+          mode === 'register'
+            ? 'This email already has a partner account. Enter your account number to log in.'
+            : 'Welcome back. Enter your 10-digit account number to continue.'
+        );
+      } else {
+        setMode('register');
+        setStep('bank');
+
+        if (mode === 'login') {
+          toast.info(
+            'No partner account was found for this email. Complete registration to get your invite link.'
+          );
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Could not check this email');
+    } finally {
+      setCheckingEmail(false);
+    }
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!/^\d{10}$/.test(accountNumber)) {
+      toast.error(
+        'Enter the 10-digit account number used when you registered'
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/invite/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          account_number: accountNumber,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.error || 'Login failed. Check your details and try again.'
+        );
+      }
+
+      toast.success('You are signed in. Welcome back!');
+      router.replace('/invite/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function verifyAccount() {
     if (!/^\d{10}$/.test(accountNumber)) {
@@ -159,6 +267,11 @@ export default function InviteJoinPage() {
       return;
     }
 
+    if (!/^\d{10}$/.test(accountNumber)) {
+      toast.error('Enter a valid 10-digit account number');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -166,7 +279,7 @@ export default function InviteJoinPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
+          email: email.trim().toLowerCase(),
           bank_name: bankName,
           bank_code: bankCode,
           account_number: accountNumber,
@@ -180,20 +293,21 @@ export default function InviteJoinPage() {
         throw new Error(data.error || 'Registration failed');
       }
 
-      toast.success(
-        data.returning
-          ? 'Welcome back to the partner programme!'
-          : 'Your partner registration was successful!'
-      );
-
-      router.push(
-        `/invite/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}`
-      );
+      toast.success('Your partner registration was successful!');
+      router.replace('/invite/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
+  }
+
+  function startOver() {
+    setMode(null);
+    setStep('choice');
+    setEmail('');
+    setAccountNumber('');
+    setAccountName('');
   }
 
   return (
@@ -222,8 +336,11 @@ export default function InviteJoinPage() {
         </div>
       </nav>
 
-      {/* Partner registration moved directly below navigation */}
-      <section id="register" className="scroll-mt-24 bg-[#F1EAFE] px-4 py-12 sm:px-6 sm:py-16">
+      {/* Partner registration */}
+      <section
+        id="register"
+        className="scroll-mt-24 bg-[#F1EAFE] px-4 py-12 sm:px-6 sm:py-16"
+      >
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div className="pt-3">
             <p className="text-xs font-black uppercase tracking-widest text-purple-700">
@@ -270,117 +387,269 @@ export default function InviteJoinPage() {
           <div className="rounded-3xl border border-purple-100 bg-white p-5 shadow-xl shadow-purple-900/5 sm:p-8">
             <div className="mb-7">
               <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-amber-800">
-                Partner registration
+                Partner dashboard access
               </span>
 
               <h3 className="mt-4 text-2xl font-black text-gray-950">
-                Get your personal invite link.
+                {step === 'choice'
+                  ? 'Join or access your partner account.'
+                  : step === 'email'
+                    ? 'Enter your email address.'
+                    : step === 'password'
+                      ? 'Confirm your identity.'
+                      : 'Verify your bank account.'}
               </h3>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                Complete your details below to get started.
+                {step === 'choice'
+                  ? 'Choose whether you are a new partner or already have an account.'
+                  : step === 'email'
+                    ? 'We will check whether this email already has a partner account.'
+                    : step === 'password'
+                      ? 'Enter the 10-digit bank account number you used when registering. It is checked securely.'
+                      : 'Your verified account number will also be your initial sign-in password.'}
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-800">
-                  Email address
-                </label>
-
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
-                  placeholder="you@example.com"
-                />
-
-                <p className="mt-1.5 text-xs text-gray-400">
-                  Use an email address you can access.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-800">
-                  Select your bank
-                </label>
-
-                <select
-                  value={bankName}
-                  onChange={(e) => {
-                    setBankName(e.target.value);
-                    setAccountName('');
-                  }}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
+            {step === 'choice' && (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => chooseMode('login')}
+                  className="w-full rounded-xl border-2 border-purple-700 px-5 py-4 text-left font-black text-purple-800 transition hover:bg-purple-50"
                 >
-                  {BANKS.map((bank) => (
-                    <option key={bank.code + bank.name} value={bank.name}>
-                      {bank.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-gray-800">
-                  Account number
-                </label>
-
-                <input
-                  required
-                  inputMode="numeric"
-                  maxLength={10}
-                  value={accountNumber}
-                  onChange={(e) => {
-                    setAccountNumber(
-                      e.target.value.replace(/\D/g, '').slice(0, 10)
-                    );
-                    setAccountName('');
-                  }}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
-                  placeholder="Enter 10-digit account number"
-                />
+                  Log in to dashboard
+                  <span className="mt-1 block text-xs font-medium text-gray-500">
+                    I already have a partner account.
+                  </span>
+                </button>
 
                 <button
                   type="button"
-                  onClick={() => void verifyAccount()}
-                  disabled={verifying}
-                  className="mt-3 w-full rounded-xl border-2 border-purple-700 px-4 py-3 font-bold text-purple-800 transition hover:bg-purple-50 disabled:opacity-50"
+                  onClick={() => chooseMode('register')}
+                  className="w-full rounded-xl bg-gradient-to-r from-purple-700 to-purple-600 px-5 py-4 text-left font-black text-white shadow-lg shadow-purple-200 transition hover:from-purple-800 hover:to-purple-700"
                 >
-                  {verifying ? 'Verifying account...' : 'Verify bank account'}
+                  Create my account and get my link
+                  <span className="mt-1 block text-xs font-medium text-purple-100">
+                    I am joining the partner programme for the first time.
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {step === 'email' && (
+              <form onSubmit={continueWithEmail} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">
+                    Email address
+                  </label>
+
+                  <input
+                    required
+                    autoFocus
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={checkingEmail}
+                  className="w-full rounded-xl bg-purple-700 px-5 py-4 font-black text-white transition hover:bg-purple-800 disabled:opacity-50"
+                >
+                  {checkingEmail ? 'Checking email...' : 'Continue →'}
                 </button>
 
-                {accountName && (
-                  <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-4">
-                    <p className="text-xs font-bold uppercase tracking-wider text-green-700">
-                      Verified account name
-                    </p>
+                <button
+                  type="button"
+                  onClick={startOver}
+                  className="w-full text-sm font-bold text-purple-700 hover:underline"
+                >
+                  ← Back to options
+                </button>
+              </form>
+            )}
 
-                    <p className="mt-1 font-extrabold text-green-900">
-                      ✓ {accountName}
-                    </p>
-                  </div>
-                )}
-              </div>
+            {step === 'password' && (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">
+                    Email address
+                  </label>
 
-              <button
-                type="submit"
-                disabled={loading || !accountName}
-                className="w-full rounded-xl bg-gradient-to-r from-purple-700 to-purple-600 px-5 py-4 font-black text-white shadow-lg shadow-purple-200 transition hover:from-purple-800 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading
-                  ? 'Creating your partner account...'
-                  : 'Create my account and get my invite link →'}
-              </button>
+                  <input
+                    type="email"
+                    value={email}
+                    readOnly
+                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-4 text-gray-600"
+                  />
+                </div>
 
-              <p className="text-center text-xs leading-6 text-gray-400">
-                Your bank details are used for referral payout purposes.
-                Rewards are subject to successful referral attribution and
-                payment activation.
-              </p>
-            </form>
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">
+                    10-digit account number
+                  </label>
+
+                  <input
+                    required
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={10}
+                    value={accountNumber}
+                    onChange={(e) =>
+                      setAccountNumber(
+                        e.target.value.replace(/\D/g, '').slice(0, 10)
+                      )
+                    }
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
+                    placeholder="Enter your 10-digit account number"
+                  />
+
+                  <p className="mt-1.5 text-xs text-gray-400">
+                    This is the bank account number registered on your partner
+                    account.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || accountNumber.length !== 10}
+                  className="w-full rounded-xl bg-purple-700 px-5 py-4 font-black text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? 'Signing you in...' : 'Log in to dashboard →'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('email');
+                    setAccountNumber('');
+                  }}
+                  className="w-full text-sm font-bold text-purple-700 hover:underline"
+                >
+                  ← Change email
+                </button>
+              </form>
+            )}
+
+            {step === 'bank' && (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">
+                    Email address
+                  </label>
+
+                  <input
+                    type="email"
+                    value={email}
+                    readOnly
+                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-4 text-gray-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">
+                    Select your bank
+                  </label>
+
+                  <select
+                    value={bankName}
+                    onChange={(e) => {
+                      setBankName(e.target.value);
+                      setAccountName('');
+                    }}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
+                  >
+                    {BANKS.map((bank) => (
+                      <option key={bank.code + bank.name} value={bank.name}>
+                        {bank.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-gray-800">
+                    10-digit bank account number
+                  </label>
+
+                  <input
+                    required
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={10}
+                    value={accountNumber}
+                    onChange={(e) => {
+                      setAccountNumber(
+                        e.target.value.replace(/\D/g, '').slice(0, 10)
+                      );
+                      setAccountName('');
+                    }}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 outline-none transition focus:border-purple-500 focus:bg-white focus:ring-2 focus:ring-purple-100"
+                    placeholder="Enter 10-digit account number"
+                  />
+
+                  <p className="mt-1.5 text-xs text-gray-400">
+                    This number will be your initial password. Keep it private.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => void verifyAccount()}
+                    disabled={verifying || accountNumber.length !== 10}
+                    className="mt-3 w-full rounded-xl border-2 border-purple-700 px-4 py-3 font-bold text-purple-800 transition hover:bg-purple-50 disabled:opacity-50"
+                  >
+                    {verifying ? 'Verifying account...' : 'Verify bank account'}
+                  </button>
+
+                  {accountName && (
+                    <div className="mt-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-green-700">
+                        Verified account name
+                      </p>
+                      <p className="mt-1 font-extrabold text-green-900">
+                        ✓ {accountName}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={
+                    loading || !accountName || accountNumber.length !== 10
+                  }
+                  className="w-full rounded-xl bg-gradient-to-r from-purple-700 to-purple-600 px-5 py-4 font-black text-white shadow-lg shadow-purple-200 transition hover:from-purple-800 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading
+                    ? 'Creating your partner account...'
+                    : 'Create my account and get my invite link →'}
+                </button>
+
+                <p className="text-center text-xs leading-6 text-gray-400">
+                  Your bank details are used for referral payouts. Your account
+                  number must be verified before registration.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('email');
+                    setAccountNumber('');
+                    setAccountName('');
+                  }}
+                  className="w-full text-sm font-bold text-purple-700 hover:underline"
+                >
+                  ← Change email
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </section>
